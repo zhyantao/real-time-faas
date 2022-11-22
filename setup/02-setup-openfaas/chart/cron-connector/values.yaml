@@ -1,0 +1,27 @@
+image: ghcr.io/openfaas/cron-connector:0.6.1
+
+gatewayURL: http://gateway.openfaas:8080
+
+# Invoke via the asynchronous function endpoint
+asyncInvocation: false
+
+# Set a contentType for all invocations
+contentType: text/plain
+
+# Time between querying the gateway for cron schedules
+rebuildInterval: 30s
+
+nodeSelector: {}
+
+tolerations: []
+
+affinity: {}
+
+basicAuth: true
+
+resources:
+  requests:
+    memory: "64Mi"
+    cpu: "100m"
+  # limits:
+  #   memory: "256Mi"

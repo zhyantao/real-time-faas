@@ -1,0 +1,78 @@
+# You will need to create a license named "openfaas-license" - see the 
+# chart README for detailed instructions.
+
+# image is for the pro-builder API
+proBuilder:
+  image: ghcr.io/openfaasltd/pro-builder:0.3.3
+
+  # Set to 0 for unlimited, or some non-zero value for a hard limit
+  # the builder will return a HTTP 429 status code, then the client 
+  # must retry the request. If it's helpful to you, the OpenFaaS Pro 
+  # queue-worker supports retrying failed requests. 
+  maxInflight: 0
+  securityContext: {}
+  resources:
+    requests:
+      memory: "64Mi"
+      cpu: "100m"
+    # limits:
+    #   memory: "256Mi"
+
+# buildkit.image is for the buildkit daemon
+# Check for the latest release on GitHub: https://github.com/moby/buildkit/releases
+#
+# Both configurations are "rootless", however the rootless: true mode does not
+# require Buildkit to run as a privileged container and is preferred.
+buildkit:
+  # A configuration which uses a privileged container for when 
+  # your nodes have issues running in rootless mode
+  #
+  # Use rootless if possible, and if not, set up a dedicated 
+  # nodepool for the function builder pods, which is recycled often
+  # through the use of spot instances or preemptive VMs.
+  #
+  # image: moby/buildkit:v0.10.4
+  # rootless: false
+  # securityContext:
+  #   runAsUser: 0
+  #   runAsGroup: 0
+  #   privileged: true
+
+  # For a rootless configuration, preferred, if the configuration
+  # and Kernel version of your Kubernetes nodes supports it
+  # 
+  image: moby/buildkit:v0.10.4-rootless
+  rootless: true
+  securityContext:
+    # Needs Kubernetes >= 1.19
+    seccompProfile:
+      type: Unconfined
+    runAsUser: 1000
+    runAsGroup: 1000
+    privileged: false
+
+  resources:
+    requests:
+      memory: "2Gi"
+      cpu: "2000m"
+    # limits:
+    #   memory: "4Gi"
+
+# disableHmac is used to authenticate requests and should be set to false
+disableHmac: false
+
+# enableLchown is usually set to false
+enableLchown: false
+
+imagePullPolicy: IfNotPresent
+
+fullnameOverride: "pro-builder"
+
+replicas: 1
+
+nodeSelector: {}
+
+tolerations: []
+
+affinity: {}
+
