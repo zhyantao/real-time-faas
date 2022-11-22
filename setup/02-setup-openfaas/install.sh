@@ -20,8 +20,8 @@ kubectl apply -f ./yaml/
 # 验证服务是否安装成功
 kubectl get pods -n openfaas
 
-# 暴露 URL 接口，方便在网页上访问
-export OPENFAAS_URL=http://172.0.0.1:31112
+# 登录平台，并部署服务
+export OPENFAAS_URL=http://192.168.163.146:31112
 faas-cli login --password admin
 faas-cli store deploy figlet
 echo "hello, world" | faas-cli invoke figlet
