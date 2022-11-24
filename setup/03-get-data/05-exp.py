@@ -1,4 +1,3 @@
-# %%
 import os
 import random
 import threading
@@ -10,90 +9,88 @@ import pandas as pd
 import yaml
 from scipy import stats
 from Metrics import FunctionCount
+from Metrics import Prometheus
+
 import uuid
 
-result_col = ['action_name', 'invokeTime', 'startTime',
-              'endTime', 'req_mod', 'schedule_latency/ms', 'qps', 'config', 'platform']
-
+# 程序执行流程：entry -> runner -> run -> multi_process -> handler
 
 reqest_col = ['time', 'req', 'platform']
 
+result_col = ['actionName', 'invokeTime', 'startTime', 'endTime', 
+              'schedule_latency', 'req', 'config', 'platform']
 
-result_col = ['actionName', 'invokeTime', 'startTime',
-              'endTime', 'schedule_latency', 'req', 'config', 'platform']
-
-# exp_platforms = ['Kubeless']
-exp_platforms = ['OpenFaas']
-
-# %%
+# 根据 action_name 的属性，启动若干线程
 def handler(action_name, qps, config):
     uuidstring = config['uuidstring']
     cwd = config['cwd']
     threads = []
-    # print('starting  request")
+    print('starting  request')
     platform_name = config['platform_name']
     for i in range(qps):
-        t = threading.Thread(target=client_1, args=( action_name, platform_name,uuidstring,cwd))
+        t = threading.Thread(target=start_client, args=(action_name, platform_name, uuidstring, cwd))
         threads.append(t)
 
-    # start the clients
+    # 启动客户端
     start_time = time.time()
     config['first_req'] = start_time
     for i in range(qps):
         threads[i].start()
 
-
-def client_1(action_name, platform_name,uuidstring,cwd):
-    command = "bash {cwd}/{platform_name}/executor.sh -a {action_name}  -P {platform_name} -u {uuidstring}"
-    command = command.format(cwd=cwd,action_name=action_name,platform_name=platform_name,uuidstring=uuidstring)
+# 使用命令行工具执行 executor.sh，但是我这里不知道哪里有这个文件
+def start_client(action_name, platform_name, uuidstring, cwd):
+    command = "bash {cwd}/{platform_name}/executor.sh -a {action_name} -P {platform_name} -u {uuidstring}"
+    command = command.format(cwd=cwd, action_name=action_name, platform_name=platform_name, uuidstring=uuidstring)
     os.system(command)
 
-# %%
-def workload_generator(triffic=60,times=400):
-    X = range(triffic)
+# 生成符合泊松分布的数据
+def workload_generator(traffic=60, times=400):
+
+    # 定义三组数据
+    X = range(traffic)
     Y = []
-    X1 = range(triffic, 2*triffic)
+    X1 = range(traffic, 2*traffic)
     Y1 = []
-    X2 = range(2*triffic, 3*triffic)
+    X2 = range(2*traffic, 3*traffic)
     Y2 = []
+    
+    # 生成符合泊松分布的数据
     for k in X:
-        p = stats.poisson.pmf(k, int(triffic/5)) * times
+        p = stats.poisson.pmf(k, int(traffic/5)) * times
         Y.append(p)
 
     for k in X1:
-        p = stats.poisson.pmf(k, int(triffic+triffic/4)) * times
+        p = stats.poisson.pmf(k, int(traffic+traffic/4)) * times
         Y1.append(p)
 
     for k in X2:
-        p = stats.poisson.pmf(k, int(2*triffic + triffic/2)) * times
+        p = stats.poisson.pmf(k, int(2*traffic + traffic/2)) * times
         Y2.append(p)
 
+    # 拼接三组泊松分布的数据
     x = np.concatenate((X, X1, X2))
     y = np.concatenate((Y, Y1, Y2))
     y = list(np.floor(y))
 
-    r1 = list(range(0, int(triffic/5)))
-    r2 = list(range(triffic, int(triffic+triffic/4)))
-    r3 = list(range(2*triffic, int(2*triffic + triffic/2)))
+    # 将三组呈泊松分布的数据分割成对称的左右两部分（y_left_half 和 y_right_half）
+    r1 = list(range(0, int(traffic/5)))
+    r2 = list(range(traffic, int(traffic+traffic/4)))
+    r3 = list(range(2*traffic, int(2*traffic + traffic/2)))
 
     reverse = np.concatenate((r1, r2, r3))
-    y_burst = y.copy()
-    y_burst_reverse = y.copy()
+    y_left_half = y.copy()
+    y_right_half = y.copy()
     for i in reverse:
-        y_burst[int(i)] = 0
+        y_left_half[int(i)] = 0
 
-    for i in range(triffic*3):
+    for i in range(traffic*3):
         if i not in reverse:
-            y_burst_reverse[i] = 0
+            y_right_half[i] = 0
 
     w=y[0:20]
-    # w1 = y[0:20]
-    # w= list(np.concatenate((w, w1)))
-    # x = range(0,40)
     return x, w
 
-
-# %%
+# 针对 actions 使用多线程
 def multi_process(actions, qps, config):
     request_threads = []
     if config['uuidstring'] == '':
@@ -113,31 +110,24 @@ def multi_process(actions, qps, config):
     #     request_threads[i].join()
 
 
-# %%
+# 运行代码
 def run(qps=5, mode='normal', platform_name='OpenFaas',last_state=False,uuids=''):
     start_time = time.time()
     cwd = os.getcwd()
     config = {"qps": qps, "first_req": '', "platform_name": platform_name, "last_state":last_state,"uuidstring":uuids,"cwd":cwd}
 
-    with open("../DIC/envs/actions.yaml", 'r') as stream:
+    # 读取 actions.yaml 文件的信息
+    with open("./actions.yaml", 'r') as stream:
         data_loaded = yaml.safe_load(stream)
         lf_action = data_loaded.get("webservices")
         mf_action = data_loaded.get("MlI")
         bd_action = data_loaded.get("Big-Data")
         stream_action = data_loaded.get("Stream")
     try:
-
-        p_web = Process(target=multi_process, args=(
-            lf_action, qps, config))
-
-        p_mf = Process(target=multi_process, args=(
-            mf_action, qps, config))
-
-        p_bigdata = Process(target=multi_process, args=(
-            bd_action, qps, config))
-
-        p_stream = Process(target=multi_process, args=(
-            stream_action, qps, config))
+        p_web = Process(target=multi_process, args=(lf_action, qps, config))
+        p_mf = Process(target=multi_process, args=(mf_action, qps, config))
+        p_bigdata = Process(target=multi_process, args=(bd_action, qps, config))
+        p_stream = Process(target=multi_process, args=(stream_action, qps, config))
 
         p_web.start()
         p_mf.start()
@@ -183,7 +173,7 @@ def runner(namespace, platform_name, workload, period):
             uuids='max'
         else:
             uuids=''
-        t = threading.Thread(target=run, args=(qps,  'normal', platform_name,last_state,uuids))
+        t = threading.Thread(target=run, args=(qps, 'normal', platform_name, last_state, uuids))
         t.start()
         
         threads_run.append(t)
@@ -194,33 +184,27 @@ def runner(namespace, platform_name, workload, period):
 
     return
     
-# %%
+# 程序的入口程序
 def entry():
-    from Metrics import Prometheus
     period = 5
-    x, y = workload_generator(30,200)
-    print(y)
-    prom = Prometheus()
-
-    platf = {
-        "OpenFaas": 'openfaas-fn'
-    }
-
-    for platform_name in exp_platforms:
-        start = time.time()
-        try:
-            namespace = platf[platform_name]
-            runner(namespace, platform_name, y, period)
-        except Exception:
-            end = time.time()
+    x, y = workload_generator(30,200) # 随机数据
+    prom = Prometheus() # 运行时数据
+    
+    start = time.time() # 开始计时
+    
+    try:
+        runner('openfaas-fn', 'OpenFaaS', y, period)
+    except Exception:
         end = time.time()
-        prom.run_prometheus_perf(start=start, end=end,
-                                 platform=platform_name, namespace=namespace)
+    
+    end = time.time() # 结束计时
+    
+    prom.run_prometheus_perf(start=start, end=end, platform='OpenFaaS', namespace='openfaas-fn')
 
-        with open('runTime.log','w') as f:
-            string = 'platform:'+ platform_name, '+ start:'+ str(start), '+ end:'+ str(end)
-            f.write(string)
-            f.write("---")
+    with open('runTime.log','w') as f:
+        string = 'platform:'+ 'OpenFaaS', '+ start:'+ str(start), '+ end:'+ str(end)
+        f.write(string)
+        f.write("---")
 
 # %%
 os.chdir(os.path.dirname(__file__))

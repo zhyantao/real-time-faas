@@ -1,10 +1,10 @@
 #!/bin/bash
 PRINTLOG=false
 ACTIONNAME='hello-java' # 这个参数在 OpenFaaS 可视化界面可以看到
-TIMES='100' # 循环次数
-PARAMS='PigAndDog' # 函数需要的参数
-PLATFORM=`uname -m`
-UUID=`cat /sys/class/dmi/id/product_uuid`
+TIMES='100'             # 循环次数
+PARAMS='PigAndDog'      # 函数需要的参数
+PLATFORM=$(uname -m)
+UUID=$(cat /sys/class/dmi/id/product_uuid)
 while getopts "a:t:p:P:u:lWR" OPT; do
   case $OPT in
   a)

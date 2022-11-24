@@ -6,6 +6,7 @@ import pandas as pd
 import requests
 from kubernetes import client, config
 
+# 这个文件是程序运行时的一个性能采集器
 
 class FunctionCount:
     cols = ['pod_ip', 'name', 'namespace', 'host_ip']
