@@ -94,7 +94,7 @@ class Prometheus:
     pwd = os.path.dirname(__file__)
 
     def __init__(self):
-        os.popen("kubectl get node -o wide|grep -v 'NAME'|awk '{print $1,$6}'> node.t>node.t")
+        os.popen("kubectl get node -o wide|grep -v 'NAME'|awk '{print $1,$6}' >hosts")
         os.chdir(self.pwd)
 
     def evict_port(self, x):

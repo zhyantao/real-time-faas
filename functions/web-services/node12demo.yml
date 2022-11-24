@@ -1,9 +1,0 @@
-version: 1.0
-provider:
-  name: openfaas
-  gateway: http://192.168.163.146:31112
-functions:
-  node12demo:
-    lang: node12
-    handler: ./node12demo
-    image: 192.168.163.146:5000/node12demo:latest

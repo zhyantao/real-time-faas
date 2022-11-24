@@ -1,0 +1,30 @@
+version: 1.0
+provider:
+  name: openfaas
+  gateway: http://192.168.163.146:31112
+
+functions:
+  hello-python:
+    lang: python3-debian
+    handler: ./hello
+    image: 192.168.163.146:5000/python-hello:1.0.0
+
+  hash-python:
+    lang: python3-debian
+    handler: ./hash
+    image: 192.168.163.146:5000/python-hash:1.0.0
+
+  sort-python:
+    lang: python3-debian
+    handler: ./sort
+    image: 192.168.163.146:5000/python-sort:1.0.0
+
+  md5-python:
+    lang: python3-debian
+    handler: ./Md5
+    image: 192.168.163.146:5000/python-md5:1.0.0
+
+  cryptography-python:
+    lang: python3-debian
+    handler: ./cryptography
+    image: 192.168.163.146:5000/python-cryptography:1.0.0
