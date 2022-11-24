@@ -1,3 +1,51 @@
+# 每台主机的名字不同
+hostnamectl set-hostname k8s-master # 在主机 1 上操作
+hostnamectl set-hostname k8s-worker1 # 在主机 2 上操作
+hostnamectl set-hostname k8s-worker2 # 在主机 3 上操作
+
+# 升级 Linux 内核到 5.4
+rpm --import https://www.elrepo.org/RPM-GPG-KEY-elrepo.org
+yum -y install https://www.elrepo.org/elrepo-release-7.0-4.el7.elrepo.noarch.rpm
+yum --enablerepo="elrepo-kernel" -y install kernel-lt.x86_64
+grub2-set-default 0
+grub2-mkconfig -o /boot/grub2/grub.cfg
+reboot
+uname -r
+
+# 同步时间
+sudo systemctl stop chronyd
+sudo systemctl disable chronyd
+sudo yum install ntp ntpdate
+sudo ntpdate ntp.aliyun.com
+sudo rm -rf /etc/localtime
+sudo ln -s /usr/share/zoneinfo/Asia/Shanghai /etc/localtime
+
+# 在 CentOS 7 上安装 Python 3.10
+# 参考 https://docs.python.org/3/using/unix.html#custom-openssl 
+# 确保存在 /etc/ssl
+find /etc/ -name openssl.cnf -printf "%h\n"
+# 安装 OpenSSL
+curl -O https://www.openssl.org/source/openssl-VERSION.tar.gz
+tar xzf openssl-VERSION
+pushd openssl-VERSION
+./config \
+    --prefix=/usr/local \
+    --libdir=lib \
+    --openssldir=/etc/ssl
+make -j1 depend
+make -j8
+make install_sw
+popd
+# 安装 Python 3
+pushd python-3.x.x
+./configure -C \
+    --with-openssl=/usr/local \
+    --with-openssl-rpath=auto \
+    --prefix=/usr/local
+make -j8
+make altinstall
+popd
+
 # 删除旧版本的 Docker
 sudo yum remove docker \
     docker-client \
@@ -54,3 +102,8 @@ systemctl restart k3s-agent
 
 # 检查是否已经成功
 cat  /var/lib/rancher/k3s/agent/etc/containerd/config.toml
+
+# SSH 免密登录
+ssh-keygen -t rsa # 生成公钥，在所有节点上都要运行
+ssh-copy-id localhost # 发送私钥给本机，所有节点都要运行
+ssh-copy-id <ip_address> # 发送公钥给其他机器，需要输入其他机器的密码
