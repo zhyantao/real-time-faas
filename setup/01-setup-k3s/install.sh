@@ -96,16 +96,13 @@ STORAGE_URL=https://storage.googleapis.com/k3s-ci-builds
 DOWNLOADER=
 
 # --- helper functions for logs ---
-info()
-{
+info() {
     echo '[INFO] ' "$@"
 }
-warn()
-{
+warn() {
     echo '[WARN] ' "$@" >&2
 }
-fatal()
-{
+fatal() {
     echo '[ERROR] ' "$@" >&2
     exit 1
 }
@@ -116,7 +113,7 @@ verify_system() {
         HAS_OPENRC=true
         return
     fi
-    if [ -x /bin/systemctl ] || type systemctl > /dev/null 2>&1; then
+    if [ -x /bin/systemctl ] || type systemctl >/dev/null 2>&1; then
         HAS_SYSTEMD=true
         return
     fi
@@ -151,13 +148,13 @@ escape_dq() {
 # --- ensures $K3S_URL is empty or begins with https://, exiting fatally otherwise ---
 verify_k3s_url() {
     case "${K3S_URL}" in
-        "")
-            ;;
-        https://*)
-            ;;
-        *)
-            fatal "Only https:// URLs are supported for K3S_URL (have ${K3S_URL})"
-            ;;
+    "") ;;
+
+    https://*) ;;
+
+    *)
+        fatal "Only https:// URLs are supported for K3S_URL (have ${K3S_URL})"
+        ;;
     esac
 }
 
@@ -165,21 +162,21 @@ verify_k3s_url() {
 setup_env() {
     # --- use command args if passed or create default ---
     case "$1" in
-        # --- if we only have flags discover if command should be server or agent ---
-        (-*|"")
-            if [ -z "${K3S_URL}" ]; then
-                CMD_K3S=server
-            else
-                if [ -z "${K3S_TOKEN}" ] && [ -z "${K3S_TOKEN_FILE}" ] && [ -z "${K3S_CLUSTER_SECRET}" ]; then
-                    fatal "Defaulted k3s exec command to 'agent' because K3S_URL is defined, but K3S_TOKEN, K3S_TOKEN_FILE or K3S_CLUSTER_SECRET is not defined."
-                fi
-                CMD_K3S=agent
+    # --- if we only have flags discover if command should be server or agent ---
+    -* | "")
+        if [ -z "${K3S_URL}" ]; then
+            CMD_K3S=server
+        else
+            if [ -z "${K3S_TOKEN}" ] && [ -z "${K3S_TOKEN_FILE}" ] && [ -z "${K3S_CLUSTER_SECRET}" ]; then
+                fatal "Defaulted k3s exec command to 'agent' because K3S_URL is defined, but K3S_TOKEN, K3S_TOKEN_FILE or K3S_CLUSTER_SECRET is not defined."
             fi
+            CMD_K3S=agent
+        fi
         ;;
         # --- command is provided ---
-        (*)
-            CMD_K3S=$1
-            shift
+    *)
+        CMD_K3S=$1
+        shift
         ;;
     esac
 
@@ -199,8 +196,8 @@ setup_env() {
     fi
 
     # --- check for invalid characters in system name ---
-    valid_chars=$(printf '%s' "${SYSTEM_NAME}" | sed -e 's/[][!#$%&()*;<=>?\_`{|}/[:space:]]/^/g;' )
-    if [ "${SYSTEM_NAME}" != "${valid_chars}"  ]; then
+    valid_chars=$(printf '%s' "${SYSTEM_NAME}" | sed -e 's/[][!#$%&()*;<=>?\_`{|}/[:space:]]/^/g;')
+    if [ "${SYSTEM_NAME}" != "${valid_chars}" ]; then
         invalid_chars=$(printf '%s' "${valid_chars}" | sed -e 's/[^^]/ /g')
         fatal "Invalid characters for system name:
             ${SYSTEM_NAME}
@@ -275,11 +272,11 @@ can_skip_download_binary() {
     fi
 }
 
-can_skip_download_selinux() {                                                        
-    if [ "${INSTALL_K3S_SKIP_DOWNLOAD}" != true ] && [ "${INSTALL_K3S_SKIP_DOWNLOAD}" != selinux ]; then 
-        return 1                                                                     
-    fi                                                                               
-}  
+can_skip_download_selinux() {
+    if [ "${INSTALL_K3S_SKIP_DOWNLOAD}" != true ] && [ "${INSTALL_K3S_SKIP_DOWNLOAD}" != selinux ]; then
+        return 1
+    fi
+}
 
 # --- verify an executable k3s binary is installed ---
 verify_k3s_is_executable() {
@@ -294,32 +291,33 @@ setup_verify_arch() {
         ARCH=$(uname -m)
     fi
     case $ARCH in
-        amd64)
-            ARCH=amd64
-            SUFFIX=
-            ;;
-        x86_64)
-            ARCH=amd64
-            SUFFIX=
-            ;;
-        arm64)
-            ARCH=arm64
-            SUFFIX=-${ARCH}
-            ;;
-        s390x)
-            ARCH=s390x
-            SUFFIX=-${ARCH}
-            ;;
-        aarch64)
-            ARCH=arm64
-            SUFFIX=-${ARCH}
-            ;;
-        arm*)
-            ARCH=arm
-            SUFFIX=-${ARCH}hf
-            ;;
-        *)
-            fatal "Unsupported architecture $ARCH"
+    amd64)
+        ARCH=amd64
+        SUFFIX=
+        ;;
+    x86_64)
+        ARCH=amd64
+        SUFFIX=
+        ;;
+    arm64)
+        ARCH=arm64
+        SUFFIX=-${ARCH}
+        ;;
+    s390x)
+        ARCH=s390x
+        SUFFIX=-${ARCH}
+        ;;
+    aarch64)
+        ARCH=arm64
+        SUFFIX=-${ARCH}
+        ;;
+    arm*)
+        ARCH=arm
+        SUFFIX=-${ARCH}hf
+        ;;
+    *)
+        fatal "Unsupported architecture $ARCH"
+        ;;
     esac
 }
 
@@ -358,15 +356,15 @@ get_release_version() {
         info "Finding release for channel ${INSTALL_K3S_CHANNEL}"
         version_url="${INSTALL_K3S_CHANNEL_URL}/${INSTALL_K3S_CHANNEL}"
         case $DOWNLOADER in
-            curl)
-                VERSION_K3S=$(curl -w '%{url_effective}' -L -s -S ${version_url} -o /dev/null | sed -e 's|.*/||')
-                ;;
-            wget)
-                VERSION_K3S=$(wget -SqO /dev/null ${version_url} 2>&1 | grep -i Location | sed -e 's|.*/||')
-                ;;
-            *)
-                fatal "Incorrect downloader executable '$DOWNLOADER'"
-                ;;
+        curl)
+            VERSION_K3S=$(curl -w '%{url_effective}' -L -s -S ${version_url} -o /dev/null | sed -e 's|.*/||')
+            ;;
+        wget)
+            VERSION_K3S=$(wget -SqO /dev/null ${version_url} 2>&1 | grep -i Location | sed -e 's|.*/||')
+            ;;
+        *)
+            fatal "Incorrect downloader executable '$DOWNLOADER'"
+            ;;
         esac
     fi
     info "Using ${VERSION_K3S} as release"
@@ -377,15 +375,15 @@ download() {
     [ $# -eq 2 ] || fatal 'download needs exactly 2 arguments'
 
     case $DOWNLOADER in
-        curl)
-            curl -o $1 -sfL $2
-            ;;
-        wget)
-            wget -qO $1 $2
-            ;;
-        *)
-            fatal "Incorrect executable '$DOWNLOADER'"
-            ;;
+    curl)
+        curl -o $1 -sfL $2
+        ;;
+    wget)
+        wget -qO $1 $2
+        ;;
+    *)
+        fatal "Incorrect executable '$DOWNLOADER'"
+        ;;
     esac
 
     # Abort if download command failed
@@ -448,16 +446,16 @@ setup_binary() {
 
 # --- setup selinux policy ---
 setup_selinux() {
-    case ${INSTALL_K3S_CHANNEL} in 
-        *testing)
-            rpm_channel=testing
-            ;;
-        *latest)
-            rpm_channel=latest
-            ;;
-        *)
-            rpm_channel=stable
-            ;;
+    case ${INSTALL_K3S_CHANNEL} in
+    *testing)
+        rpm_channel=testing
+        ;;
+    *latest)
+        rpm_channel=latest
+        ;;
+    *)
+        rpm_channel=stable
+        ;;
     esac
 
     rpm_site="rpm.rancher.io"
@@ -491,7 +489,7 @@ setup_selinux() {
 
     if [ "$INSTALL_K3S_SKIP_SELINUX_RPM" = true ] || can_skip_download_selinux || [ ! -d /usr/share/selinux ]; then
         info "Skipping installation of SELinux RPM"
-    elif  [ "${ID_LIKE:-}" != coreos ] && [ "${VARIANT_ID:-}" != coreos ]; then
+    elif [ "${ID_LIKE:-}" != coreos ] && [ "${VARIANT_ID:-}" != coreos ]; then
         install_selinux_rpm ${rpm_site} ${rpm_channel} ${rpm_target} ${rpm_site_infix}
     fi
 
@@ -526,7 +524,7 @@ install_selinux_rpm() {
             $SUDO yum install -y yum-utils
             $SUDO yum-config-manager --enable rhel-7-server-extras-rpms
         fi
-        $SUDO tee ${repodir}/rancher-k3s-common.repo >/dev/null << EOF
+        $SUDO tee ${repodir}/rancher-k3s-common.repo >/dev/null <<EOF
 [rancher-k3s-common-${2}]
 name=Rancher K3s Common (${2})
 baseurl=https://${1}/k3s/${2}/common/${4}/noarch
@@ -559,9 +557,9 @@ EOF
 # --- download and verify k3s ---
 download_and_verify() {
     if can_skip_download_binary; then
-       info 'Skipping k3s download and verify'
-       verify_k3s_is_executable
-       return
+        info 'Skipping k3s download and verify'
+        verify_k3s_is_executable
+        return
     fi
 
     setup_verify_arch
@@ -604,7 +602,7 @@ create_symlinks() {
 create_killall() {
     [ "${INSTALL_K3S_BIN_DIR_READ_ONLY}" = true ] && return
     info "Creating killall script ${KILLALL_K3S_SH}"
-    $SUDO tee ${KILLALL_K3S_SH} >/dev/null << \EOF
+    $SUDO tee ${KILLALL_K3S_SH} >/dev/null <<\EOF
 #!/bin/sh
 [ $(id -u) -eq 0 ] || exec sudo $0 $@
 
@@ -692,7 +690,7 @@ EOF
 create_uninstall() {
     [ "${INSTALL_K3S_BIN_DIR_READ_ONLY}" = true ] && return
     info "Creating uninstall script ${UNINSTALL_K3S_SH}"
-    $SUDO tee ${UNINSTALL_K3S_SH} >/dev/null << EOF
+    $SUDO tee ${UNINSTALL_K3S_SH} >/dev/null <<EOF
 #!/bin/sh
 set -x
 [ \$(id -u) -eq 0 ] || exec sudo \$0 \$@
@@ -770,7 +768,7 @@ create_env_file() {
 # --- write systemd service file ---
 create_systemd_service_file() {
     info "systemd: Creating service file ${FILE_K3S_SERVICE}"
-    $SUDO tee ${FILE_K3S_SERVICE} >/dev/null << EOF
+    $SUDO tee ${FILE_K3S_SERVICE} >/dev/null <<EOF
 [Unit]
 Description=Lightweight Kubernetes
 Documentation=https://k3s.io
@@ -810,7 +808,7 @@ create_openrc_service_file() {
     LOG_FILE=/var/log/${SYSTEM_NAME}.log
 
     info "openrc: Creating service file ${FILE_K3S_SERVICE}"
-    $SUDO tee ${FILE_K3S_SERVICE} >/dev/null << EOF
+    $SUDO tee ${FILE_K3S_SERVICE} >/dev/null <<EOF
 #!/sbin/openrc-run
 
 depend() {
@@ -842,7 +840,7 @@ set +o allexport
 EOF
     $SUDO chmod 0755 ${FILE_K3S_SERVICE}
 
-    $SUDO tee /etc/logrotate.d/${SYSTEM_NAME} >/dev/null << EOF
+    $SUDO tee /etc/logrotate.d/${SYSTEM_NAME} >/dev/null <<EOF
 ${LOG_FILE} {
 	missingok
 	notifempty
@@ -888,8 +886,7 @@ openrc_start() {
 
 # --- startup systemd or openrc service ---
 service_enable_and_start() {
-    if [ -f "/proc/cgroups" ] && [ "$(grep memory /proc/cgroups | while read -r n n n enabled; do echo $enabled; done)" -eq 0 ];
-    then
+    if [ -f "/proc/cgroups" ] && [ "$(grep memory /proc/cgroups | while read -r n n n enabled; do echo $enabled; done)" -eq 0 ]; then
         info 'Failed to find memory cgroup, you may need to add "cgroup_memory=1 cgroup_enable=memory" to your linux cmdline (/boot/cmdline.txt on a Raspberry Pi)'
     fi
 

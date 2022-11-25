@@ -1,5 +1,5 @@
 # 设置系统环境变量
-echo 'export KUBECONFIG=/etc/rancher/k3s/k3s.yaml' >> /etc/profile
+echo 'export KUBECONFIG=/etc/rancher/k3s/k3s.yaml' >>/etc/profile
 source /etc/profile
 
 # 安装 faas-cli 和 helm
@@ -28,7 +28,7 @@ echo "hello, world" | faas-cli invoke figlet
 
 # 暴露 prometheus 服务
 kubectl expose deployment prometheus -n openfaas --type=NodePort --name=prometheus-ui # 通过公网 IP 访问
-kubectl port-forward svc/prometheus-ui -n openfaas 31119:9090 & # 通过内网 IP 访问
+kubectl port-forward svc/prometheus-ui -n openfaas 31119:9090 &                       # 通过内网 IP 访问
 
 # 将 prometheus 采集的性能指标用 grafana 可视化
 # 参考 https://github.com/openfaas/workshop/blob/master/lab2.md

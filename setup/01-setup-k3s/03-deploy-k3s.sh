@@ -14,34 +14,34 @@ mkdir -p /var/lib/rancher/k3s/agent/images/
 cp ./k3s-airgap-images-amd64.tar.gz /var/lib/rancher/k3s/agent/images/
 
 # 在 k8s-master 节点上运行
-chmod +x install.sh # 修改权限
+chmod +x install.sh                         # 修改权限
 INSTALL_K3S_SKIP_DOWNLOAD=true ./install.sh # 离线安装
-kubectl get node # 安装完成后，查看节点状态
-cat /var/lib/rancher/k3s/server/node-token # 查看token
+kubectl get node                            # 安装完成后，查看节点状态
+cat /var/lib/rancher/k3s/server/node-token  # 查看token
 #K10c4b79481685b50e4bca2513078f4e83b62d1d0b5f133a8a668b65c8f9249c53e::server:bf7b63be7f3471838cbafa12c1a1964d
 
 # 在 k8s-worker1 和 k8s-worker2 上运行
 INSTALL_K3S_SKIP_DOWNLOAD=true \
-    K3S_URL=https://192.168.163.146:6443 \
-    K3S_TOKEN=K1012bdc3ffe7a5d89ecb125e56c38f9fe84a9f9aed6db605f7698fa744f2f2f12f::server:fdf33f4921dd607cadf2ae3c8eaf6ad9 \
-    ./install.sh
+  K3S_URL=https://192.168.163.146:6443 \
+  K3S_TOKEN=K1012bdc3ffe7a5d89ecb125e56c38f9fe84a9f9aed6db605f7698fa744f2f2f12f::server:fdf33f4921dd607cadf2ae3c8eaf6ad9 \
+  ./install.sh
 
 # 编辑 /etc/rancher/k3s/registries.yaml 添加如下内容
 mirrors:
-  192.168.163.146:5000:
-    endpoint:
-      - "http://192.168.163.146:5000"
+192.168.163.146:5000:
+endpoint:
+- "http://192.168.163.146:5000"
 # 编辑 /etc/docker/daemon.json 添加如下内容（没有文件则新建）
 {
   "insecure-registries": [
-    "192.168.163.146:5000"
+  "192.168.163.146:5000"
   ]
 }
 
 # 重启服务
 systemctl restart containerd # 在所有节点上重启服务
-systemctl restart k3s # 在 master 节点上重启服务
-systemctl restart k3s-agent # 在 node 节点上重启服务
+systemctl restart k3s        # 在 master 节点上重启服务
+systemctl restart k3s-agent  # 在 node 节点上重启服务
 
 # 检查是否已经成功
-cat  /var/lib/rancher/k3s/agent/etc/containerd/config.toml
+cat /var/lib/rancher/k3s/agent/etc/containerd/config.toml
