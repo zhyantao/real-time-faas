@@ -1,48 +1,18 @@
 #!/bin/bash
-PRINTLOG=false
-ACTIONNAME='hello-java' # 这个参数在 OpenFaaS 可视化界面可以看到
-TIMES='100'             # 循环次数
-PARAMS='PigAndDog'      # 函数需要的参数
-PLATFORM=$(uname -m)
-UUID=$(cat /sys/class/dmi/id/product_uuid)
-while getopts "a:t:p:P:u:lWR" OPT; do
-  case $OPT in
-  a)
-    ACTIONNAME=$OPTARG
-    echo $ACTIONNAME
-    ;;
-  t)
-    TIMES=$OPTARG
-    ;;
 
-  # "Warm up only" with this argument: warm up and then exit with no output.
-  p)
-    PARAMS=$(echo $OPTARG | sed $'s/\'//g')
-    ;;
-  P)
-    PLATFORM=$OPTARG
-    ;;
-  u)
-    UUID=$OPTARG
-    ;;
-  ?)
-    echo "unknown arguments"
-    ;;
-  esac
-done
+uuid=$(cat /sys/class/dmi/id/product_uuid)
+platform=$(uname -m)
+invokeTimes='3'            # 调用次数
+function_name='hello-java' # 函数名称
+params='PigAndDog'         # 参数列表
 
-if [[ -z $TIMES ]]; then
-  TIMES=1
-fi
-
-LATENCYSUM=0
-for i in $(seq 1 $TIMES); do
+for i in $(seq 1 $invokeTimes); do
   invokeTime=$(date +%s.%N)
-  times=$(curl -s http://192.168.163.146:31112/function/$ACTIONNAME.openfaas-fn)
+  responseBody=$(curl -s http://192.168.163.146:31112/function/$function_name.openfaas-fn)
   endTime=$(date +%s.%N)
-  startTime=$(echo $times | jq -r '.startTime')
+  startTime=$(echo $responseBody | jq -r '.startTime')
   if [ ! $startTime ]; then
     startTime="''"
   fi
-  echo "$UUID,$PLATFORM,$ACTIONNAME,$invokeTime,$startTime,$endTime" >>result_$PLATFORM.csv
+  echo "$uuid,$platform,$function_name,$invokeTime,$startTime,$endTime" >>delay_and_execution_time_$platform.csv
 done
