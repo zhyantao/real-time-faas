@@ -27,14 +27,14 @@ faas-cli store deploy figlet
 echo "hello, world" | faas-cli invoke figlet
 
 # 暴露 prometheus 服务
-kubectl expose deployment prometheus -n openfaas --type=NodePort --name=prometheus-ui # 通过公网 IP 访问
-kubectl port-forward svc/prometheus-ui -n openfaas 31119:9090 &                       # 通过内网 IP 访问
+kubectl expose deployment -n openfaas prometheus --type=NodePort --name=prometheus-ui # 通过公网 IP 访问
+kubectl port-forward -n openfaas svc/prometheus-ui 31119:9090 &                       # 通过内网 IP 访问
 
 # 将 prometheus 采集的性能指标用 grafana 可视化
 # 参考 https://github.com/openfaas/workshop/blob/master/lab2.md
-kubectl run grafana -n openfaas --image=stefanprodan/faas-grafana:4.6.3 --port=3000
-kubectl expose pod grafana -n openfaas --type=NodePort --name=grafana # 使用公网 IP 访问
-kubectl port-forward svc/grafana -n openfaas 3000:3000 &
+kubectl run -n openfaas grafana --image=stefanprodan/faas-grafana:4.6.3 --port=3000
+kubectl expose pod -n openfaas grafana --type=NodePort --name=grafana # 使用公网 IP 访问
+kubectl port-forward -n openfaas svc/grafana 3000:3000 &
 #GRAFANA_PORT=$(kubectl -n openfaas get svc grafana -o jsonpath="{.spec.ports[0].nodePort}")
 #GRAFANA_URL=http://192.168.163.146:$GRAFANA_PORT/dashboard/db/openfaas
 

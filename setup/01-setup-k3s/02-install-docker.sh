@@ -18,14 +18,15 @@ sudo yum-config-manager \
 sudo yum update
 
 # 安装最新版的 Docker 引擎
-sudo yum install docker-ce docker-ce-cli containerd.io
+sudo yum install docker-ce docker-ce-cli containerd.io docker-compose-plugin
 sudo systemctl start docker
 sudo systemctl enable docker
+sudo systemctl enable containerd
 
 # 测试 Docker 是否安装成功
 sudo docker run hello-world
 
-# 创建私有仓库，在每一台节点上运行
-# 参考 https://www.yuque.com/wukong-zorrm/qdoy5p/gdxrr5si4vhkqia5
-# 默认本地仓库存放路径为 /var/lib/registry
-docker run -d -p 5000:5000 --restart=always --name registry registry
+# 删除无效的镜像
+docker image prune -f                                             # 清理 <none> 容器
+docker rmi -f $(docker images | grep '<none>' | awk '{print $3}') # 清理 <none> 容器
+docker rm $(docker ps -a | grep Exited | awk '{print $1}')        # 清理异常退出的容器

@@ -8,3 +8,5 @@ pyyaml
 scipy
 requests
 kubernetes
+matplotlib
+seaborn
