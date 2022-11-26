@@ -29,7 +29,7 @@ INSTALL_K3S_SKIP_DOWNLOAD=true \
 # 创建私有仓库，在每一台节点上运行
 # 参考 https://www.yuque.com/wukong-zorrm/qdoy5p/gdxrr5si4vhkqia5
 # 默认本地仓库存放路径为 /var/lib/registry
-docker run -d -p 5000:5000 --restart=always --name registry registry
+docker run -d -p 5000:5000 --restart always --name registry registry:2
 
 # 编辑 /etc/rancher/k3s/registries.yaml 添加如下内容
 mirrors:
@@ -38,9 +38,7 @@ endpoint:
 - "http://192.168.163.146:5000"
 # 编辑 /etc/docker/daemon.json 添加如下内容（没有文件则新建）
 {
-  "insecure-registries": [
-  "192.168.163.146:5000"
-  ]
+  "insecure-registries": ["192.168.163.146:5000"]
 }
 
 # 重启服务
