@@ -1,8 +1,8 @@
 # 使用 perf 命令采集进程运行时的信息
 mkdir -p tmp && rm tmp/* -rf
 
-event=${1:-'LLC-load-misses'}
-interval=${2:-'500'}
+event=${1:-'L1-dcache-load-misses'} # perf list
+interval=${2:-'500'} # ms
 namespace=${3:-'openfaas-fn'}
 kubectl get node -o wide | grep -v "NAME" | awk '{print $1,$6}' >hosts
 timestamp=$(date +%s.%N)
