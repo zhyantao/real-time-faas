@@ -241,3 +241,4 @@ go.work
 tmp/
 hosts
 perf_data/
+perf.data
