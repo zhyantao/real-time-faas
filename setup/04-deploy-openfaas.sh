@@ -9,19 +9,20 @@ bash get_helm.sh
 # 部署 OpenFaaS 服务
 helm repo add openfaas https://openfaas.github.io/faas-netes/
 
-kubectl apply -f namespaces.yml
+kubectl apply -f faas-netes/namespaces.yml
 
 kubectl -n openfaas create secret generic basic-auth \
     --from-literal=basic-auth-user=admin \
     --from-literal=basic-auth-password="admin"
 
-kubectl apply -f ./yaml/
+kubectl apply -f faas-netes/yaml/
 
 # 验证服务是否安装成功
 kubectl get pods -n openfaas
 
 # 登录平台，并部署服务
-export OPENFAAS_URL=http://192.168.163.146:31112
+echo "export OPENFAAS_URL=http://192.168.163.146:31112" >> ~/.bashrc
+source ~/.bashrc
 faas-cli login --password admin
 faas-cli store deploy figlet
 echo "hello, world" | faas-cli invoke figlet

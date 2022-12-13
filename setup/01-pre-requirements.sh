@@ -60,3 +60,6 @@ go env -w GOPROXY=https://goproxy.cn,direct
 ssh-keygen -t rsa     # 生成公钥，在所有节点上都要运行
 ssh-copy-id localhost # 发送私钥给本机，所有节点都要运行
 ssh-copy-id Remote-IP # 发送公钥给其他机器，需要输入其他机器的密码
+
+# 安装性能监测工具 perf
+yum install perf
