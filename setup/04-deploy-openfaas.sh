@@ -41,3 +41,6 @@ kubectl port-forward -n openfaas svc/grafana 3000:3000 &
 
 # 查看 openfaas 命名空间下的公共 IP 和端口号
 kubectl get svc -n openfaas -o wide
+
+# 拉取 OpenFaaS templates
+faas-cli template pull

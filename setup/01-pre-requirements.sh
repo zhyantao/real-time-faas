@@ -21,14 +21,14 @@ sudo ntpdate ntp.aliyun.com
 sudo rm -rf /etc/localtime
 sudo ln -s /usr/share/zoneinfo/Asia/Shanghai /etc/localtime
 
-# 在 CentOS 7 上安装 Python 3.10
+# 在 CentOS 7 上安装 Python 3.10 和 Git 2.38.1
 # 参考 https://docs.python.org/3/using/unix.html#custom-openssl
 # 确保存在 /etc/ssl
 find /etc/ -name openssl.cnf -printf "%h\n"
 # 安装 OpenSSL
-curl -O https://www.openssl.org/source/openssl-VERSION.tar.gz
-tar xzf openssl-VERSION
-pushd openssl-VERSION
+curl -O https://www.openssl.org/source/openssl-1.1.1.tar.gz
+tar xzf openssl-1.1.1.tar.gz
+pushd openssl-1.1.1
 ./config \
     --prefix=/usr/local \
     --libdir=lib \
@@ -37,14 +37,26 @@ make -j1 depend
 make -j8
 make install_sw
 popd
-# 安装 Python 3
-pushd python-3.x.x
+# 安装 Python 3.10.7
+curl -O https://www.python.org/ftp/python/3.10.7/Python-3.10.7.tgz
+pushd Python-3.10.7
 ./configure -C \
     --with-openssl=/usr/local \
     --with-openssl-rpath=auto \
     --prefix=/usr/local
 make -j8
 make altinstall
+popd
+# 安装 Git 2.38.1
+curl -O https://mirrors.edge.kernel.org/pub/software/scm/git/git-2.38.1.tar.gz
+tar xzf git-2.38.1.tar.gz
+pushd git-2.28.1
+./configure -C \
+    --with-openssl=/usr/local \
+    --with-openssl-rpath=auto \
+    --prefix=/usr/local
+make -j8
+make install
 popd
 
 # 安装 Go

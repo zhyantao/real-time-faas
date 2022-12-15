@@ -8,20 +8,14 @@ functions:
     lang: node
     handler: ./hello
     image: 192.168.163.146:5000/nodejs-hello:1.0.0
-
-functions:
   hash-nodejs:
     lang: node
     handler: ./hash
     image: 192.168.163.146:5000/nodejs-hash:1.0.0
-
-functions:
   sort-nodejs:
     lang: node
     handler: ./sort
     image: 192.168.163.146:5000/nodejs-sort:1.0.0
-
-functions:
   md5-nodejs:
     lang: node
     handler: ./md5
