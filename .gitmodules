@@ -1,0 +1,3 @@
+[submodule "functions/DeathStarBench"]
+	path = functions/DeathStarBench
+	url = https://github.com/delimitrou/DeathStarBench
