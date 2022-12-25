@@ -2,7 +2,10 @@
 
 String.prototype.hashCode = function () {
     if (Array.prototype.reduce) {
-        return this.split("").reduce(function (a, b) { a = ((a << 5) - a) + b.charCodeAt(0); return a & a }, 0);
+        return this.split("").reduce(function (a, b) {
+            a = ((a << 5) - a) + b.charCodeAt(0);
+            return a & a
+        }, 0);
     }
     var hash = 0;
     if (this.length === 0) return hash;
@@ -21,5 +24,5 @@ module.exports = (context, callback) => {
     else
         var token = "hashtest".hashCode()
 
-    callback(undefined, { token: token, startTime: startTime });
+    callback(undefined, {token: token, startTime: startTime});
 }

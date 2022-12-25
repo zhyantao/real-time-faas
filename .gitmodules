@@ -1,3 +1,6 @@
 [submodule "functions/DeathStarBench"]
 	path = functions/DeathStarBench
 	url = https://github.com/delimitrou/DeathStarBench
+[submodule "setup/faas-netes"]
+	path = setup/faas-netes
+	url = https://github.com/openfaas/faas-netes.git

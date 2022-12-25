@@ -3,6 +3,7 @@ import os
 import time
 import json
 
+
 def handle(args):
     global token
     startTime = time.time()

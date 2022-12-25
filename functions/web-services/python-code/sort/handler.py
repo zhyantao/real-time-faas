@@ -1,6 +1,7 @@
 import time
 import json
 
+
 def handle(args):
     startTime = time.time()
 
@@ -22,5 +23,3 @@ def quicksort(arr):
     middle = [x for x in arr if x == pivot]
     right = [x for x in arr if x > pivot]
     return quicksort(left) + middle + quicksort(right)
-
-

@@ -1,12 +1,14 @@
-torch~=1.11.0
-torchvision
-torchaudio
---extra-index-url https://download.pytorch.org/whl/cu113
-numpy
-pandas
-pyyaml
-scipy
-requests
-kubernetes
-matplotlib
-seaborn
+#torch~=1.11.0
+#torchvision
+#torchaudio
+#--extra-index-url https://download.pytorch.org/whl/cu113
+numpy==1.22.0
+matplotlib==3.5.2
+pydot==1.4.1
+networkx==2.8.5
+pytest==7.1.2
+pandas==1.4.2
+seaborn==0.11.2
+pyyaml==6.0
+scipy==1.8.0
+requests==2.27.1

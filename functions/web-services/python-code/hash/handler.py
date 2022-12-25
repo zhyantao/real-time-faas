@@ -1,6 +1,7 @@
 import time
 import json
 
+
 def handle(args):
     startTime = time.time()
     try:
@@ -8,6 +9,6 @@ def handle(args):
     except AttributeError:
         obj = "hashtest"
         pass
-    #obj = args.get("array", "hashtest")
+    # obj = args.get("array", "hashtest")
     token = str(hash(obj))
     return json.dumps({'token': token, 'startTime': startTime})
