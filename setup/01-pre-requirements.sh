@@ -88,7 +88,7 @@ tar zxf seekwatcher-0.14.tar.gz && cd seekwatcher-0.14/
 vim cmd/seekwatcher # 将 python 修改为 python3
 python3 setup.py install
 
-# 授权 AWS 命令行访问
+# 授权 AWS 命令行访问（不安全，而且会产生费用）
 echo 'export AWS_ACCESS_KEY_ID=' >> ~/.bashrc
 echo 'export AWS_SECRET_ACCESS_KEY=' >> ~/.bashrc
 source ~/.bashrc
