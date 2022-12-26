@@ -4,3 +4,6 @@
 [submodule "setup/faas-netes"]
 	path = setup/faas-netes
 	url = https://github.com/openfaas/faas-netes.git
+[submodule "setup/openwhisk-deploy-kube"]
+	path = setup/openwhisk-deploy-kube
+	url = https://github.com/apache/openwhisk-deploy-kube.git
