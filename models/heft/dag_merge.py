@@ -46,10 +46,13 @@ def _ranking_based_merge(*args, **kwargs):
         raise RuntimeError(f"A computation matrix is required for ranking-based merge computation")
     if "communication_matrix" not in kwargs:
         raise RuntimeError(f"A communication matrix is required for ranking-based merge computation")
+    if "communication_startup" not in kwargs:
+        raise RuntimeError(f"A communication startup is required for ranking-based merge computation")
 
     _self = {
         'computation_matrix': kwargs["computation_matrix"],
         'communication_matrix': kwargs["communication_matrix"],
+        'communication_startup': kwargs["communication_startup"],
         'task_schedules': {},
         'proc_schedules': {},
         'numExistingJobs': 0,

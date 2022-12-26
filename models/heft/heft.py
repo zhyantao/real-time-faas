@@ -232,7 +232,7 @@ def _compute_ranku(_self, dag, metric=RankMetric.MEAN, **kwargs):
         nx.set_edge_attributes(dag, {edge: float(dag.get_edge_data(*edge)['weight']) / avgCommunicationCost},
                                'avgweight')
 
-    # Utilize a masked array so that np.mean, etc, calculations ignore the entries that are inf
+    # Utilize a masked array so that np.mean, etc., calculations ignore the entries that are inf
     comp_matrix_masked = np.ma.masked_where(_self.computation_matrix == inf, _self.computation_matrix)
 
     nx.set_node_attributes(dag, {terminal_node: np.mean(comp_matrix_masked[terminal_node - _self.numExistingJobs])},
