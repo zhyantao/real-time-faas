@@ -1,20 +1,11 @@
-# Java function
-cd /root/real-time-faas/functions/web-services/java-code
-faas-cli build -f openfaas.yml
-faas-cli push -f openfaas.yml
-faas-cli deploy -f openfaas.yml
+# Deploy OpenFaaS function
+OpenFaaS_FUNC_PATH='/root/real-time-faas/functions/openfaas'
+OpenWhisk_FUNC_PATH='/root/real-time-faas/functions/openfaas'
 
-# NodeJS function
-cd /root/real-time-faas/functions/web-services/nodejs-code
-faas-cli build -f openfaas.yml
-faas-cli push -f openfaas.yml
-faas-cli deploy -f openfaas.yml
-
-# Python function
-cd /root/real-time-faas/functions/web-services/python-code
+cd $OpenFaaS_FUNC_PATH || exit
 faas-cli build -f openfaas.yml
 faas-cli push -f openfaas.yml
 faas-cli deploy -f openfaas.yml
 
 # Deploy OpenWhisk function
-wsk -i action create hello /root/real-time-faas/functions/openwhisk/hello.js
+wsk -i action create hello $OpenWhisk_FUNC_PATH/hello.js
