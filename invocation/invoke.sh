@@ -26,10 +26,10 @@ for funcName in $(faas-cli list | awk '{print $1}'); do
 
     # 完成 invokeTimes 次函数调用
     for i in $(seq 1 $invokeTimes); do
-        hostname=$(kubectl get pod -o wide -n openfaas-fn | grep $funcName | awk '{print $7}')
+        hostname=$(kubectl get pod -o wide -n openfaas-fn | grep $funcName | awk '{print substr($0, index($0, "k8s-"))}' | awk '{print $1}')
         url=$(kubectl describe pods -n openfaas-fn $funcName | grep 'containerd://' | awk '{print $3}')
         cid=${url#*//} # container id
-        pid=$(ssh -n $hostname ctr task ls | grep $cid | awk '{print $2}')
+        pid=$(ssh -n $hostname crictl inspect $cid | jq .info.pid)
         echo $funcName' on '$hostname' with pid number '$pid
         echo "hello" | faas-cli invoke $funcName # 开始调用函数，使用管道传递参数列表
         # 采集分支预测失误率数据
