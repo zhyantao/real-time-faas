@@ -1,3 +1,5 @@
+# 该文件中的内容仅需在 master 节点运行
+
 kubectl label nodes --all openwhisk-role=invoker
 
 curl -O https://github.com/apache/openwhisk-cli/releases/download/1.2.0/OpenWhisk_CLI-1.2.0-linux-amd64.tgz
@@ -5,7 +7,6 @@ tar -xvf OpenWhisk_CLI-1.2.0-linux-amd64.tgz
 cp wsk /usr/local/bin/wsk
 
 kubectl create namespace openwhisk
-git submodule add https://github.com/apache/openwhisk-deploy-kube.git openwhisk-deploy-kube
 cd openwhisk-deploy-kube
 cp ../../configs/openwhisk.yaml .
 helm install owdev ./helm/openwhisk -n openwhisk --create-namespace -f openwhisk.yaml

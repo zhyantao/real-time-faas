@@ -9,8 +9,6 @@
 ## 项目安装
 
 ```bash
-pip install -r requirements.txt
+pip3 install -r requirements.txt
 git submodule update --init --recursive
 ```
-
-

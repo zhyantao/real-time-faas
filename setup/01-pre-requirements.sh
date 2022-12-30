@@ -6,21 +6,27 @@ GATEWAY="192.168.163.2"
 DNS1="119.29.29.29"
 systemctl restart network
 
+# 添加主机名和 IP 地址的映射
+vim /etc/hosts
+192.168.163.146   k8s-master
+192.168.163.147   k8s-worker1
+192.168.163.148   k8s-worker2
+
 # 每台主机的名字不同
 hostnamectl set-hostname k8s-master  # 在主机 1 上操作
 hostnamectl set-hostname k8s-worker1 # 在主机 2 上操作
 hostnamectl set-hostname k8s-worker2 # 在主机 3 上操作
 
-# 升级 Linux 内核到 5.4
-rpm --import https://www.elrepo.org/RPM-GPG-KEY-elrepo.org
-yum -y install https://www.elrepo.org/elrepo-release-7.0-4.el7.elrepo.noarch.rpm
-yum --enablerepo="elrepo-kernel" -y install kernel-lt.x86_64
-grub2-set-default 0
-grub2-mkconfig -o /boot/grub2/grub.cfg
-reboot
-# （谨慎操作）删除不需要的内核
-yum remove $(rpm -qa | grep kernel | grep -v $(uname -r))
-reboot
+## 升级 Linux 内核到 5.4
+#rpm --import https://www.elrepo.org/RPM-GPG-KEY-elrepo.org
+#yum -y install https://www.elrepo.org/elrepo-release-7.0-4.el7.elrepo.noarch.rpm
+#yum --enablerepo="elrepo-kernel" -y install kernel-lt.x86_64
+#grub2-set-default 0
+#grub2-mkconfig -o /boot/grub2/grub.cfg
+#reboot
+## （谨慎操作）删除不需要的内核
+#yum remove $(rpm -qa | grep kernel | grep -v $(uname -r))
+#reboot
 
 # 同步时间
 sudo systemctl stop chronyd
@@ -59,10 +65,18 @@ yum install bzip2-devel ncurses-devel \
 curl -O https://www.python.org/ftp/python/3.10.7/Python-3.10.7.tgz
 tar xzf Python-3.10.7.tgz
 pushd Python-3.10.7
-./configure --enable-optimizations
+./configure -C \
+    --with-openssl=/usr/local \
+    --with-openssl-rpath=auto \
+    --prefix=/usr/local
+make -j8
 make altinstall
 popd
+rm -rf /usr/local/bin/python3 /usr/local/bin/pip3
+ln -s /usr/local/bin/python3.10 /usr/local/bin/python3
+ln -s /usr/local/bin/pip3.10 /usr/local/bin/pip3
 # 安装 Git 2.38.1
+yum -y install libcurl-devel
 curl -O https://mirrors.edge.kernel.org/pub/software/scm/git/git-2.38.1.tar.gz
 tar xzf git-2.38.1.tar.gz
 pushd git-2.38.1
@@ -75,8 +89,8 @@ make install
 popd
 
 # 安装 Go
-wget https://go.dev/dl/go1.19.3.linux-amd64.tar.gz
-sudo rm -rf /usr/local/go && sudo tar -C /usr/local -xzf go1.19.3.linux-amd64.tar.gz
+curl -O https://go.dev/dl/go1.19.4.linux-amd64.tar.gz
+sudo rm -rf /usr/local/go && sudo tar -C /usr/local -xzf go1.19.4.linux-amd64.tar.gz
 echo 'export PATH=$PATH:/usr/local/go/bin' >>/etc/profile
 source /etc/profile
 # 设置 Go 代理
@@ -98,9 +112,9 @@ yum install perf
 pip3 install cython
 yum install python3-tkinter
 # 安装 seekwatcher
-curl -O curl -O https://github.com/trofi/seekwatcher/archive/refs/tags/v0.14.tar.gz
+curl -O https://github.com/trofi/seekwatcher/archive/refs/tags/v0.14.tar.gz
 tar zxf seekwatcher-0.14.tar.gz && cd seekwatcher-0.14/
-vim cmd/seekwatcher # 将 python 修改为 python3
+vim cmd/seekwatcher # 将第一行的 python 修改为 python3
 python3 setup.py install
 
 # 授权 AWS 命令行访问（不安全，而且会产生费用）

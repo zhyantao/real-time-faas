@@ -8,13 +8,16 @@ yum install -y https://rpm.rancher.io/k3s/latest/common/centos/7/noarch/k3s-seli
 # 下载并安装 K3s 和相关镜像文件
 wget https://github.com/k3s-io/k3s/releases/download/v1.25.0%2Bk3s1/k3s
 wget https://github.com/k3s-io/k3s/releases/download/v1.25.0%2Bk3s1/k3s-airgap-images-amd64.tar.gz
-mv k3s /usr/local/bin
+cp k3s /usr/local/bin
 chmod +x /usr/local/bin/k3s
 mkdir -p /var/lib/rancher/k3s/agent/images/
 cp ./k3s-airgap-images-amd64.tar.gz /var/lib/rancher/k3s/agent/images/
 
 # 在 k8s-master 节点上运行
+git clone git@gitee.com:zhyantao/real-time-faas.git && cd real-time-faas/setup
 chmod +x install.sh                         # 修改权限
+scp install.sh root@k8s-worker1:~/tmp
+scp install.sh root@k8s-worker2:~/tmp
 INSTALL_K3S_SKIP_DOWNLOAD=true ./install.sh # 离线安装
 kubectl get node                            # 安装完成后，查看节点状态
 cat /var/lib/rancher/k3s/server/node-token  # 查看token
@@ -29,13 +32,18 @@ INSTALL_K3S_SKIP_DOWNLOAD=true \
 # 创建私有仓库，在每一台节点上运行
 # 参考 https://www.yuque.com/wukong-zorrm/qdoy5p/gdxrr5si4vhkqia5
 # 默认本地仓库存放路径为 /var/lib/registry
+docker stop $(docker ps -aq)
+docker rm $(docker ps -aq)
 docker run -d -p 5000:5000 --restart always --name registry registry:2
 
-# 编辑 /etc/rancher/k3s/registries.yaml 添加如下内容
+# 编辑 /etc/rancher/k3s/registries.yaml 添加如下内容（所有节点，没有则新建）
 mirrors:
-192.168.163.146:5000:
-endpoint:
-- "http://192.168.163.146:5000"
+  docker.io:
+    endpoint:
+      - "https://fsp2sfpr.mirror.aliyuncs.com/"
+  192.168.163.146:5000:
+    endpoint:
+      - "http://192.168.163.146:5000"
 # 编辑 /etc/docker/daemon.json 添加如下内容（没有文件则新建）
 {
   "insecure-registries": ["192.168.163.146:5000"]

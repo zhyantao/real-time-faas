@@ -1,3 +1,5 @@
+# 该文件中的内容仅需在 master 节点运行
+
 # 设置系统环境变量
 echo 'export KUBECONFIG=/etc/rancher/k3s/k3s.yaml' >>/etc/profile
 source /etc/profile
