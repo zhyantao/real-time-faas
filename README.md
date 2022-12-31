@@ -9,6 +9,8 @@
 ## 项目安装
 
 ```bash
+export PYTHONPATH="$PWD"
 pip3 install -r requirements.txt
 git submodule update --init --recursive
+yum install graphviz
 ```

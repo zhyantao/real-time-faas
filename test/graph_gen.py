@@ -44,7 +44,7 @@ HF = 0.5
 edge_weight_range = [1, 100]
 bw_range = [10, 100]
 
-with open("../configs/graph.config", "r") as f:
+with open("configs/graph.config", "r") as f:
     config = f.readlines()
 config = [(x.strip()).split() for x in config]
 # print(config)
@@ -274,7 +274,7 @@ for i in range(resource_count):
         tmp.extend([resource_com_bw[i][j]])
     write_data.append(tmp)
 # print(write_data)
-with open("../dataset/resource_BW.csv", "w") as f:
+with open("dataset/resource_BW.csv", "w") as f:
     writer = csv.writer(f)
     writer.writerows(write_data)
 ###write connectivity matrix with data transfer size
@@ -289,7 +289,7 @@ for i in range(task_count):
         tmp.extend([connect_matrix[i][j]])
     write_data.append(tmp)
 # print(write_data)
-with open("../dataset/task_connectivity.csv", "w") as f:
+with open("dataset/task_connectivity.csv", "w") as f:
     writer = csv.writer(f)
     writer.writerows(write_data)
 
@@ -304,7 +304,7 @@ for i in range(len(nodes_list)):
     for j in range(resource_count):
         tmp.extend([nodes_list[i].resource_exe_time[j]])
     write_data.append(tmp)
-with open("../dataset/task_exe_time.csv", "w") as f:
+with open("dataset/task_exe_time.csv", "w") as f:
     writer = csv.writer(f)
     writer.writerows(write_data)
 
