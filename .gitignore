@@ -237,7 +237,6 @@ cython_debug/
 go.work
 
 # Output
-*.csv
 tmp/
 hosts
 perf_data/
