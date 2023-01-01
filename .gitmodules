@@ -7,3 +7,6 @@
 [submodule "setup/openwhisk-deploy-kube"]
 	path = setup/openwhisk-deploy-kube
 	url = https://gitee.com/zhyantao/openwhisk-deploy-kube.git
+[submodule "faas-profiler"]
+	path = faas-profiler
+	url = https://gitee.com/zhyantao/faas-profiler.git

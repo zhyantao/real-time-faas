@@ -42,9 +42,9 @@ def test_canonical_graph():
         9: (1, 3, [expected_task_sched[8].task])
     }
 
-    dag = heft.readDagMatrix('../dataset/canonicalgraph_task_connectivity.csv')
-    comm = heft.readCsvToNumpyMatrix('../dataset/canonicalgraph_resource_BW.csv')
-    comp = heft.readCsvToNumpyMatrix('../dataset/canonicalgraph_task_exe_time.csv')
+    dag = heft.readDagMatrix('dataset/canonicalgraph_task_connectivity.csv')
+    comm = heft.readCsvToNumpyMatrix('dataset/canonicalgraph_resource_BW.csv')
+    comp = heft.readCsvToNumpyMatrix('dataset/canonicalgraph_task_exe_time.csv')
     proc_sched, task_sched, dict_sched = heft.schedule_dag(dag, communication_matrix=comm, computation_matrix=comp,
                                                            proc_schedules=None, time_offset=0, relabel_nodes=True)
 
@@ -121,9 +121,9 @@ def test_canonical_graph_twice():
         19: (1, 6, [expected_task_sched[18].task])
     }
 
-    dag = heft.readDagMatrix('../dataset/canonicalgraph_task_connectivity.csv')
-    comm = heft.readCsvToNumpyMatrix('../dataset/canonicalgraph_resource_BW.csv')
-    comp = heft.readCsvToNumpyMatrix('../dataset/canonicalgraph_task_exe_time.csv')
+    dag = heft.readDagMatrix('dataset/canonicalgraph_task_connectivity.csv')
+    comm = heft.readCsvToNumpyMatrix('dataset/canonicalgraph_resource_BW.csv')
+    comp = heft.readCsvToNumpyMatrix('dataset/canonicalgraph_task_exe_time.csv')
     proc_sched, task_sched, dict_sched = heft.schedule_dag(dag, communication_matrix=comm, computation_matrix=comp,
                                                            proc_schedules=None, time_offset=0, relabel_nodes=True)
     proc_sched, task_sched, dict_sched = heft.schedule_dag(dag, communication_matrix=comm, computation_matrix=comp,
@@ -173,9 +173,9 @@ def test_random_graph():
         9: (2, 3, [expected_task_sched[5].task])
     }
 
-    dag = heft.readDagMatrix('../dataset/randomgraph_task_connectivity.csv')
-    comm = heft.readCsvToNumpyMatrix('../dataset/randomgraph_resource_BW.csv')
-    comp = heft.readCsvToNumpyMatrix('../dataset/randomgraph_task_exe_time.csv')
+    dag = heft.readDagMatrix('dataset/randomgraph_task_connectivity.csv')
+    comm = heft.readCsvToNumpyMatrix('dataset/randomgraph_resource_BW.csv')
+    comp = heft.readCsvToNumpyMatrix('dataset/randomgraph_task_exe_time.csv')
     proc_sched, task_sched, dict_sched = heft.schedule_dag(dag, communication_matrix=comm, computation_matrix=comp,
                                                            proc_schedules=None, time_offset=0, relabel_nodes=True)
 
@@ -198,9 +198,9 @@ def test_mean_ranku():
         14.667
     ]
 
-    dag = heft.readDagMatrix('../dataset/canonicalgraph_task_connectivity.csv')
-    comm = heft.readCsvToNumpyMatrix('../dataset/canonicalgraph_resource_BW.csv')
-    comp = heft.readCsvToNumpyMatrix('../dataset/canonicalgraph_task_exe_time.csv')
+    dag = heft.readDagMatrix('dataset/canonicalgraph_task_connectivity.csv')
+    comm = heft.readCsvToNumpyMatrix('dataset/canonicalgraph_resource_BW.csv')
+    comp = heft.readCsvToNumpyMatrix('dataset/canonicalgraph_task_exe_time.csv')
 
     _self = {
         'computation_matrix': comp,
@@ -262,9 +262,9 @@ def test_graph_with_PE_restrictions():
         9: (1, 3, [expected_task_sched[8].task])
     }
 
-    dag = heft.readDagMatrix('../dataset/canonicalgraph_task_connectivity.csv')
-    comm = heft.readCsvToNumpyMatrix('../dataset/canonicalgraph_resource_BW.csv')
-    comp = heft.readCsvToNumpyMatrix('../dataset/canonicalgraph_task_exe_time.csv')
+    dag = heft.readDagMatrix('dataset/canonicalgraph_task_connectivity.csv')
+    comm = heft.readCsvToNumpyMatrix('dataset/canonicalgraph_resource_BW.csv')
+    comp = heft.readCsvToNumpyMatrix('dataset/canonicalgraph_task_exe_time.csv')
 
     inf_comp = np.concatenate((comp, np.inf * np.ones((10, 1))), axis=1)
 
@@ -318,11 +318,11 @@ def test_canonical_graph_with_zero_startup():
         9: (1, 3, [expected_task_sched[8].task])
     }
 
-    dag = heft.readDagMatrix('../dataset/canonicalgraph_task_connectivity.csv')
-    comm = heft.readCsvToNumpyMatrix('../dataset/canonicalgraph_resource_BW_startup.csv')
+    dag = heft.readDagMatrix('dataset/canonicalgraph_task_connectivity.csv')
+    comm = heft.readCsvToNumpyMatrix('dataset/canonicalgraph_resource_BW_startup.csv')
     comm_startup = comm[-1, :]
     comm = comm[0:-1, :]
-    comp = heft.readCsvToNumpyMatrix('../dataset/canonicalgraph_task_exe_time.csv')
+    comp = heft.readCsvToNumpyMatrix('dataset/canonicalgraph_task_exe_time.csv')
     proc_sched, task_sched, dict_sched = heft.schedule_dag(dag, communication_matrix=comm,
                                                            communication_startup=comm_startup, computation_matrix=comp,
                                                            proc_schedules=None, time_offset=0, relabel_nodes=True)
