@@ -4,3 +4,9 @@
 [submodule "third-party/faas-profiler"]
 	path = third-party/faas-profiler
 	url = https://gitee.com/zhyantao/faas-profiler.git
+[submodule "third-party/faas-netes"]
+	path = third-party/faas-netes
+	url = https://gitee.com/zhyantao/faas-netes.git
+[submodule "third-party/openwhisk-deploy-kube"]
+	path = third-party/openwhisk-deploy-kube
+	url = https://gitee.com/zhyantao/openwhisk-deploy-kube.git
