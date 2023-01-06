@@ -1,9 +1,3 @@
-[submodule "setup/faas-netes"]
-	path = setup/faas-netes
-	url = https://gitee.com/zhyantao/faas-netes.git
-[submodule "setup/openwhisk-deploy-kube"]
-	path = setup/openwhisk-deploy-kube
-	url = https://gitee.com/zhyantao/openwhisk-deploy-kube.git
 [submodule "third-party/DeathStarBench"]
 	path = third-party/DeathStarBench
 	url = https://gitee.com/zhyantao/DeathStarBench.git
