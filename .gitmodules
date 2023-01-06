@@ -1,12 +1,12 @@
-[submodule "functions/DeathStarBench"]
-	path = functions/DeathStarBench
-	url = https://github.com/delimitrou/DeathStarBench
 [submodule "setup/faas-netes"]
 	path = setup/faas-netes
 	url = https://gitee.com/zhyantao/faas-netes.git
 [submodule "setup/openwhisk-deploy-kube"]
 	path = setup/openwhisk-deploy-kube
 	url = https://gitee.com/zhyantao/openwhisk-deploy-kube.git
-[submodule "faas-profiler"]
-	path = faas-profiler
+[submodule "third-party/DeathStarBench"]
+	path = third-party/DeathStarBench
+	url = https://gitee.com/zhyantao/DeathStarBench.git
+[submodule "third-party/faas-profiler"]
+	path = third-party/faas-profiler
 	url = https://gitee.com/zhyantao/faas-profiler.git
