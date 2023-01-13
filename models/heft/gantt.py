@@ -1,6 +1,7 @@
 """
 Basic implementation of Gantt chart plotting using Matplotlib
-Taken from https://sukhbinder.wordpress.com/2016/05/10/quick-gantt-chart-with-matplotlib/ and adapted as necessary (i.e. removed Date logic, etc)
+Taken from https://sukhbinder.wordpress.com/2016/05/10/quick-gantt-chart-with-matplotlib/ and adapted as necessary
+(i.e. removed Date logic, etc.)
 """
 
 import matplotlib.pyplot as plt
@@ -10,7 +11,7 @@ import numpy as np
 
 def showGanttChart(proc_schedules):
     """
-        Given a dictionary of processor-task schedules, displays a Gantt chart generated using Matplotlib
+    Given a dictionary of processor-task schedules, displays a Gantt chart generated using Matplotlib
     """
 
     processors = list(proc_schedules.keys())

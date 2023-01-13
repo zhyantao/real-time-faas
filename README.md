@@ -6,6 +6,7 @@
 
 ```bash
 git clone git@gitee.com:zhyantao/real-time-faas.git
+cd real-time-faas
 git submodule update --init --recursive
 ```
 
