@@ -1,15 +1,29 @@
 # 实时 FaaS 的资源调度与任务分配方法研究
 
-- CentOS 7 内核版本：5.4.224-1.el7.elrepo.x86_64 / Windows 11
-- Python >= 3.8，将项目根目录添加到 Windows 环境变量 `PYTHONPATH` 中
-- NVIDIA RTX 2060 专用 GPU 内存 6G
-- 下载安装 [Graphviz](https://graphviz.org/) 并添加至系统环境变量
+## 使用方法
 
-## 项目安装
+### 克隆仓库到本地
 
 ```bash
-export PYTHONPATH="$PWD" # Linux
-pip3 install -r requirements.txt
+git clone git@gitee.com:zhyantao/real-time-faas.git
 git submodule update --init --recursive
-yum install graphviz
+```
+
+### 环境配置
+
+#### Windows
+
+- 下载并安装 [Python 3.10.9](https://www.python.org/downloads/release/python-3109/)
+- 下载并安装 [Graphviz 7.0.6](https://graphviz.org/download/)（添加至系统环境变量）
+- 下载并安装 [PyGraphviz 1.10](https://pygraphviz.github.io/documentation/stable/install.html#manual-download)
+- 安装依赖 `pip install -r requirements.txt`
+- 用 PyCharm 打开项目，添加解释器，选择系统解释器。
+
+#### CentOS
+
+```bash
+#export PYTHONPATH="$PWD" # Linux
+sudo yum install graphviz graphviz-devel
+pip3 install pygraphviz
+pip3 install -r requirements.txt
 ```
