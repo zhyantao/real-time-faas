@@ -36,58 +36,6 @@ sudo ntpdate ntp.aliyun.com
 sudo rm -rf /etc/localtime
 sudo ln -s /usr/share/zoneinfo/Asia/Shanghai /etc/localtime
 
-# 在 CentOS 7 上安装 Python 3.10 和 Git 2.38.1
-# 参考 https://docs.python.org/3/using/unix.html#custom-openssl
-# 确保下面这条命令能搜索出结果
-find /etc/ -name openssl.cnf -printf "%h\n"
-# 安装 OpenSSL
-curl -O https://www.openssl.org/source/openssl-1.1.1.tar.gz
-tar xzf openssl-1.1.1.tar.gz
-pushd openssl-1.1.1
-./config \
-    --prefix=/usr/local \
-    --libdir=lib \
-    --openssldir=$(find /etc/ -name openssl.cnf -printf "%h\n")
-make -j1 depend
-make -j8
-make install_sw
-popd
-# 安装 Python 所需的依赖
-yum update
-yum install yum-utils
-yum groupinstall "Development Tools"
-yum install bzip2-devel ncurses-devel \
-    gdbm-devel \
-    sqlite-devel tk-devel libuuid-devel \
-    readline-devel zlib-devel \
-    libpcap-devel xz-devel expat-devel libffi libffi-devel
-# 安装 Python 3.10.7
-curl -O https://www.python.org/ftp/python/3.10.7/Python-3.10.7.tgz
-tar xzf Python-3.10.7.tgz
-pushd Python-3.10.7
-./configure -C \
-    --with-openssl=/usr/local \
-    --with-openssl-rpath=auto \
-    --prefix=/usr/local
-make -j8
-make altinstall
-popd
-rm -rf /usr/local/bin/python3 /usr/local/bin/pip3
-ln -s /usr/local/bin/python3.10 /usr/local/bin/python3
-ln -s /usr/local/bin/pip3.10 /usr/local/bin/pip3
-# 安装 Git 2.38.1
-yum -y install libcurl-devel
-curl -O https://mirrors.edge.kernel.org/pub/software/scm/git/git-2.38.1.tar.gz
-tar xzf git-2.38.1.tar.gz
-pushd git-2.38.1
-./configure -C \
-    --with-openssl=/usr/local \
-    --with-openssl-rpath=auto \
-    --prefix=/usr/local
-make -j8
-make install
-popd
-
 # 安装 Go
 curl -O https://go.dev/dl/go1.19.4.linux-amd64.tar.gz
 sudo rm -rf /usr/local/go && sudo tar -C /usr/local -xzf go1.19.4.linux-amd64.tar.gz
