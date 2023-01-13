@@ -24,7 +24,16 @@ git submodule update --init --recursive
 
 ```bash
 #export PYTHONPATH="$PWD" # Linux
+
 sudo yum install graphviz graphviz-devel
-pip3 install pygraphviz
+pip3 install --global-option=build_ext \
+             --global-option="-I/usr/include/graphviz/" \
+             --global-option="-L/usr/lib64/graphviz/" \
+             pygraphviz
 pip3 install -r requirements.txt
+
+echo "export PATH=$PATH:~/.local/bin" >> /etc/profile
+source /etc/profile
+jupyter notebook --generate-config
+echo "c.NotebookApp.allow_root=True" >> ~/.jupyter/jupyter_notebook_config.py
 ```
