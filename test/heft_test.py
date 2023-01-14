@@ -1,4 +1,4 @@
-from models.heft import heft
+from models.scheduler.heft import heft
 from pytest import approx
 from types import SimpleNamespace
 import numpy as np

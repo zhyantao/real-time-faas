@@ -11,7 +11,7 @@ import matplotlib.pyplot as plt
 import networkx as nx
 import numpy as np
 
-from models.heft.gantt import showGanttChart
+from models.scheduler.heft.gantt import showGanttChart
 
 logger = logging.getLogger('heft')
 
