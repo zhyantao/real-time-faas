@@ -60,7 +60,7 @@ class RankMetric(Enum):
     MEAN = "MEAN"
     WORST = "WORST"
     BEST = "BEST"
-    EDP = "EDP"
+    EDP = "EDP"  # energy-delay product
 
 
 # 猜测：OpMode 是任务执行后的时间依据
@@ -74,9 +74,9 @@ class OpMode(Enum):
 def schedule_dag(dag, computation_matrix=W0, communication_matrix=C0, communication_startup=L0, proc_schedules=None,
                  time_offset=0, relabel_nodes=True, rank_metric=RankMetric.MEAN, **kwargs):
     """
-    Given an application DAG and a set of matrices specifying PE bandwidth and (task, pe) execution times,
+    Given an application DAG and a set of matrices specifying PE (processing elements) bandwidth and (task, pe) execution times,
     computes the HEFT schedule of that DAG onto that set of PEs
-    根据所提供的的数据，将 task 调度到 processor 上。
+    根据所提供的的数据，将 task 调度到 processing elements (处理单元) 上。
 
     :param dag: 任务序列，DAG 图
     :param computation_matrix: 计算成本矩阵

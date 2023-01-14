@@ -109,7 +109,6 @@ cover/
 *.pot
 
 # Django stuff:
-*.log
 local_settings.py
 db.sqlite3
 db.sqlite3-journal
@@ -221,7 +220,6 @@ cython_debug/
 *.exe
 *.exe~
 *.dll
-*.so
 *.dylib
 
 # Test binary, built with `go test -c`
@@ -241,3 +239,4 @@ tmp/
 hosts
 perf_data/
 perf.data
+dataset/
