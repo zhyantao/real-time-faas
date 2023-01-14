@@ -86,7 +86,7 @@ def sample_DAG(dataset_path=DATASET_PATH, selected_data_path=SELECTED_DAG_PATH):
         percent = sum(counters) / float(sum(required_num)) * 100
         bar.update(percent)
 
-        if (sum(counters) == all):
+        if sum(counters) == all:
             break
 
     DAGs.to_csv(selected_data_path, index=0)
@@ -94,7 +94,7 @@ def sample_DAG(dataset_path=DATASET_PATH, selected_data_path=SELECTED_DAG_PATH):
 
 def get_topological_order(selected_DAG_path=SELECTED_DAG_PATH, sorted_DAG_path=SORTED_DAG_PATH):
     """
-    Get the topoligical ordering of each DAG, save the results into the file topological_order.csv.
+    Get the topological ordering of each DAG, save the results into the file topological_order.csv.
     """
     if os.path.exists(sorted_DAG_path):
         print('DAGs\' topological order has been obtained!')
@@ -135,13 +135,13 @@ def get_topological_order(selected_DAG_path=SELECTED_DAG_PATH, sorted_DAG_path=S
                     # the func itself
                     continue
                 if name_str_list[j].isnumeric():
-                    # the func's dependencies
+                    # the function's dependencies
                     dependent_func_num = int(name_str_list[j])
                     dependent_funcs.append(dependent_func_num)
             funcs_num[i] = func_num
             dependencies[i] = dependent_funcs
 
-        # sort the functions accroding to their dependencies
+        # sort the functions according to their dependencies
         funcs_left = DAG_len
         DAG_sorted = DAG.copy()
         while funcs_left > 0:
@@ -150,7 +150,7 @@ def get_topological_order(selected_DAG_path=SELECTED_DAG_PATH, sorted_DAG_path=S
             # as a result, the entry functions may not have the smallest number
 
             # ==== this is where we can improved ====
-            # Use Breadth-first Search algorithm to optain the topological ordering and compare the results.
+            # Use Breadth-first Search algorithm to obtain the topological ordering and compare the results.
             # The makespan might be decreased further.
             # =======================================
             for i in range(len(dependencies)):
