@@ -1,14 +1,15 @@
 """
-Implement the DPE algorithm.
+Implement the FixDoc algorithm.
     Author: Hailiang Zhao (hliangzhao@zju.edu.cn)
 """
 import numpy as np
 import pandas as pd
-from util.parameters import *
-from util.scenario import bar, para
+import random
+from models.parameters import *
+from models.scenario import bar, para
 
 
-class DPE:
+class FixDoc:
     def __init__(self, G, bw, pp, simple_paths, reciprocals_list, proportions_list, pp_required, data_stream):
         # get the generated edge computing scenario
         self.G, self.bw, self.pp = G, bw, pp
@@ -18,7 +19,18 @@ class DPE:
 
     def get_response_time(self, sorted_DAG_path=SORTED_DAG_PATH):
         """
-        Calculate the overall finish time of all DAGs achieved by DPE algorithm.
+        Calculate the overall finish time of all DAGs achieved by FixDoc algorithm.
+        In FixDoc paper, the authors claim that a function might be executed repeatedly on multiple servers.
+        I don't agree with that.
+
+        In our implementation, the only difference between FixDoc and DPE is how the transmission cost of
+        data stream calculated, which could affect the deployment of functions significantly.
+
+        ==== Note ====
+        (1) The path between any two edge servers are randomly selected from simple_paths.
+        (2) The more complicated the structure of the DAGs (e.g., many entry functions), the better DPE outperforms
+        FixDoc.
+        ==============
         """
         if not os.path.exists(sorted_DAG_path):
             print('DAGs\' topological order has not been obtained! Please get topological order firstly.')
@@ -37,7 +49,7 @@ class DPE:
         required_num = REQUIRED_NUM
         all_DAG_num = sum(required_num)
         calculated_num = 0
-        print('\nGetting makespan for %d DAGs by DPE algorithm ...' % all_DAG_num)
+        print('\nGetting makespan for %d DAGs by FixDoc algorithm ...' % all_DAG_num)
         while idx < df_len:
             # get a DAG
             DAG_name = df.loc[idx, 'job_name']
@@ -49,6 +61,7 @@ class DPE:
             DAG_data_stream = self.data_stream[:DAG_len]
 
             # T_optimal stores the earliest finish time of each function on each server
+            # (if the server n for func i is not idle when making decisions, T_optimal[i][n] is set as MAX_VALUE)
             T_optimal = np.zeros((DAG_len, para.get_server_num()))
             start_time = np.zeros(DAG_len)
             funcs_deploy = -1 * np.ones(DAG_len)
@@ -56,11 +69,19 @@ class DPE:
             # server_runtime records the moment when the newest func on each server is finished
             server_runtime = np.zeros(para.get_server_num())
 
+            # fix the path chosen between any two node
+            fix_path_reciprocals = np.zeros((para.get_server_num(), para.get_server_num()))
+            for n1 in range(para.get_server_num()):
+                for n2 in range(para.get_server_num()):
+                    if n1 != n2:
+                        paths_num = len(self.reciprocals_list[n1][n2])
+                        chosen_path = random.randint(0, paths_num - 1)
+                        fix_path_reciprocals[n1][n2] = self.reciprocals_list[n1][n2][chosen_path]
+
             makespan = 0
             for j in range(DAG_len + 1):
                 if j == DAG_len:
-                    # this is the dummy tail function, update all the exit functions' deployment and return the makespan
-                    # makespan is the slowest 'exit function's earliest finish time'
+                    # this is the dummy tail function, update all the exit functions' deployment
                     for e in range(DAG_len):
                         if funcs_deploy[e] == -1.:
                             funcs_deploy[e] = int(np.argmin(T_optimal[e]))
@@ -69,7 +90,7 @@ class DPE:
                                 makespan = min(T_optimal[e])
                     break
 
-                # get the number of this function and stores in func
+                # get the number of this function: func
                 name_str_list = DAG.loc[j + idx, 'task_name'].strip().split('_')
                 name_str_list_len = len(name_str_list)
                 func_str_len = len(name_str_list[0])
@@ -92,18 +113,18 @@ class DPE:
 
                             if funcs_deploy[dependent_func_num - 1] != -1.:
                                 # dependent_func_num has been deployed beforehand, get min_phi directly
-                                # ==== DIR_PATH is where we can improve (maybe in the next paper) ====
+                                # ==== DIR_PATH is where we can improved (maybe in the next paper) ====
                                 # For example, for DAG 'M2, R4_2 and R5_2', M2's placement is decided by R4 if we
-                                # process (M2, R4) firstly. R5 will not affect the placement of M2. However, we don't
-                                # know that if we process (M2, R5) firstly, whether the makespan can be decreased further.
+                                # process (M2, R4) firstly. R5 will not affect the placement of M2. However, we
+                                # don't know that if we process (M2, R5) firstly, whether the makespan can be
+                                # decreased further.
                                 # =================================================================
                                 where_deployed = int(funcs_deploy[dependent_func_num - 1])
                                 if n == funcs_deploy[dependent_func_num - 1]:
                                     trans_cost = 0
                                 else:
-                                    trans_cost = self.proportions_list[where_deployed][n] * \
-                                                 DAG_data_stream[dependent_func_num - 1] * \
-                                                 self.reciprocals_list[where_deployed][n][0]
+                                    trans_cost = DAG_data_stream[dependent_func_num - 1] * \
+                                                 fix_path_reciprocals[where_deployed][n]
                                 min_phi = T_optimal[dependent_func_num - 1][where_deployed] + trans_cost + process_cost
                                 all_min_phi.append(min_phi)
                                 continue
@@ -138,11 +159,12 @@ class DPE:
                                                 if k == where_deployed_predecessor:
                                                     trans_cost = 0
                                                 else:
-                                                    trans_cost = self.proportions_list[where_deployed_predecessor][k] * \
-                                                                 DAG_data_stream[dependent_func_num - 1] * \
-                                                                 self.reciprocals_list[where_deployed_predecessor][k][0]
-                                                tmp = T_optimal[dependent_func_num_predecessor - 1][where_deployed_predecessor] + trans_cost
-                                                # the process of dependent_func_num can be started if and only if the slowest predecessor of it has finished data transfer
+                                                    trans_cost = DAG_data_stream[dependent_func_num - 1] * \
+                                                                 fix_path_reciprocals[where_deployed_predecessor][k]
+                                                tmp = T_optimal[dependent_func_num_predecessor - 1][
+                                                          where_deployed_predecessor] + trans_cost
+                                                # the process of dependent_func_num can be started if and only if
+                                                # the slowest predecessor of it has finished data transfer
                                                 if tmp > min_process_begin_time:
                                                     min_process_begin_time = tmp
                                             if min_process_begin_time > server_runtime[k]:
@@ -161,9 +183,8 @@ class DPE:
                                 if n == m:
                                     trans_cost = 0
                                 else:
-                                    trans_cost = self.proportions_list[m][n] * \
-                                                 DAG_data_stream[dependent_func_num - 1] * \
-                                                 self.reciprocals_list[m][n][0]
+                                    trans_cost = DAG_data_stream[dependent_func_num - 1] * \
+                                                 fix_path_reciprocals[m][n]
                                 phi = T_optimal[dependent_func_num - 1][m] + trans_cost + process_cost
                                 if phi < min_phi:
                                     min_phi = phi
@@ -177,22 +198,23 @@ class DPE:
                                 dependent_func_num - 1] / self.pp[selected_server]
                             all_min_phi.append(min_phi)
 
-                        # now, all the predecessors of func has been deployed, use their T_optimal to update T_optimal of func
+                        # now, all the predecessors of func has been deployed,
+                        # use their T_optimal to update T_optimal of func
                         T_optimal[func_num - 1][n] = max(all_min_phi)
 
             makespan_of_all_DAGs += makespan
             DAGs_deploy.append(funcs_deploy)
             process_sequence_all.append(process_sequence)
             T_optimal_all.append(T_optimal)
-            start_time_all.append(start_time)
 
             calculated_num += 1
+            start_time_all.append(start_time)
             percent = calculated_num / float(all_DAG_num) * 100
             # for overflow
             if percent > 100:
                 percent = 100
             bar.update(percent)
             idx += DAG_len
-        print('The overall makespan achieved by DPE: %f second' % makespan_of_all_DAGs)
+        print('The overall makespan achieved by FixDoc: %f second' % makespan_of_all_DAGs)
         print('The average makespan: %f second' % (makespan_of_all_DAGs / sum(REQUIRED_NUM)))
         return T_optimal_all, DAGs_deploy, process_sequence_all, start_time_all

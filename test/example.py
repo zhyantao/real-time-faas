@@ -4,13 +4,13 @@ Step 2: Generate the scenario.
 Step 3: Run the three algorithms and compare the results.
     Author: Hailiang Zhao (hliangzhao@zju.edu.cn)
 """
-from util.dataset_processing import sample_DAG, get_topological_order
-from util.scenario import *
-from models.dpe import DPE
-from models.fixdoc import FixDoc
-from models.heft2 import HEFT
+from models.dataset_processing import sample_DAG, get_topological_order
+from models.scenario import *
+from models.scheduler.dpe import DPE
+from models.scheduler.fixdoc import FixDoc
+from models.scheduler.heft2 import HEFT
 from models.interpretate_result import *
-from util.parameters import *
+from models.parameters import *
 import datetime
 
 

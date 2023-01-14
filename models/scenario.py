@@ -6,8 +6,8 @@ import pprint
 import random
 
 import numpy as np
-from util.parameters import *
-from util.utils import ProgressBar
+from models.parameters import *
+from models.utils import ProgressBar
 
 bar = ProgressBar()
 para = Parameter()

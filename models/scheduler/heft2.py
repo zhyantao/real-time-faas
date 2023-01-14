@@ -11,9 +11,9 @@ import random
 from collections import namedtuple
 from functools import partial
 from itertools import chain
-from util.scenario import bar, para
-from util.utils import reverse_dict
-from util.parameters import *
+from models.scenario import bar, para
+from models.utils import reverse_dict
+from models.parameters import *
 
 
 def get_agents():

@@ -4,7 +4,7 @@ Print the scheduling result for the appointed DAG.
 """
 import pprint
 from collections import namedtuple
-from util.scenario import para
+from models.scenario import para
 
 
 Event = namedtuple('Event', 'start end')
