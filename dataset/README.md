@@ -38,8 +38,7 @@
 +-------------------------------------------------------------------------------------+
 ```
 
-* about failure_domain_1: We have multiple levels of failure domains of which two are provided in this version of trace. 
-* For any application that requires fault tolerance, their instances should be spread across many failure domains. This is an enumerate value.
+`failure_domain_1`：我们有多个不级别的故障域，在 v2018 只提供了其中的两个。对需要容错的应用程序，它们的实例应该分布在多个故障域中，这是一个枚举值。
 
 ### machine usage
 
@@ -59,7 +58,6 @@
 +--------------------------------------------------------------------------------------------+
 ```
 
-
 ### container meta
 
 ```txt
@@ -77,11 +75,13 @@
 +-----------------------------------------------------------------------------------------------------+
 ```
 
-* about app_du: Containers belong to the same deploy unit provides one service, typically, they should be spread across failure domains
+`app_du`：处于同一个部署单元（deploy unit）中的容器共同对外提供一个服务，通常，它们应该分布在故障域中。
 
 ### container usage
 
 ```txt
++-----------------------------------------------------------------------------------------+
+| Field            | Type       | Label | Comment                                         |
 +-----------------------------------------------------------------------------------------+
 | container_id     | string     |       | uid of a container                              |
 | machine_id       | string     |       | uid of container's host machine                 |
@@ -101,6 +101,8 @@
 
 ```txt
 +----------------------------------------------------------------------------------------+
+| Field            | Type      | Label | Comment                                         |
++----------------------------------------------------------------------------------------+
 | task_name       | string     |       | task name. unique within a job                  |
 | instance_num    | bigint     |       | number of instances                             |
 | job_name        | string     |       | job name                                        |
@@ -113,12 +115,14 @@
 +----------------------------------------------------------------------------------------+
 ```
 
-* 根据 task_name 可将该文件抽象为 DAG
-* task 之间有依赖关系
-* 一个 job 包含多个 task，每个 task 包含多个 instance。
-* 当且仅当 task 中的所有 instance 执行完毕后，才可以认为 task 执行完毕。
+* task_name 暗含了 DAG 信息，可以通过 task_name 逆向推导出 DAG
+* task 之间有依赖关系，而 instance 没有提供相关依赖信息
+* 一个 job 包含多个 task，每个 task 包含多个 instance
+* 当且仅当 task 中的所有 instance 执行完毕后，才可以认为 task 执行完毕
 
 如何根据 task_name 推导 DAG？
+
+> 在 task_name 中，只有数字是我们需要注意的，第一个字母（`M`、`R`、`J`）是什么不重要。
 
 - `task_Nzg3ODAwNDgzMTAwNTc2NTQ2Mw==`：独立任务，可单独执行
 - `M1`：task1 是独立任务，不需要等待其他任务
@@ -126,11 +130,11 @@
 - `R4_2`：task4 依赖 task2，即 task4 需要等待 task2 执行完成方可执行
 - `M5_3_4`：task5 依赖 task3 和 task4
 
-> 在 task_name 中，只有数字是我们需要注意的，第一个字母（`M`、`R`、`J`）是什么不重要。
-
 ### batch instance
 
 ```txt
++-----------------------------------------------------------------------------------------------+
+| Field           | Type       | Label | Comment                                                |
 +-----------------------------------------------------------------------------------------------+
 | instance_name   | string     |       | instance name of the instance                          |
 | task_name       | string     |       | name of task to which the instance belong              |
@@ -149,6 +153,5 @@
 +-----------------------------------------------------------------------------------------------+
 ```
 
-* Task name is unique within a job; note task name indicates the DAG information, see the explanation of batch workloads
-* There are totally 12 types, and only some of them have DAG info
-
+* 同一个 job 中的 task_name 具有唯一性
+* task_type 可细分为 12 种，但仅有部分 task_type 具有 DAG 信息
