@@ -1,5 +1,5 @@
 # 该文件中的内容仅需在 master 节点运行
-cd ../third-party/openwhisk-deploy-kube/
+cd ../third_party/openwhisk-deploy-kube/
 
 kubectl label nodes --all openwhisk-role=invoker
 

@@ -1,15 +1,6 @@
-[submodule "third-party/faas-netes"]
-	path = third-party/faas-netes
-	url = https://gitee.com/zhyantao/faas-netes.git
-[submodule "third-party/openwhisk-deploy-kube"]
-	path = third-party/openwhisk-deploy-kube
-	url = https://gitee.com/zhyantao/openwhisk-deploy-kube.git
-[submodule "third-party/faas-profiler"]
-	path = third-party/faas-profiler
-	url = https://gitee.com/zhyantao/faas-profiler.git
-[submodule "third-party/DeathStarBench"]
-	path = third-party/DeathStarBench
-	url = https://gitee.com/zhyantao/DeathStarBench.git
-[submodule "third-party/heft"]
-	path = third-party/heft
-	url = git@gitee.com:zhyantao/heft.git
+[submodule "third_party/openwhisk-deploy-kube"]
+	path = third_party/openwhisk-deploy-kube
+	url = git@gitee.com:zhyantao/openwhisk-deploy-kube.git
+[submodule "third_party/faas-netes"]
+	path = third_party/faas-netes
+	url = git@gitee.com:zhyantao/faas-netes.git
