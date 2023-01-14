@@ -2,12 +2,14 @@
 
 数据来源于 [Alibaba Cluster Trace Program v2018](https://github.com/alibaba/clusterdata/tree/master/cluster-trace-v2018)，该数据集包含 4000 个机器上 8 天的运行数据，组织在 6 个文件中。
 
-- [machine_meta.tar.gz](http://clusterdata2018pubcn.oss-cn-beijing.aliyuncs.com/machine_meta.tar.gz)：包含机器的基本信息和事件的信息。
-- [machine_usage.tar.gz](http://clusterdata2018pubcn.oss-cn-beijing.aliyuncs.com/machine_usage.tar.gz)：包含机器的资源利用率信息。
-- [container_meta.tar.gz](http://clusterdata2018pubcn.oss-cn-beijing.aliyuncs.com/container_meta.tar.gz)：包含容器的基本信息和事件的信息。
-- [container_usage.tar.gz](http://clusterdata2018pubcn.oss-cn-beijing.aliyuncs.com/container_usage.tar.gz)：包含每个容器的资源利用率信息。
-- [batch_instance.tar.gz](http://clusterdata2018pubcn.oss-cn-beijing.aliyuncs.com/batch_instance.tar.gz)：包含 batch workloads 中实例的信息。
-- [batch_task.tar.gz](http://clusterdata2018pubcn.oss-cn-beijing.aliyuncs.com/batch_task.tar.gz)：包含 batch workloads 中任务的信息。
+| Filename                                                                                                 | Size    | Comment                        |
+|----------------------------------------------------------------------------------------------------------|---------|--------------------------------|
+| [machine_meta.tar.gz](http://clusterdata2018pubcn.oss-cn-beijing.aliyuncs.com/machine_meta.tar.gz)       | 91 KB   | 包含机器的基本信息和事件的信息                |
+| [machine_usage.tar.gz](http://clusterdata2018pubcn.oss-cn-beijing.aliyuncs.com/machine_usage.tar.gz)     | 1.7 GB  | 包含机器的资源利用率信息                   |
+| [container_meta.tar.gz](http://clusterdata2018pubcn.oss-cn-beijing.aliyuncs.com/container_meta.tar.gz)   | 2.4 MB  | 包含容器的基本信息和事件的信息                |
+| [container_usage.tar.gz](http://clusterdata2018pubcn.oss-cn-beijing.aliyuncs.com/container_usage.tar.gz) | 27.2 GB | 包含每个容器的资源利用率信息                 |
+| [batch_instance.tar.gz](http://clusterdata2018pubcn.oss-cn-beijing.aliyuncs.com/batch_instance.tar.gz)   | 19.7 GB | 包含 batch workloads 中实例的信息      |
+| [batch_task.tar.gz](http://clusterdata2018pubcn.oss-cn-beijing.aliyuncs.com/batch_task.tar.gz)           | 142 MB  | 包含 batch workloads 中任务 DAG 的信息 |
 
 在任务调度的相关研究中，只用到了 batch_task.tar.gz 部分。
 
