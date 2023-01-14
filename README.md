@@ -52,10 +52,10 @@ yum install bzip2-devel ncurses-devel \
     sqlite-devel tk-devel libuuid-devel \
     readline-devel zlib-devel \
     libpcap-devel xz-devel expat-devel libffi libffi-devel
-# 安装 Python 3.10.7
-curl -O https://www.python.org/ftp/python/3.10.7/Python-3.10.7.tgz
-tar xzf Python-3.10.7.tgz
-pushd Python-3.10.7
+# 安装 Python 3.10.9
+curl -O https://www.python.org/ftp/python/3.10.9/Python-3.10.9.tgz
+tar xzf Python-3.10.9.tgz
+pushd Python-3.10.9
 ./configure -C \
     --with-openssl=/usr/local \
     --with-openssl-rpath=auto \
@@ -95,3 +95,9 @@ pip3 install -r requirements.txt
 # jupyter notebook --generate-config
 # echo "c.NotebookApp.allow_root=True" >> ~/.jupyter/jupyter_notebook_config.py
 ```
+
+## 命名规范
+
+C/C++ 和 Python 类名为驼峰式，函数名和普通变量为下划线式。
+
+Java 和 Go 中的类名、函数名和普通变量都是驼峰式。

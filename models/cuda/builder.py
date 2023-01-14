@@ -1,4 +1,4 @@
-from models.cuda.ModelParallelTest import model_parallel_test
+from models.cuda.neural_network import model_parallel_test
 
 
 def build_model():

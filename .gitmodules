@@ -10,3 +10,6 @@
 [submodule "third-party/DeathStarBench"]
 	path = third-party/DeathStarBench
 	url = https://gitee.com/zhyantao/DeathStarBench.git
+[submodule "third-party/embedding"]
+	path = third-party/embedding
+	url = git@gitee.com:zhyantao/embedding.git
