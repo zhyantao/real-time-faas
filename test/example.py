@@ -32,7 +32,7 @@ if __name__ == '__main__':
     T_optimal_all_dpe, DAGs_deploy_dpe, process_sequence_all_dpe, start_time_all_dpe = dpe.get_response_time(sorted_DAG_path=SORTED_DAG_PATH)
     end = datetime.datetime.now()
     print('Computer\'s running time:', (end - start).seconds, 'seconds')
-    DAG_chosen = 2010    # a randomly peeked number
+    DAG_chosen = 2010    # 随机选择的一个数字
     print_scheduling_results(T_optimal_all_dpe, DAGs_deploy_dpe, process_sequence_all_dpe, start_time_all_dpe, DAG_chosen)
 
     fixdoc = FixDoc(G, bw, pp, simple_paths, reciprocals_list, proportions_list, pp_required, data_stream)

@@ -1,5 +1,5 @@
 """
-Print the scheduling result for the appointed DAG.
+Print the scheduling result for the given DAG.
 """
 import pprint
 from collections import namedtuple
