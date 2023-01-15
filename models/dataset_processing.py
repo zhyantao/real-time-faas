@@ -105,7 +105,7 @@ def get_topological_order(selected_DAG_path=SELECTED_DAG_PATH, sorted_DAG_path=S
         return
 
     df = pd.read_csv(selected_DAG_path)
-    df_len = df.shape[0]
+    df_len = df.shape[0]  # CSV 文件的行数
     idx = 0
 
     required_num = REQUIRED_NUM
@@ -113,25 +113,25 @@ def get_topological_order(selected_DAG_path=SELECTED_DAG_PATH, sorted_DAG_path=S
     sorted_num = 0
 
     print('Getting topological order for %d DAGs...' % all_DAG_num)
-    while idx < df_len:
-        # get a DAG
+    while idx < df_len:  # 遍历 CSV 文件的每一行
+        # 获取一个 DAG
         DAG_name = df.loc[idx, 'job_name']
-        DAG_len = 0
+        DAG_len = 0  # DAG 中包含的 task 数目
         while (idx + DAG_len < df_len) and (df.loc[idx + DAG_len, 'job_name'] == DAG_name):
             DAG_len = DAG_len + 1
         DAG = df.loc[idx: idx + DAG_len].copy()
 
         # get the number and dependencies of each function of the DAG
-        funcs_num = np.zeros(DAG_len)
+        funcs_num = np.zeros(DAG_len)  # 函数数量
         dependencies = [[] * 1] * DAG_len
         for i in range(DAG_len):
             name_str_list = DAG.loc[i + idx, 'task_name'].split('_')
             name_str_list_len = len(name_str_list)
             func_str_len = len(name_str_list[0])
-            func_num = int(name_str_list[0][1:func_str_len])
+            func_num = int(name_str_list[0][1:func_str_len])  # 函数编号
             dependent_funcs = []
             for j in range(name_str_list_len):
-                if j == 0:
+                if j == 0:  # 跳过函数自身
                     # the func itself
                     continue
                 if name_str_list[j].isnumeric():
@@ -142,16 +142,21 @@ def get_topological_order(selected_DAG_path=SELECTED_DAG_PATH, sorted_DAG_path=S
             dependencies[i] = dependent_funcs
 
         # sort the functions according to their dependencies
-        funcs_left = DAG_len
+        funcs_left = DAG_len  # 剩余未排序的函数数目
         DAG_sorted = DAG.copy()
         while funcs_left > 0:
             # find a source func, and place the funcs who depend on it after this source func
             # the topological ordering we take is actually a Depth-first Search algorithm
             # as a result, the entry functions may not have the smallest number
+            #
+            # 以一个元函数为基准，任何依赖该函数的其他函数置于其后
+            # 我们使用了 DFS 算法进行拓扑排序，导致入口函数可能不是最小的数字
 
             # ==== this is where we can improved ====
             # Use Breadth-first Search algorithm to obtain the topological ordering and compare the results.
             # The makespan might be decreased further.
+            #
+            # 使用 BFS 算法进行拓扑排序可以进一步降低 makespan
             # =======================================
             for i in range(len(dependencies)):
                 if len(dependencies[i]) == 0:
@@ -164,8 +169,12 @@ def get_topological_order(selected_DAG_path=SELECTED_DAG_PATH, sorted_DAG_path=S
                     dependencies[i].remove(func_running)
             DAG_sorted.loc[DAG_len - funcs_left + idx] = DAG.loc[running_func + idx].copy()
             funcs_left = funcs_left - 1
-        df.loc[idx: idx + DAG_len - 1] = DAG_sorted.copy()
-        idx = idx + DAG_len
+
+        df.loc[idx: idx + DAG_len - 1] = DAG_sorted.copy()  # 保存排序结果
+
+        idx = idx + DAG_len  # 遍历下一个 DAG
+
+        # 使用进度条显示当前的处理进度
         sorted_num = sorted_num + 1
         percent = sorted_num / float(all_DAG_num) * 100
         # for overflow
