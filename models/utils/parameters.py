@@ -5,7 +5,7 @@ import os
 
 
 # csv file path
-DIR_PATH = '../'
+DIR_PATH = 'D:/Workshop/real-time-faas/'
 DATASET_PATH = os.path.join(DIR_PATH, 'dataset/batch_task.csv')
 SELECTED_DAG_PATH = os.path.join(DIR_PATH, 'dataset/selected_DAGs.csv')
 SORTED_DAG_PATH = os.path.join(DIR_PATH, 'dataset/topological_order.csv')

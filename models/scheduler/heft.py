@@ -11,7 +11,7 @@ import matplotlib.pyplot as plt
 import networkx as nx
 import numpy as np
 
-from models.scheduler.heft.gantt import showGanttChart
+from models.utils.gantt import showGanttChart
 
 logger = logging.getLogger('heft')
 
@@ -333,7 +333,7 @@ def _compute_ranku(_self, dag, metric=RankMetric.MEAN, **kwargs):
                     f"\tNode {succnode} has maximum computation cost of "
                     f"{comp_matrix_masked[succnode - _self.numExistingJobs][max_succ_idx]} on processor {max_succ_idx}")
                 val = _self.communication_matrix[max_node_idx,
-                                                 max_succ_idx] + dag.nodes()[succnode]['ranku']
+                max_succ_idx] + dag.nodes()[succnode]['ranku']
                 if val > max_successor_ranku:
                     max_successor_ranku = val
             assert max_successor_ranku >= 0, \
@@ -354,7 +354,7 @@ def _compute_ranku(_self, dag, metric=RankMetric.MEAN, **kwargs):
                 logger.debug(
                     f"\tThis successor node has minimum computation cost on processor {min_succ_idx}")
                 val = _self.communication_matrix[min_node_idx,
-                                                 min_succ_idx] + dag.nodes()[succnode]['ranku']
+                min_succ_idx] + dag.nodes()[succnode]['ranku']
                 if val < min_successor_ranku:
                     min_successor_ranku = val
             assert min_successor_ranku >= 0, \
@@ -562,8 +562,7 @@ def readDagMatrix(dag_file, show_dag=False):
 
 
 def generate_argparser():
-    parser = argparse.ArgumentParser(
-        description="A tool for finding HEFT schedules for given DAG task graphs")
+    parser = argparse.ArgumentParser(description="A tool for finding HEFT schedules for given DAG task graphs")
     parser.add_argument(
         "-d", "--dag_file",
         help="File containing input DAG to be scheduled. Uses default 10 node dag from Topcuoglu 2002 if none given.",
@@ -582,7 +581,7 @@ def generate_argparser():
     parser.add_argument(
         "-l", "--loglevel",
         help="The log level to be used in this module. Default: INFO",
-        type=str, default="INFO", dest="loglevel",
+        type=str, default="DEBUG", dest="loglevel",
         choices=["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"])
     parser.add_argument(
         "--metric",
@@ -606,8 +605,7 @@ if __name__ == "__main__":
     logger.setLevel(logging.getLevelName(args.loglevel))
     consolehandler = logging.StreamHandler()
     consolehandler.setLevel(logging.getLevelName(args.loglevel))
-    consolehandler.setFormatter(logging.Formatter(
-        "%(levelname)8s : %(name)16s : %(message)s"))
+    consolehandler.setFormatter(logging.Formatter("%(levelname)8s : %(name)16s : %(message)s"))
     logger.addHandler(consolehandler)
 
     communication_matrix = readCsvToNumpyMatrix(args.pe_connectivity_file)
@@ -631,5 +629,6 @@ if __name__ == "__main__":
     for proc, jobs in processor_schedules.items():
         logger.info(f"Processor {proc} has the following jobs:")
         logger.info(f"\t{jobs}")
-    if args.showGantt:
-        showGanttChart(processor_schedules)
+    # if args.showGantt:
+
+    showGanttChart(processor_schedules)

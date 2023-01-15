@@ -1,12 +1,11 @@
 """
 Implement the FixDoc algorithm.
-    Author: Hailiang Zhao (hliangzhao@zju.edu.cn)
 """
 import numpy as np
 import pandas as pd
 import random
-from models.parameters import *
-from models.scenario import bar, para
+from models.utils.parameters import *
+from models.utils.scenario import bar, para
 
 
 class FixDoc:

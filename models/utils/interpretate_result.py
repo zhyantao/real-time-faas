@@ -3,7 +3,7 @@ Print the scheduling result for the given DAG.
 """
 import pprint
 from collections import namedtuple
-from models.scenario import para
+from models.utils.scenario import para
 
 
 Event = namedtuple('Event', 'start end')

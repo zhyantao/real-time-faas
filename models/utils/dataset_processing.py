@@ -12,8 +12,8 @@ batch_task.csv.
 
 import numpy as np
 import pandas as pd
-from models.parameters import *
-from models.utils import ProgressBar
+from models.utils.parameters import *
+from models.utils.progress_bar import ProgressBar
 
 bar = ProgressBar()
 

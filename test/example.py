@@ -3,13 +3,13 @@ Step 1: Get the topological order of DAGs.
 Step 2: Generate the scenario.
 Step 3: Run the three algorithms and compare the results.
 """
-from models.dataset_processing import sample_DAG, get_topological_order
-from models.scenario import *
+from models.utils.dataset_processing import sample_DAG, get_topological_order
+from models.utils.scenario import *
 from models.scheduler.dpe import DPE
 from models.scheduler.fixdoc import FixDoc
 from models.scheduler.heft2 import HEFT
-from models.interpretate_result import *
-from models.parameters import *
+from models.utils.interpretate_result import *
+from models.utils.parameters import *
 import datetime
 
 

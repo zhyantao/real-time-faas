@@ -23,9 +23,9 @@ from itertools import chain
 import numpy as np
 import pandas as pd
 
-from models.parameters import *
-from models.scenario import bar, para
-from models.utils import reverse_dict
+from models.utils.parameters import *
+from models.utils.scenario import bar, para
+from models.utils.progress_bar import reverse_dict
 
 
 def get_agents():

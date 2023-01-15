@@ -37,5 +37,5 @@ def showGanttChart(proc_schedules):
     ax.set_xlim(xmin=-5)
     ax.grid(color='g', linestyle=':', alpha=0.5)
 
-    font = font_manager.FontProperties(size='small')
+    font_manager.FontProperties(size='small')
     plt.show()

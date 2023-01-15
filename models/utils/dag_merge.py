@@ -1,5 +1,5 @@
 from enum import Enum, auto
-from models.scheduler.heft import heft
+from models.scheduler import heft
 from math import inf
 from types import SimpleNamespace
 

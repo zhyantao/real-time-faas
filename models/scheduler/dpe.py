@@ -1,11 +1,10 @@
 """
 Implement the DPE algorithm.
-    Author: Hailiang Zhao (hliangzhao@zju.edu.cn)
 """
 import numpy as np
 import pandas as pd
-from models.parameters import *
-from models.scenario import bar, para
+from models.utils.parameters import *
+from models.utils.scenario import bar, para
 
 
 class DPE:

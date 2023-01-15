@@ -8,8 +8,8 @@ import random
 
 import numpy as np
 
-from models.parameters import *
-from models.utils import ProgressBar
+from models.utils.parameters import *
+from models.utils.progress_bar import ProgressBar
 
 bar = ProgressBar()
 para = Parameter()
