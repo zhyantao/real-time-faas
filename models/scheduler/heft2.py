@@ -5,10 +5,10 @@ This script refers the code from https://github.com/mrocklin/heft/.
 Cast of Characters:
 
 job - the job to be allocated
-orders - dict {agent: [jobs-run-on-agent-in-order]}
-jobson - dict {job: agent-on-which-job-is-run}
-prev - dict {job: (jobs which directly precede job)}
-succ - dict {job: (jobs which directly succeed job)}
+orders - dict {agent: [jobs-run-on-agent-in-order]}，可理解为 agent 上的 event 列表
+jobson - dict {job: agent-on-which-job-is-run}，可理解为运行 job 的 agent 列表
+prev - dict {job: (jobs which directly precede job)}，可理解为 job 的直接前驱列表
+succ - dict {job: (jobs which directly succeed job)}，可理解为 job 的直接后继列表
 comp_cost - function :: job, agent -> time to compute job on agent
 comm_cost - function :: job, job, agent, agent -> time to transfer results
                         of one job needed by another between two agents
@@ -197,6 +197,9 @@ class HEFT:
 
     @staticmethod
     def comp_cost(job, agent, comp_cost_array):
+        """
+        计算 job 在 agent 上的计算成本（执行时间）
+        """
         a = int(agent)
         return comp_cost_array[job][a]
 
@@ -239,6 +242,8 @@ class HEFT:
     def comm_cost(ni, nj, A, B, comm_cost_array):
         """
         Get the data transmission cost from ni to nj when ni is placed on A and nj is placed on B.
+
+        计算 agent_A 上的 job_ni 和 agent_B 上的 job_nj 之间的通信成本。
         """
         a1 = int(A)
         a2 = int(B)
@@ -287,6 +292,8 @@ class HEFT:
     def end_time(job, events):
         """
         End time of job in list of events.
+
+        在 events 列表中搜索 job 的结束时间。
         """
         for e in events:
             if e.job == job:
@@ -297,16 +304,21 @@ class HEFT:
         """
         Find the first gap in an agent's list of jobs. The gap must be after `desired_start_time`
         and of length at least `duration`.
+
+        将 job 插入到最先匹配的时间间隙中（该间隙的开始时间 <= desired_start_time，且间隙的长度 >= duration）
+        返回最早的可插入时间
         """
-        # No jobs: can fit it in whenever the job is ready to run
+        # 如果 agent 中没有需要执行的 orders，那么可直接运行 job，无需等待
         if (agent_orders is None) or (len(agent_orders)) == 0:
             return desired_start_time
 
         # Try to fit it in between each pair of Events, but first prepend a
         # dummy Event which ends at time 0 to check for gaps before any real
         # Event starts.
-        a = chain([Event(None, None, 0)], agent_orders[:-1])
-        for e1, e2 in zip(a, agent_orders):
+        # 在每两个相邻的 event 中尝试插入当前任务
+        # 在 agent_orders 之前插入一个 dummy event，方便在任何真实 event 开始之前检查间隙
+        a = chain([Event(None, None, 0)], agent_orders[:-1])  # chain('ABC', 'DEF') --> A B C D E F
+        for e1, e2 in zip(a, agent_orders):  # zip([1, 2], ['sugar', 'spice']) --> (1, 'sugar'), (2, 'spice')
             earliest_start = max(desired_start_time, e1.end)
             if e2.start - earliest_start > duration:
                 return earliest_start
@@ -318,11 +330,16 @@ class HEFT:
     def start_time(agent, job, orders, jobson, prev, comm_cost, comm_cost_array, comp_cost, comp_cost_array):
         """
         Earliest time that job can be executed on agent.
-        """
-        duration = comp_cost(job, agent, comp_cost_array)
 
+        计算 job 能够在 agent 上执行的最早时间
+        """
+        duration = comp_cost(job, agent, comp_cost_array)  # 获取 job 在 agent 上的计算成本
+
+        # 如果直接前驱中包含 job 说明需要等待前驱执行完毕，才能执行 job
         if job in prev:
-            comm_ready = max([HEFT.end_time(p, orders[jobson[p]]) + comm_cost(p, job, agent, jobson[p], comm_cost_array)
+            comm_ready = max([HEFT.end_time(p, orders[jobson[p]])  # p 在 jobson[p] 上的完成时间
+                              # agent 上的 p 和 jobson[p] 上的 job 的通信成本
+                              + comm_cost(p, job, agent, jobson[p], comm_cost_array)
                               for p in prev[job]])
         else:
             comm_ready = 0
@@ -333,20 +350,24 @@ class HEFT:
     def allocate(job, orders, jobson, prev, comm_cost, comm_cost_array, comp_cost, comp_cost_array):
         """
         Allocate job to the machine with the earliest finish time. Operates in place.
+
+        将 job 分配到能 最早完成 该 job 的 agent 上。
+        空间复杂度为 O(1)
         """
         st = partial(HEFT.start_time, job=job, orders=orders, jobson=jobson, prev=prev,
                      comm_cost=comm_cost, comm_cost_array=comm_cost_array,
                      comp_cost=comp_cost, comp_cost_array=comp_cost_array)
 
-        # ft = lambda machine: st(machine) + comp_cost(job, machine)
-        def ft(machine): return st(machine) + comp_cost(job, machine, comp_cost_array)
+        # ft = lambda machine: st(machine) + comp_cost(job, machine, comp_cost_array)
+        def ft(machine):
+            return st(machine) + comp_cost(job, machine, comp_cost_array)
 
-        agent = min(orders.keys(), key=ft)
+        agent = min(orders.keys(), key=ft)  # 将 orders.keys() 作为参数传入 ft，选择能最早执行 task 的 agent
         start = st(agent)
         end = ft(agent)
 
         orders[agent].append(Event(job, start, end))
-        orders[agent] = sorted(orders[agent], key=lambda e: e.start)
+        orders[agent] = sorted(orders[agent], key=lambda e: e.start)  # 自定义排序规则：按照 e.start 升序
         # Might be better to use a different data structure to keep each
         # agent's orders sorted at a lower cost.
 
@@ -355,19 +376,22 @@ class HEFT:
     @staticmethod
     def makespan(orders):
         """
-        Finish time of last job.
+        计算最后一个 job 的完成时间。
         """
         return max(v[-1].end for v in orders.values() if v)
 
     @staticmethod
     def schedule(succ, agents, comp_cost, comp_cost_array, comm_cost, comm_cost_array):
         """
-        Schedule computation dag onto worker agents.
-        inputs:
-        succ - DAG of tasks {a: (b, c)} where b, and c follow a
-        agents - set of agents that can perform work
-        comp_cost - function :: job, agent -> runtime
-        comm_cost - function :: j1, j2, a1, a2 -> communication time
+        根据 DAG 将 job 调度到 agents 上。
+
+        :param succ: 若 DAG 中的某个 task = {a: (b, c)} 则 b 和 c 是 a 的直接后继
+        :param agents: agents 的集合，可用于执行任务
+        :param comp_cost: 这是函数，返回 job 在 agent 上的执行时间
+        :param comp_cost_array: 计算成本列表
+        :param comm_cost: 这是函数，返回 agent1 上的 job1 和 agent2 上的 job2 之间的通信时间
+        :param comm_cost_array: 通信成本列表
+        :return: orders: agent 上运行的 job 列表, jobson: 为 job 分配的 agent, makespan: 最后一个任务的完成时间
         """
         rank = partial(HEFT.ranku, agents=agents, succ=succ,
                        comp_cost=comp_cost, comp_cost_array=comp_cost_array,
@@ -386,77 +410,3 @@ class HEFT:
             orders['server ' + str(n + 1)] = orders.pop(str(n))
 
         return orders, jobson, HEFT.makespan(orders)
-
-    @staticmethod
-    def recvs(job, jobson, prev, recv):
-        """
-        Collect all necessary recvs for job.
-        """
-        if job not in prev:
-            return []
-        return [recv(jobson[p], jobson[job], p, job) for p in prev[job]
-                if jobson[p] != jobson[job]]
-
-    @staticmethod
-    def sends(job, jobson, succ, send):
-        """
-        Collect all necessary sends for job.
-        """
-        if job not in succ:
-            return []
-        return [send(jobson[job], jobson[s], job, s) for s in succ[job]
-                if jobson[s] != jobson[job]]
-
-    @staticmethod
-    def insert_recvs(order, jobson, prev, recv):
-        if not order:
-            return order
-
-        this_agent = jobson[order[0].job]
-
-        receives = partial(HEFT.recvs, jobson=jobson, prev=prev, recv=recv)
-        recv_events = {e.job: [Event(r, e.start, e.start)
-                               for r in receives(e.job)]
-                       for e in order}
-
-        for job, revents in recv_events.items():
-            i = [e.job for e in order].index(job)
-            order = order[:i] + revents + order[i:]
-
-        jobson.update({e.job: this_agent for es in recv_events.values() for e in es})
-
-        return order
-
-    @staticmethod
-    def insert_sends(order, jobson, succ, send):
-        if not order:
-            return order
-
-        this_agent = jobson[order[0].job]
-
-        sends2 = partial(HEFT.sends, jobson=jobson, succ=succ, send=send)
-        send_events = {e.job: [Event(s, e.end, e.end)
-                               for s in sends2(e.job)]
-                       for e in order}
-
-        for job, sevents in send_events.items():
-            i = [e.job for e in order].index(job)
-            order = order[:i + 1] + sevents + order[i + 1:]
-
-        jobson.update({e.job: this_agent for es in send_events.values() for e in es})
-
-        return order
-
-    @staticmethod
-    def insert_send_recvs(orders, jobson, succ, send, recv):
-        """
-        Insert send a recv events into the orders at appropriate places.
-        """
-        prev = reverse_dict(succ)
-        jobson = jobson.copy()
-        new_orders = dict()
-        for agent, order in orders.items():
-            order = HEFT.insert_sends(order, jobson, succ, send)
-            order = HEFT.insert_recvs(order, jobson, prev, recv)
-            new_orders[agent] = order
-        return new_orders, jobson
