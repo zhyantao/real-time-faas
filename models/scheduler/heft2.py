@@ -2,22 +2,38 @@
 Implement the HEFT algorithm.
 This script refers the code from https://github.com/mrocklin/heft/.
 
+Cast of Characters:
+
+job - the job to be allocated
+orders - dict {agent: [jobs-run-on-agent-in-order]}
+jobson - dict {job: agent-on-which-job-is-run}
+prev - dict {job: (jobs which directly precede job)}
+succ - dict {job: (jobs which directly succeed job)}
+comp_cost - function :: job, agent -> time to compute job on agent
+comm_cost - function :: job, job, agent, agent -> time to transfer results
+                        of one job needed by another between two agents
+
 (function ---> job, edge server ---> agent)
 """
-import pandas as pd
-import numpy as np
 import random
 from collections import namedtuple
 from functools import partial
 from itertools import chain
+
+import numpy as np
+import pandas as pd
+
+from models.parameters import *
 from models.scenario import bar, para
 from models.utils import reverse_dict
-from models.parameters import *
 
 
 def get_agents():
     """
     Agents start from zero.
+
+    按照设计，共 4 台 server
+    server 和 agent 有什么区别？
     """
     servers = [str(n) for n in range(para.get_server_num())]
     return ''.join(servers)
@@ -61,20 +77,22 @@ class HEFT:
             DAG_len = 0
             while (idx + DAG_len < df_len) and (df.loc[idx + DAG_len, 'job_name'] == DAG_name):
                 DAG_len = DAG_len + 1
-            DAG = df.loc[idx: idx + DAG_len]
-            DAG_pp_required = self.pp_required[:DAG_len]
+            DAG = df.loc[idx: idx + DAG_len]  # DAG 是 DataFrame 格式的数据
+
+            # 设置 CPU 需求 和 数据大小
+            DAG_pp_required = self.pp_required[:DAG_len]  # 将 pp_required 复制到 DAG_pp_required
             DAG_data_stream = self.data_stream[:DAG_len]
 
-            # get the information of the DAG
-            funcs_num = HEFT.get_funcs_num(DAG, idx, DAG_len)
-            succ = HEFT.parse_DAG_structure(DAG, idx, DAG_len)
-            comp_cost_array = self.get_comp_cost(funcs_num, DAG_pp_required)
-            comm_cost_array = self.get_comm_cost(succ, DAG_data_stream)
+            # 获取 DAG 信息
+            funcs_num = HEFT.get_funcs_num(DAG, idx, DAG_len)  # 获取 funcs 编号。注意：代码中的 funcs = tasks，func = task
+            succ = HEFT.get_succ(DAG, idx, DAG_len)  # dict 类型
+            comp_cost_array = self.get_comp_cost(funcs_num, DAG_pp_required)  # 获取计算成本
+            comm_cost_array = self.get_comm_cost(succ, DAG_data_stream)  # 获取通信成本
 
-            # schedule for this DAG
+            # 根据计算成本和通信成本将 task 分散到 server 上
             orders, jobson, makespan = HEFT.schedule(succ, all_agents,
-                                                     HEFT.compcost, comp_cost_array,
-                                                     HEFT.commcost, comm_cost_array)
+                                                     HEFT.comp_cost, comp_cost_array,
+                                                     HEFT.comm_cost, comm_cost_array)
 
             makespan_of_all_DAGs += makespan
             DAGs_deploy.append(jobson)
@@ -96,6 +114,8 @@ class HEFT:
     def get_funcs_num(DAG, idx, DAG_len):
         """
         Get each function's number sequentially for the given DAG.
+
+        获取给定 DAG 中所有的 task 编号
         """
         funcs_num = []
         for i in range(DAG_len):
@@ -106,47 +126,52 @@ class HEFT:
         return funcs_num
 
     @staticmethod
-    def parse_DAG_structure(DAG, idx, DAG_len):
+    def get_succ(DAG, idx, DAG_len):
         """
         Get a DAG structure from the dataset. For example: for DAG
-        "M1,12846.0,j_3,1,Terminated,157213,157295,100.0,0.3
-        R2_1,371.0,j_3,1,Terminated,157297,157322,100.0,0.49
-        R3,371.0,j_3,1,Terminated,157297,157325,100.0,0.49
-        M4,1.0,j_3,1,Terminated,157322,157328,100.0,0.39
-        R5,1.0,j_3,1,Terminated,157326,157330,100.0,0.39
-        M6,1.0,j_3,1,Terminated,157326,157330,100.0,0.39
-        M7,1.0,j_3,1,Terminated,157326,157330,100.0,0.39
-        J8_6_7,1111.0,j_3,1,Terminated,157329,157376,100.0,0.59
-        R9,1.0,j_3,1,Terminated,157376,157381,100.0,0.39
-        J10_8_9,1111.0,j_3,1,Terminated,157331,157376,100.0,0.59
-        R11_5_10,1.0,j_3,1,Terminated,157376,157381,100.0,0.39
-        R12_4_11,1.0,j_3,1,Terminated,157376,157381,100.0,0.39
-        R13_2_3_12,1.0,j_3,1,Terminated,157376,157381,100.0,0.39
-        R14_13,1.0,j_3,1,Terminated,157376,157381,100.0,0.39", the output is
-        {1: (2,),
-         2: (13,),
-         3: (13,),
-         4: (12,),
-         5: (11,),
-         6: (8,),
-         7: (8,),
-         8: (10,),
-         9: (10,),
-         10: (11,),
-         11: (12,),
-         12: (13,),
-         13: (14,),
-         14: ()}.
+            "M1,12846.0,j_3,1,Terminated,157213,157295,100.0,0.3
+            R2_1,371.0,j_3,1,Terminated,157297,157322,100.0,0.49
+            R3,371.0,j_3,1,Terminated,157297,157325,100.0,0.49
+            M4,1.0,j_3,1,Terminated,157322,157328,100.0,0.39
+            R5,1.0,j_3,1,Terminated,157326,157330,100.0,0.39
+            M6,1.0,j_3,1,Terminated,157326,157330,100.0,0.39
+            M7,1.0,j_3,1,Terminated,157326,157330,100.0,0.39
+            J8_6_7,1111.0,j_3,1,Terminated,157329,157376,100.0,0.59
+            R9,1.0,j_3,1,Terminated,157376,157381,100.0,0.39
+            J10_8_9,1111.0,j_3,1,Terminated,157331,157376,100.0,0.59
+            R11_5_10,1.0,j_3,1,Terminated,157376,157381,100.0,0.39
+            R12_4_11,1.0,j_3,1,Terminated,157376,157381,100.0,0.39
+            R13_2_3_12,1.0,j_3,1,Terminated,157376,157381,100.0,0.39
+            R14_13,1.0,j_3,1,Terminated,157376,157381,100.0,0.39",
+        the output is
+            {1: (2,),
+             2: (13,),
+             3: (13,),
+             4: (12,),
+             5: (11,),
+             6: (8,),
+             7: (8,),
+             8: (10,),
+             9: (10,),
+             10: (11,),
+             11: (12,),
+             12: (13,),
+             13: (14,),
+             14: ()}.
+
+        获取 DAG 中所有结点的直接后继
         """
         succ_funcs = [[] for _ in range(DAG_len)]
         for j in range(DAG_len):
+            # 获取函数编号
             name_str_list = DAG.loc[j + idx, 'task_name'].strip().split('_')
             name_str_list_len = len(name_str_list)
             func_str_len = len(name_str_list[0])
             func_num = int(name_str_list[0][1:func_str_len])
-            if name_str_list_len == 1:
+
+            if name_str_list_len == 1:  # 如果没有依赖其他函数，则跳过
                 pass
-            else:
+            else:  # 如果依赖其他函数，在其他函数中添加后继
                 for i in range(name_str_list_len - 1):
                     if name_str_list[i + 1] == '':
                         continue
@@ -161,6 +186,8 @@ class HEFT:
     def get_comp_cost(self, funcs_num, DAG_pp_required):
         """
         Get computation cost of each function on each server for a given DAG.
+
+        获取编号为 funcs_num 在每个 server 上的计算成本
         """
         comp_cost_array = np.zeros((len(funcs_num) + 1, para.get_server_num()))
         for i in range(len(funcs_num)):
@@ -169,16 +196,16 @@ class HEFT:
         return comp_cost_array
 
     @staticmethod
-    def compcost(job, agent, comp_cost_array):
+    def comp_cost(job, agent, comp_cost_array):
         a = int(agent)
         return comp_cost_array[job][a]
 
     @staticmethod
-    def wbar(ni, agents, compcost, comp_cost_array):
+    def w_bar(ni, agents, comp_cost, comp_cost_array):
         """
-        Average computation cost.
+        计算 task_ni 在所有 agents 中的平均计算成本
         """
-        return sum(compcost(ni, agent, comp_cost_array) for agent in agents) / len(agents)
+        return sum(comp_cost(ni, agent, comp_cost_array) for agent in agents) / len(agents)
 
     def get_comm_cost(self, succ, DAG_data_stream):
         """
@@ -199,7 +226,7 @@ class HEFT:
                 pass
             else:
                 trans_size = DAG_data_stream[dependent_func_num - 1]
-                trans_cost = np.zeros((para.get_server_num(), para.get_server_num()))
+                trans_cost = np.zeros((para.get_server_num(), para.get_server_num()))  # n * n 的矩阵
                 for n1 in range(para.get_server_num()):
                     for n2 in range(para.get_server_num()):
                         if n1 != n2:
@@ -209,7 +236,7 @@ class HEFT:
         return comm_cost_array
 
     @staticmethod
-    def commcost(ni, nj, A, B, comm_cost_array):
+    def comm_cost(ni, nj, A, B, comm_cost_array):
         """
         Get the data transmission cost from ni to nj when ni is placed on A and nj is placed on B.
         """
@@ -224,30 +251,34 @@ class HEFT:
         return 0.
 
     @staticmethod
-    def cbar(ni, nj, agents, commcost, comm_cost_array):
+    def c_bar(ni, nj, agents, comm_cost, comm_cost_array):
         """
-        Average communication cost.
+        计算 task_ni 和 task_nj 在所有 agents 之间的平均通信成本
         """
         n = len(agents)
         if n == 1:
             return 0
         n_pairs = para.get_n_pairs()
-        return 1. * sum(commcost(ni, nj, a1, a2, comm_cost_array) for a1 in agents for a2 in agents
+        return 1. * sum(comm_cost(ni, nj, a1, a2, comm_cost_array) for a1 in agents for a2 in agents
                         if a1 != a2) / n_pairs
 
     @staticmethod
-    def ranku(ni, agents, succ, compcost, commcost, comp_cost_array, comm_cost_array):
+    def ranku(ni, agents, succ, comp_cost, comm_cost, comp_cost_array, comm_cost_array):
         """
         Rank of job.
         This code is designed to mirror the wikipedia entry.
         Please see https://en.wikipedia.org/wiki/Heterogeneous_Earliest_Finish_Time for details.
-        """
-        rank = partial(HEFT.ranku, compcost=compcost, commcost=commcost,
-                       succ=succ, agents=agents, comp_cost_array=comp_cost_array, comm_cost_array=comm_cost_array)
-        w = partial(HEFT.wbar, agents=agents, compcost=compcost, comp_cost_array=comp_cost_array)
-        c = partial(HEFT.cbar, agents=agents, commcost=commcost, comm_cost_array=comm_cost_array)
 
-        if ni in succ and succ[ni]:
+        对 task_ni 计算优先级，公式参考 https://en.wikipedia.org/wiki/Heterogeneous_Earliest_Finish_Time
+        """
+        # 使用偏函数固定某些参数，使调用更方便
+        rank = partial(HEFT.ranku, comp_cost=comp_cost, comm_cost=comm_cost,
+                       succ=succ, agents=agents, comp_cost_array=comp_cost_array, comm_cost_array=comm_cost_array)
+        w = partial(HEFT.w_bar, agents=agents, comp_cost=comp_cost, comp_cost_array=comp_cost_array)
+        c = partial(HEFT.c_bar, agents=agents, comm_cost=comm_cost, comm_cost_array=comm_cost_array)
+
+        # 递归调用上面定义的偏函数
+        if ni in succ and succ[ni]:  # 若 ni 有后继？这么理解对吗
             return w(ni) + max(c(ni, nj) + rank(nj) for nj in succ[ni])
         else:
             return w(ni)
@@ -255,7 +286,7 @@ class HEFT:
     @staticmethod
     def end_time(job, events):
         """
-        Endtime of job in list of events.
+        End time of job in list of events.
         """
         for e in events:
             if e.job == job:
@@ -284,30 +315,31 @@ class HEFT:
         return max(agent_orders[-1].end, desired_start_time)
 
     @staticmethod
-    def start_time(agent, job, orders, jobson, prec, commcost, comm_cost_array, compcost, comp_cost_array):
+    def start_time(agent, job, orders, jobson, prev, comm_cost, comm_cost_array, comp_cost, comp_cost_array):
         """
         Earliest time that job can be executed on agent.
         """
-        duration = compcost(job, agent, comp_cost_array)
+        duration = comp_cost(job, agent, comp_cost_array)
 
-        if job in prec:
-            comm_ready = max([HEFT.end_time(p, orders[jobson[p]]) + commcost(p, job, agent, jobson[p], comm_cost_array)
-                              for p in prec[job]])
+        if job in prev:
+            comm_ready = max([HEFT.end_time(p, orders[jobson[p]]) + comm_cost(p, job, agent, jobson[p], comm_cost_array)
+                              for p in prev[job]])
         else:
             comm_ready = 0
 
         return HEFT.find_first_gap(orders[agent], comm_ready, duration)
 
     @staticmethod
-    def allocate(job, orders, jobson, prec, commcost, comm_cost_array, compcost, comp_cost_array):
+    def allocate(job, orders, jobson, prev, comm_cost, comm_cost_array, comp_cost, comp_cost_array):
         """
-        Allocate job to the machine with earliest finish time. Operates in place.
+        Allocate job to the machine with the earliest finish time. Operates in place.
         """
-        st = partial(HEFT.start_time, job=job, orders=orders, jobson=jobson, prec=prec,
-                     commcost=commcost, comm_cost_array=comm_cost_array,
-                     compcost=compcost, comp_cost_array=comp_cost_array)
-        # ft = lambda machine: st(machine) + compcost(job, machine)
-        def ft(machine): return st(machine) + compcost(job, machine, comp_cost_array)
+        st = partial(HEFT.start_time, job=job, orders=orders, jobson=jobson, prev=prev,
+                     comm_cost=comm_cost, comm_cost_array=comm_cost_array,
+                     comp_cost=comp_cost, comp_cost_array=comp_cost_array)
+
+        # ft = lambda machine: st(machine) + comp_cost(job, machine)
+        def ft(machine): return st(machine) + comp_cost(job, machine, comp_cost_array)
 
         agent = min(orders.keys(), key=ft)
         start = st(agent)
@@ -328,19 +360,19 @@ class HEFT:
         return max(v[-1].end for v in orders.values() if v)
 
     @staticmethod
-    def schedule(succ, agents, compcost, comp_cost_array, commcost, comm_cost_array):
+    def schedule(succ, agents, comp_cost, comp_cost_array, comm_cost, comm_cost_array):
         """
         Schedule computation dag onto worker agents.
         inputs:
         succ - DAG of tasks {a: (b, c)} where b, and c follow a
         agents - set of agents that can perform work
-        compcost - function :: job, agent -> runtime
-        commcost - function :: j1, j2, a1, a2 -> communication time
+        comp_cost - function :: job, agent -> runtime
+        comm_cost - function :: j1, j2, a1, a2 -> communication time
         """
         rank = partial(HEFT.ranku, agents=agents, succ=succ,
-                       compcost=compcost, comp_cost_array=comp_cost_array,
-                       commcost=commcost, comm_cost_array=comm_cost_array)
-        prec = reverse_dict(succ)
+                       comp_cost=comp_cost, comp_cost_array=comp_cost_array,
+                       comm_cost=comm_cost, comm_cost_array=comm_cost_array)
+        prev = reverse_dict(succ)
 
         jobs = set(succ.keys()) | set(x for xx in succ.values() for x in xx)
         jobs = sorted(jobs, key=rank)
@@ -348,7 +380,7 @@ class HEFT:
         orders = {agent: [] for agent in agents}
         jobson = dict()
         for job in reversed(jobs):
-            HEFT.allocate(job, orders, jobson, prec, commcost, comm_cost_array, compcost, comp_cost_array)
+            HEFT.allocate(job, orders, jobson, prev, comm_cost, comm_cost_array, comp_cost, comp_cost_array)
 
         for n in range(para.get_server_num()):
             orders['server ' + str(n + 1)] = orders.pop(str(n))
@@ -356,13 +388,13 @@ class HEFT:
         return orders, jobson, HEFT.makespan(orders)
 
     @staticmethod
-    def recvs(job, jobson, prec, recv):
+    def recvs(job, jobson, prev, recv):
         """
         Collect all necessary recvs for job.
         """
-        if job not in prec:
+        if job not in prev:
             return []
-        return [recv(jobson[p], jobson[job], p, job) for p in prec[job]
+        return [recv(jobson[p], jobson[job], p, job) for p in prev[job]
                 if jobson[p] != jobson[job]]
 
     @staticmethod
@@ -376,13 +408,13 @@ class HEFT:
                 if jobson[s] != jobson[job]]
 
     @staticmethod
-    def insert_recvs(order, jobson, prec, recv):
+    def insert_recvs(order, jobson, prev, recv):
         if not order:
             return order
 
         this_agent = jobson[order[0].job]
 
-        receives = partial(HEFT.recvs, jobson=jobson, prec=prec, recv=recv)
+        receives = partial(HEFT.recvs, jobson=jobson, prev=prev, recv=recv)
         recv_events = {e.job: [Event(r, e.start, e.start)
                                for r in receives(e.job)]
                        for e in order}
@@ -418,13 +450,13 @@ class HEFT:
     @staticmethod
     def insert_send_recvs(orders, jobson, succ, send, recv):
         """
-        Insert send an recv events into the orders at appropriate places.
+        Insert send a recv events into the orders at appropriate places.
         """
-        prec = reverse_dict(succ)
+        prev = reverse_dict(succ)
         jobson = jobson.copy()
         new_orders = dict()
         for agent, order in orders.items():
             order = HEFT.insert_sends(order, jobson, succ, send)
-            order = HEFT.insert_recvs(order, jobson, prec, recv)
+            order = HEFT.insert_recvs(order, jobson, prev, recv)
             new_orders[agent] = order
         return new_orders, jobson

@@ -29,7 +29,7 @@ class Parameter:
         self.__pp_lower, self.__pp_upper = 7, 14
 
         # DAG settings (processing power required by each function, the data stream size of each link)
-        self.__pp_required_lower, self.__pp_required_upper = 1, 2
+        self.__pp_required_lower, self.__pp_required_upper = 1, 2  # 设置每个函数需要的 processing power 上下限
         self.__data_stream_size_lower, self.__data_stream_size_upper = 1, 10
         self.__max_func_num = MAX_FUNC_NUM
 

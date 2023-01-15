@@ -7,6 +7,7 @@ import pprint
 import random
 
 import numpy as np
+
 from models.parameters import *
 from models.utils import ProgressBar
 
