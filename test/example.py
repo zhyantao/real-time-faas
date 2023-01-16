@@ -32,20 +32,21 @@ if __name__ == '__main__':
     T_optimal_all_dpe, DAGs_deploy_dpe, process_sequence_all_dpe, start_time_all_dpe = dpe.get_response_time(sorted_DAG_path=SORTED_DAG_PATH)
     end = datetime.datetime.now()
     print('Computer\'s running time:', (end - start).seconds, 'seconds')
-    DAG_chosen = 2010    # 随机选择的一个数字
-    print_scheduling_results(T_optimal_all_dpe, DAGs_deploy_dpe, process_sequence_all_dpe, start_time_all_dpe, DAG_chosen)
+    DAG_num_chosen = 2010    # 随机选择采样出来的 DAG 中的某一个
+    # show_DAG()  # TODO
+    print_scheduling_results(T_optimal_all_dpe, DAGs_deploy_dpe, process_sequence_all_dpe, start_time_all_dpe, DAG_num_chosen)
 
     fixdoc = FixDoc(G, bw, pp, simple_paths, reciprocals_list, proportions_list, pp_required, data_stream)
     start = datetime.datetime.now()
     T_optimal_all_fixdoc, DAGs_deploy_fixdoc, process_sequence_all_fixdoc, start_time_all_fixdoc = fixdoc.get_response_time(sorted_DAG_path=SORTED_DAG_PATH)
     end = datetime.datetime.now()
     print('Computer\'s running time:', (end - start).seconds, 'seconds')
-    print_scheduling_results(T_optimal_all_fixdoc, DAGs_deploy_fixdoc, process_sequence_all_fixdoc, start_time_all_fixdoc, DAG_chosen)
+    print_scheduling_results(T_optimal_all_fixdoc, DAGs_deploy_fixdoc, process_sequence_all_fixdoc, start_time_all_fixdoc, DAG_num_chosen)
 
     heft = HEFT(G, bw, pp, simple_paths, reciprocals_list, proportions_list, pp_required, data_stream)
     start = datetime.datetime.now()
     DAGs_orders, DAGs_deploy = heft.get_response_time(sorted_DAG_path=SORTED_DAG_PATH)
     end = datetime.datetime.now()
     print('Computer\'s running time:', (end - start).seconds, 'seconds')
-    print('\nThe finish time of each function on the chosen server for DAG #%d:' % DAG_chosen)
-    pprint.pprint(DAGs_orders[DAG_chosen])
+    print('\nThe finish time of each function on the chosen server for DAG #%d:' % DAG_num_chosen)
+    pprint.pprint(DAGs_orders[DAG_num_chosen])

@@ -23,7 +23,7 @@ class DPE:
             print('DAGs\' topological order has not been obtained! Please get topological order firstly.')
             return
 
-        df = pd.read_csv(sorted_DAG_path)
+        df = pd.read_csv(sorted_DAG_path)  # 读取 topological_order.csv
         df_len = df.shape[0]
         idx = 0
 
@@ -34,8 +34,8 @@ class DPE:
         process_sequence_all = []
 
         required_num = REQUIRED_NUM
-        all_DAG_num = sum(required_num)
-        calculated_num = 0
+        all_DAG_num = sum(required_num)  # 需要采样的 DAG 的数量
+        calculated_num = 0  # 已经计算的 DAG，用于监控当前处理进度
         print('\nGetting makespan for %d DAGs by DPE algorithm ...' % all_DAG_num)
         while idx < df_len:
             # get a DAG
@@ -48,11 +48,13 @@ class DPE:
             DAG_data_stream = self.data_stream[:DAG_len]
 
             # T_optimal stores the earliest finish time of each function on each server
+            # T_optimal 存储了每个 function 在每个 server 上的最早完成时间
             T_optimal = np.zeros((DAG_len, para.get_server_num()))
             start_time = np.zeros(DAG_len)
             funcs_deploy = -1 * np.ones(DAG_len)
             process_sequence = []
             # server_runtime records the moment when the newest func on each server is finished
+            # server_runtime 记录了最近的 function 在每个 server 上的完成时间
             server_runtime = np.zeros(para.get_server_num())
 
             makespan = 0
@@ -60,6 +62,7 @@ class DPE:
                 if j == DAG_len:
                     # this is the dummy tail function, update all the exit functions' deployment and return the makespan
                     # makespan is the slowest 'exit function's earliest finish time'
+                    # 这是一个 dummy tail function，用于将所有的出口函数连接起来，更新 makespan
                     for e in range(DAG_len):
                         if funcs_deploy[e] == -1.:
                             funcs_deploy[e] = int(np.argmin(T_optimal[e]))
@@ -68,7 +71,8 @@ class DPE:
                                 makespan = min(T_optimal[e])
                     break
 
-                # get the number of this function and stores in func
+                # 如果不是最后一个结点，执行下面的代码
+                # get the number of this function and store in func_num
                 name_str_list = DAG.loc[j + idx, 'task_name'].strip().split('_')
                 name_str_list_len = len(name_str_list)
                 func_str_len = len(name_str_list[0])
@@ -91,6 +95,8 @@ class DPE:
 
                             if funcs_deploy[dependent_func_num - 1] != -1.:
                                 # dependent_func_num has been deployed beforehand, get min_phi directly
+                                # 若 dependent_func_num 之前已经被部署，那么直接获取 min_phi
+
                                 # ==== DIR_PATH is where we can improve (maybe in the next paper) ====
                                 # For example, for DAG 'M2, R4_2 and R5_2', M2's placement is decided by R4 if we
                                 # process (M2, R4) firstly. R5 will not affect the placement of M2. However, we don't

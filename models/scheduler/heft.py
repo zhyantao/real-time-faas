@@ -166,8 +166,6 @@ def schedule_dag(dag, computation_matrix=W0, communication_matrix=C0, communicat
         if op_mode == OpMode.EDP_ABS:
             assert "power_dict" in kwargs, \
                 "In order to perform EDP-based processor assignment, a power_dict is required"
-            taskschedules = []
-            minScheduleStart = inf
 
             # 这里没看懂在做什么
             for proc in range(len(communication_matrix)):
