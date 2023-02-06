@@ -9,6 +9,7 @@ batch_task.csv.
 
 (task --> function, func_num --> DAG)
 """
+import os
 
 import numpy as np
 import pandas as pd
@@ -30,10 +31,13 @@ def sample_jobs(batch_task_path=BATCH_TASK_PATH, selected_batch_task_path=SELECT
 
     :return: 将采样的 sampled_jobs 保存的文件中
     """
+    if os.path.exists(selected_batch_task_path):
+        print("batch_task & batch_instance is already selected.")
+        return
 
-    df_batch_task = pd.read_csv(batch_task_path)
-    df_batch_task.columns = ['task_name', 'instance_num', 'job_name', 'task_type', 'status',
-                             'start_time', 'end_time', 'plan_cpu', 'plan_mem']
+    columns = ['task_name', 'instance_num', 'job_name', 'task_type', 'status',
+               'start_time', 'end_time', 'plan_cpu', 'plan_mem']
+    df_batch_task = pd.read_csv(batch_task_path, header=None, names=columns)
 
     required_num = REQUIRED_NUM
     counters = np.zeros(5)
@@ -94,10 +98,19 @@ def sample_jobs(batch_task_path=BATCH_TASK_PATH, selected_batch_task_path=SELECT
 
 def exist_in_batch_instance(job_name, batch_instance_path=BATCH_INSTANCE_PATH,
                             selected_batch_instance_path=SELECTED_BATCH_INSTANCE_PATH):
-    df_batch_instance = pd.read_csv(batch_instance_path)
-    df_batch_instance.columns = ['instance_name', 'task_name', 'job_name', 'task_type', 'status',
-                                 'start_time', 'end_time', 'machine_id', 'seq_no', 'total_seq_no',
-                                 'cpu_avg', 'cpu_max', 'mem_avg', 'mem_max']
+    """
+    找出 batch_instance.csv 中与 batch_task.csv 中 task_name 一致的 jobs
+
+    :param job_name:
+    :param batch_instance_path:
+    :param selected_batch_instance_path:
+    :return: 将查找结果输出到文件中
+    """
+
+    columns = ['instance_name', 'task_name', 'job_name', 'task_type', 'status',
+               'start_time', 'end_time', 'machine_id', 'seq_no', 'total_seq_no',
+               'cpu_avg', 'cpu_max', 'mem_avg', 'mem_max']
+    df_batch_instance = pd.read_csv(batch_instance_path, header=None, names=columns)
 
     sampled_jobs = df_batch_instance.loc[0: 0]  # 变量 sampled_jobs 用于保存采样出来的 sampled_jobs
 
@@ -110,7 +123,6 @@ def exist_in_batch_instance(job_name, batch_instance_path=BATCH_INSTANCE_PATH,
         while (idx + instance_nums) < df_len_batch_instance \
                 and job_name == df_batch_instance.loc[idx + instance_nums, 'job_name']:
             instance_nums = instance_nums + 1
-        print(instance_nums, idx)
         if instance_nums == 0:
             idx = idx + 1
         else:
