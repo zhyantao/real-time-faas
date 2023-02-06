@@ -32,8 +32,9 @@ def get_agents():
     """
     Agents start from zero.
 
-    按照设计，共 4 台 server
-    server 和 agent 有什么区别？
+    作者设置的默认参数，共 4 台 server。
+    作者代码中的 server 和 agent 是同一个东西，都是能够运行代码的处理单元。
+    function 和 task 是同一个东西，都代表 FaaS 中的一个函数实例。
     """
     servers = [str(n) for n in range(para.get_server_num())]
     return ''.join(servers)

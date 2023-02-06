@@ -11,8 +11,6 @@ import matplotlib.pyplot as plt
 import networkx as nx
 import numpy as np
 
-from models.utils.gantt import showGanttChart
-
 logger = logging.getLogger('heft')
 
 ScheduleEvent = namedtuple('ScheduleEvent', 'task start end proc')
@@ -134,20 +132,13 @@ def schedule_dag(dag, computation_matrix=W0, communication_matrix=C0, communicat
     _self.root_node = root_node
 
     # 核心代码部分：计算 Rank-U
-    logger.debug("")
-    logger.debug("====================== "
-                 "Performing Rank-U Computation "
-                 "======================\n")
-    logger.debug("")
+    logger.debug("====================== Performing Rank-U Computation ======================\n")
     _compute_ranku(_self, dag, metric=rank_metric, **kwargs)
 
     # 对每个 (task, processor) 对计算最早完成时间，并按照降序的 Rank-U 将任务调度调度到处理器
-    logger.debug("")
-    logger.debug(
-        "====================== "
-        "Computing EFT for each (task, processor) pair and scheduling in order of decreasing Rank-U "
-        "======================")
-    logger.debug("")
+    logger.debug("====================== "
+                 "Computing EFT for each (task, processor) pair and scheduling in order of decreasing Rank-U "
+                 "======================")
     sorted_nodes = sorted(dag.nodes(), key=lambda node: dag.nodes()[node]['ranku'],
                           reverse=True)  # 调用 Python 默认的包，逆序 Rank-U
     # 如果逆序后第一个节点不是 root，那么将 root 跟第一个交换位置，以便能够有程序入口
@@ -163,6 +154,9 @@ def schedule_dag(dag, computation_matrix=W0, communication_matrix=C0, communicat
         minTaskSchedule = ScheduleEvent(node, inf, inf, -1)
         minEDP = inf
         op_mode = kwargs.get("op_mode", OpMode.EFT)
+
+        # 作者的创新点主要集中于 if op_mode 这几个代码
+        # 参考作者发表的期刊，已经提出的两个算法是 EDP_ABS 和 EDP_REL，其他改进还没有实现
         if op_mode == OpMode.EDP_ABS:
             assert "power_dict" in kwargs, \
                 "In order to perform EDP-based processor assignment, a power_dict is required"
@@ -594,39 +588,3 @@ def generate_argparser():
         help="Switch used to enable display of the final scheduled Gantt chart",
         dest="showGantt", action="store_true")
     return parser
-
-
-if __name__ == "__main__":
-    argparser = generate_argparser()
-    args = argparser.parse_args()
-
-    logger.setLevel(logging.getLevelName(args.loglevel))
-    consolehandler = logging.StreamHandler()
-    consolehandler.setLevel(logging.getLevelName(args.loglevel))
-    consolehandler.setFormatter(logging.Formatter("%(levelname)8s : %(name)16s : %(message)s"))
-    logger.addHandler(consolehandler)
-
-    communication_matrix = readCsvToNumpyMatrix(args.pe_connectivity_file)
-    computation_matrix = readCsvToNumpyMatrix(args.task_execution_file)
-    dag = readDagMatrix(args.dag_file, args.showDAG)
-
-    if (communication_matrix.shape[0] != communication_matrix.shape[1]):
-        assert communication_matrix.shape[0] - 1 == communication_matrix.shape[1], \
-            "If the communication_matrix CSV is non-square, there must only be a single additional row specifying " \
-            "the communication startup costs of each PE"
-        logger.debug(
-            "Non-square communication matrix parsed. Stripping off the last row as communication startup costs")
-        communication_startup = communication_matrix[-1, :]
-        communication_matrix = communication_matrix[0:-1, :]
-    else:
-        communication_startup = np.zeros(communication_matrix.shape[0])
-
-    processor_schedules, _, _ = schedule_dag(dag, communication_matrix=communication_matrix,
-                                             communication_startup=communication_startup,
-                                             computation_matrix=computation_matrix, rank_metric=args.rank_metric)
-    for proc, jobs in processor_schedules.items():
-        logger.info(f"Processor {proc} has the following jobs:")
-        logger.info(f"\t{jobs}")
-    # if args.showGantt:
-
-    showGanttChart(processor_schedules)

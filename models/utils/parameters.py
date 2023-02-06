@@ -5,11 +5,12 @@ import os
 
 
 # csv file path
-DIR_PATH = 'D:/Workshop/real-time-faas/'
+DIR_PATH = 'E:/Workshop/real-time-faas/'
 DATASET_PATH = os.path.join(DIR_PATH, 'dataset/batch_task.csv')
 SELECTED_DAG_PATH = os.path.join(DIR_PATH, 'dataset/selected_DAGs.csv')
 SORTED_DAG_PATH = os.path.join(DIR_PATH, 'dataset/topological_order.csv')
 TEST_DAG_PATH = os.path.join(DIR_PATH, 'dataset/test.csv')
+FILE_PATH_ALLOC_SORTED = os.path.join(DIR_PATH, 'dataset/topological_order_alloc.csv')
 
 MAX_VALUE = 9e+4
 REQUIRED_NUM = [200, 800, 600, 400, 119]
