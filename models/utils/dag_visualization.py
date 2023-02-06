@@ -1,2 +1,0 @@
-def visualize(DAG):
-    pass

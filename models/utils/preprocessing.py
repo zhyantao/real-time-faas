@@ -12,84 +12,116 @@ batch_task.csv.
 
 import numpy as np
 import pandas as pd
+
 from models.utils.parameters import *
 from models.utils.progress_bar import ProgressBar
 
 bar = ProgressBar()
 
 
-def sample_DAG(dataset_path=DATASET_PATH, selected_data_path=SELECTED_DAG_PATH):
+def sample_jobs(batch_task_path=BATCH_TASK_PATH, selected_batch_task_path=SELECTED_BATCH_TASK_PATH):
     """
-    Select 200 DAGs with number of functions being 2;
-    800 DAGs with number of functions between 3 and 10;
-    600 DAGs with number of functions between 11 and 50;
-    400 DAGs with number of functions between 51 and 100;
-    119 DAGs with functions more than 100.
+    参考全局变量 REQUIRED_NUM:
+    采样 200 个含有 2 个 task 的 sampled_jobs,
+    800 个含有 3 ~ 10 个 task 的 sampled_jobs,
+    600 个含有 11 ~ 50 个 task 的 sampled_jobs,
+    400 个含有 51 ~ 100 个 task 的 sampled_jobs,
+    119 个含有超过 100 个 task 的 sampled_jobs.
 
-    The selected DAGs are saved in selected_DAGs.csv.
+    :return: 将采样的 sampled_jobs 保存的文件中
     """
-    if os.path.exists(selected_data_path):
-        print('DAGs have been sampled!')
-        return
 
-    if not os.path.exists(dataset_path):
-        print('batch_task.csv is not exist! Please download this file from '
-              'https://clusterdata2018pubcn.oss-cn-beijing.aliyuncs.com/batch_task.tar.gz '
-              'and uncompress it into the dataset dir.')
-        return
+    df_batch_task = pd.read_csv(batch_task_path)
+    df_batch_task.columns = ['task_name', 'instance_num', 'job_name', 'task_type', 'status',
+                             'start_time', 'end_time', 'plan_cpu', 'plan_mem']
 
-    # download online and get data (rewrite)
-    df = pd.read_csv(dataset_path, header=None)
-    df.columns = ['task_name', 'instance_num', 'job_name', 'task_type', 'status',
-                  'start_time', 'end_time', 'plan_cpu', 'plan_mem']
-    print(df.describe)
-
-    df_len = df.shape[0]
     required_num = REQUIRED_NUM
     counters = np.zeros(5)
-    idx = 0
 
-    DAGs = df.loc[0: 0]
-    print('DAGs are sampling ...')
-    while idx < df_len:
-        task_name = df.loc[idx, 'task_name']
+    sampled_jobs = df_batch_task.loc[0: 0]  # 变量 sampled_jobs 用于保存采样出来的 sampled_jobs
+    print('sampling jobs from batch task & batch instance ...')
+
+    df_len_batch_task = df_batch_task.shape[0]
+    idx = 0
+    while idx < df_len_batch_task:
+        # 跳过不含依赖关系的 jobs
+        task_name = df_batch_task.loc[idx, 'task_name']
         if task_name.find('task_') != -1:
             idx = idx + 1
             continue
 
-        DAG_name = df.loc[idx, 'job_name']
-        DAG_len = 0
-        while (idx + DAG_len < df_len) and (df.loc[idx + DAG_len, 'job_name'] == DAG_name):
-            DAG_len = DAG_len + 1
-        if DAG_len == 2:
-            if counters[0] < required_num[0]:
-                DAGs = pd.concat([DAGs, df.loc[idx: idx + DAG_len - 1].copy()], axis=0)
-                counters[0] = counters[0] + 1
-        elif 3 <= DAG_len <= 10:
-            if counters[1] < required_num[1]:
-                DAGs = pd.concat([DAGs, df.loc[idx: idx + DAG_len - 1].copy()], axis=0)
-                counters[1] = counters[1] + 1
-        elif 11 <= DAG_len <= 50:
-            if counters[2] < required_num[2]:
-                DAGs = pd.concat([DAGs, df.loc[idx: idx + DAG_len - 1].copy()], axis=0)
-                counters[2] = counters[2] + 1
-        elif 51 <= DAG_len <= 100:
-            if counters[3] < required_num[3]:
-                DAGs = pd.concat([DAGs, df.loc[idx: idx + DAG_len - 1].copy()], axis=0)
-                counters[3] = counters[3] + 1
-        elif DAG_len > 100:
-            if counters[4] < required_num[4]:
-                DAGs = pd.concat([DAGs, df.loc[idx: idx + DAG_len - 1].copy()], axis=0)
-                counters[4] = counters[4] + 1
-        idx = idx + DAG_len
+        # 将含有两个及以上 task 的 jobs 挑选出来
+        job_name = df_batch_task.loc[idx, 'job_name']  # 每个 job 都是一个 DAG
 
+        if not exist_in_batch_instance(job_name):
+            continue
+
+        task_nums = 0  # 该 job 包含的 task 数量
+        while (idx + task_nums < df_len_batch_task) and (df_batch_task.loc[idx + task_nums, 'job_name'] == job_name):
+            task_nums = task_nums + 1
+        if task_nums == 2:
+            if counters[0] < required_num[0]:
+                sampled_jobs = pd.concat([sampled_jobs, df_batch_task.loc[idx: idx + task_nums - 1].copy()], axis=0)
+                counters[0] = counters[0] + 1
+        elif 3 <= task_nums <= 10:
+            if counters[1] < required_num[1]:
+                sampled_jobs = pd.concat([sampled_jobs, df_batch_task.loc[idx: idx + task_nums - 1].copy()], axis=0)
+                counters[1] = counters[1] + 1
+        elif 11 <= task_nums <= 50:
+            if counters[2] < required_num[2]:
+                sampled_jobs = pd.concat([sampled_jobs, df_batch_task.loc[idx: idx + task_nums - 1].copy()], axis=0)
+                counters[2] = counters[2] + 1
+        elif 51 <= task_nums <= 100:
+            if counters[3] < required_num[3]:
+                sampled_jobs = pd.concat([sampled_jobs, df_batch_task.loc[idx: idx + task_nums - 1].copy()], axis=0)
+                counters[3] = counters[3] + 1
+        elif task_nums > 100:
+            if counters[4] < required_num[4]:
+                sampled_jobs = pd.concat([sampled_jobs, df_batch_task.loc[idx: idx + task_nums - 1].copy()], axis=0)
+                counters[4] = counters[4] + 1
+        idx = idx + task_nums
+
+        # 更新进度条
         percent = sum(counters) / float(sum(required_num)) * 100
         bar.update(percent)
 
+        # 如果已经满足了采样数量，提前终止程序
         if sum(counters) == all:
             break
 
-    DAGs.to_csv(selected_data_path, index=0)
+    sampled_jobs.to_csv(selected_batch_task_path, index=False)
+
+
+def exist_in_batch_instance(job_name, batch_instance_path=BATCH_INSTANCE_PATH,
+                            selected_batch_instance_path=SELECTED_BATCH_INSTANCE_PATH):
+    df_batch_instance = pd.read_csv(batch_instance_path)
+    df_batch_instance.columns = ['instance_name', 'task_name', 'job_name', 'task_type', 'status',
+                                 'start_time', 'end_time', 'machine_id', 'seq_no', 'total_seq_no',
+                                 'cpu_avg', 'cpu_max', 'mem_avg', 'mem_max']
+
+    sampled_jobs = df_batch_instance.loc[0: 0]  # 变量 sampled_jobs 用于保存采样出来的 sampled_jobs
+
+    df_len_batch_instance = df_batch_instance.shape[0]
+    idx = 0
+
+    # 在 batch_instance.csv 中查找名为 job_name 的 job, 将其挑选出来
+    while idx < df_len_batch_instance:
+        instance_nums = 0
+        while (idx + instance_nums) < df_len_batch_instance \
+                and job_name == df_batch_instance.loc[idx + instance_nums, 'job_name']:
+            instance_nums = instance_nums + 1
+        print(instance_nums, idx)
+        if instance_nums == 0:
+            idx = idx + 1
+        else:
+            sampled_jobs = pd.concat([sampled_jobs, df_batch_instance.loc[idx: idx + instance_nums - 1].copy()], axis=0)
+            break
+
+    if not sampled_jobs.empty:
+        sampled_jobs.to_csv(selected_batch_instance_path, index=False)
+        return True  # 如果 batch_instance 中有和 batch_task 一致的 task_name, 返回 True
+    else:
+        return False
 
 
 def get_topological_order(selected_DAG_path=SELECTED_DAG_PATH, sorted_DAG_path=SORTED_DAG_PATH):
@@ -115,9 +147,9 @@ def get_topological_order(selected_DAG_path=SELECTED_DAG_PATH, sorted_DAG_path=S
     print('Getting topological order for %d DAGs...' % all_DAG_num)
     while idx < df_len:  # 遍历 CSV 文件的每一行
         # 获取一个 DAG
-        DAG_name = df.loc[idx, 'job_name']
+        job_name = df.loc[idx, 'job_name']
         DAG_len = 0  # DAG 中包含的 task 数目
-        while (idx + DAG_len < df_len) and (df.loc[idx + DAG_len, 'job_name'] == DAG_name):
+        while (idx + DAG_len < df_len) and (df.loc[idx + DAG_len, 'job_name'] == job_name):
             DAG_len = DAG_len + 1
         DAG = df.loc[idx: idx + DAG_len].copy()
 
@@ -182,4 +214,4 @@ def get_topological_order(selected_DAG_path=SELECTED_DAG_PATH, sorted_DAG_path=S
             percent = 100
         bar.update(percent)
 
-    df.to_csv(sorted_DAG_path, index=0)
+    df.to_csv(sorted_DAG_path, index=False)

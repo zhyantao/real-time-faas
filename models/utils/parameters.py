@@ -5,12 +5,19 @@ import os
 
 
 # csv file path
-DIR_PATH = 'E:/Workshop/real-time-faas/'
-DATASET_PATH = os.path.join(DIR_PATH, 'dataset/batch_task.csv')
-SELECTED_DAG_PATH = os.path.join(DIR_PATH, 'dataset/selected_DAGs.csv')
-SORTED_DAG_PATH = os.path.join(DIR_PATH, 'dataset/topological_order.csv')
-TEST_DAG_PATH = os.path.join(DIR_PATH, 'dataset/test.csv')
-FILE_PATH_ALLOC_SORTED = os.path.join(DIR_PATH, 'dataset/topological_order_alloc.csv')
+DIR_PATH = 'E:/Workshop/real-time-faas/dataset/'
+DATASET_PATH = os.path.join(DIR_PATH, 'batch_task.csv')
+SELECTED_DAG_PATH = os.path.join(DIR_PATH, 'selected_DAGs.csv')
+SORTED_DAG_PATH = os.path.join(DIR_PATH, 'topological_order.csv')
+TEST_DAG_PATH = os.path.join(DIR_PATH, 'test.csv')
+
+BATCH_TASK_PATH = os.path.join(DIR_PATH, "batch_task.csv")
+SELECTED_BATCH_TASK_PATH = os.path.join(DIR_PATH, "selected_batch_task.csv")
+BATCH_TASK_TOPOLOGICAL_ORDER_PATH = os.path.join(DIR_PATH, 'batch_task_topological_order.csv')
+
+BATCH_INSTANCE_PATH = os.path.join(DIR_PATH, "batch_instance.csv")
+SELECTED_BATCH_INSTANCE_PATH = os.path.join(DIR_PATH, "selected_batch_instance.csv")
+BATCH_INSTANCE_TOPOLOGICAL_ORDER_PATH = os.path.join(DIR_PATH, 'batch_instance_topological_order.csv')
 
 MAX_VALUE = 9e+4
 REQUIRED_NUM = [200, 800, 600, 400, 119]
