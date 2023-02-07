@@ -59,6 +59,7 @@ def sample_jobs(batch_task_path=BATCH_TASK_PATH, selected_batch_task_path=SELECT
     chunk_batch_task = pd.read_csv(batch_task_path, header=None, iterator=True)
     current_chunk_batch_instance = chunk_batch_instance.get_chunk(chunk_size)
     current_chunk_batch_task = chunk_batch_task.get_chunk(chunk_size)
+    waiting_for_outer_loop_flag = False  # 等待外层循环将 job_num 相等的数据处理完毕
     while not current_chunk_batch_instance.empty:
         i = 0
         while i < chunk_size:
@@ -89,21 +90,28 @@ def sample_jobs(batch_task_path=BATCH_TASK_PATH, selected_batch_task_path=SELECT
 
                         # 保存 batch_task.csv 中的 job
                         task_nums = 0
-                        while j + task_nums < chunk_size and job_name_batch_task == \
-                                current_chunk_batch_task.loc[idx_batch_task + j + task_nums, 2]:
-                            task_nums += 1
-                        sampled_jobs_batch_task = pd.concat(
-                            [sampled_jobs_batch_task,
-                             current_chunk_batch_task.loc[
-                             idx_batch_task + j: idx_batch_task + j + task_nums - 1].copy()],
-                            axis=0)
-                        with open(selected_batch_task_path, 'a') as f:
-                            sampled_jobs_batch_task.to_csv(f, header=False, index=False, lineterminator="\n")
+                        if not waiting_for_outer_loop_flag:
+                            while j + task_nums < chunk_size and job_name_batch_task == \
+                                    current_chunk_batch_task.loc[idx_batch_task + j + task_nums, 2]:
+                                task_nums += 1
+                            sampled_jobs_batch_task = pd.concat(
+                                [sampled_jobs_batch_task,
+                                 current_chunk_batch_task.loc[
+                                 idx_batch_task + j: idx_batch_task + j + task_nums - 1].copy()],
+                                axis=0)
+                            with open(selected_batch_task_path, 'a') as f:
+                                sampled_jobs_batch_task.to_csv(f, header=False, index=False, lineterminator="\n")
+
+                        if j + task_nums < chunk_size:
+                            waiting_for_outer_loop_flag = True
+                        else:
+                            waiting_for_outer_loop_flag = False
+
                         j += task_nums
 
                         # 保存 batch_instance.csv 中的 job
                         instance_nums = 0
-                        while i + instance_nums < chunk_size and job_name_batch_task == \
+                        while i + instance_nums < chunk_size and job_name_num_batch_instance == \
                                 current_chunk_batch_instance.loc[idx_batch_instance + i + instance_nums, 2]:
                             instance_nums += 1
                         sampled_jobs_batch_instance = pd.concat(
