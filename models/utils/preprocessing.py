@@ -9,7 +9,8 @@ batch_task.csv.
 
 (task --> function, func_num --> DAG)
 """
-import os
+
+import re
 
 import numpy as np
 import pandas as pd
@@ -23,11 +24,11 @@ bar = ProgressBar()
 def sample_jobs(batch_task_path=BATCH_TASK_PATH, selected_batch_task_path=SELECTED_BATCH_TASK_PATH):
     """
     参考全局变量 REQUIRED_NUM:
-    采样 200 个含有 2 个 task 的 sampled_jobs,
-    800 个含有 3 ~ 10 个 task 的 sampled_jobs,
-    600 个含有 11 ~ 50 个 task 的 sampled_jobs,
-    400 个含有 51 ~ 100 个 task 的 sampled_jobs,
-    119 个含有超过 100 个 task 的 sampled_jobs.
+    采样 20 个含有 2 个 task 的 sampled_jobs,
+    80 个含有 3 ~ 10 个 task 的 sampled_jobs,
+    60 个含有 11 ~ 50 个 task 的 sampled_jobs,
+    40 个含有 51 ~ 100 个 task 的 sampled_jobs,
+    19 个含有超过 100 个 task 的 sampled_jobs.
 
     :return: 将采样的 sampled_jobs 保存的文件中
     """
@@ -43,7 +44,7 @@ def sample_jobs(batch_task_path=BATCH_TASK_PATH, selected_batch_task_path=SELECT
     counters = np.zeros(5)
 
     sampled_jobs = df_batch_task.loc[0: 0]  # 变量 sampled_jobs 用于保存采样出来的 sampled_jobs
-    print('sampling jobs from batch task & batch instance ...')
+    print('sampling jobs from batch_task.csv & batch_instance.csv ...')
 
     df_len_batch_task = df_batch_task.shape[0]
     idx = 0
@@ -57,7 +58,11 @@ def sample_jobs(batch_task_path=BATCH_TASK_PATH, selected_batch_task_path=SELECT
         # 将含有两个及以上 task 的 jobs 挑选出来
         job_name = df_batch_task.loc[idx, 'job_name']  # 每个 job 都是一个 DAG
 
-        if not exist_in_batch_instance(job_name):
+        found, min_job_name_num = exist_in_batch_instance(job_name)
+        print(found)
+        print(min_job_name_num)
+        if not found or int(re.findall(r"\d+\.?\d*", job_name)[0]) < min_job_name_num:
+            idx = idx + 1
             continue
 
         task_nums = 0  # 该 job 包含的 task 数量
@@ -90,7 +95,7 @@ def sample_jobs(batch_task_path=BATCH_TASK_PATH, selected_batch_task_path=SELECT
         bar.update(percent)
 
         # 如果已经满足了采样数量，提前终止程序
-        if sum(counters) == all:
+        if sum(counters) == sum(required_num):
             break
 
     sampled_jobs.to_csv(selected_batch_task_path, index=False)
@@ -107,33 +112,54 @@ def exist_in_batch_instance(job_name, batch_instance_path=BATCH_INSTANCE_PATH,
     :return: 将查找结果输出到文件中
     """
 
-    columns = ['instance_name', 'task_name', 'job_name', 'task_type', 'status',
-               'start_time', 'end_time', 'machine_id', 'seq_no', 'total_seq_no',
-               'cpu_avg', 'cpu_max', 'mem_avg', 'mem_max']
-    df_batch_instance = pd.read_csv(batch_instance_path, header=None, names=columns)
+    if not os.path.exists(selected_batch_instance_path):
+        columns = ['instance_name', 'task_name', 'job_name', 'task_type', 'status',
+                   'start_time', 'end_time', 'machine_id', 'seq_no', 'total_seq_no',
+                   'cpu_avg', 'cpu_max', 'mem_avg', 'mem_max']
+        df = pd.DataFrame(columns=columns)
+        df.to_csv(selected_batch_instance_path, index=False)
 
-    sampled_jobs = df_batch_instance.loc[0: 0]  # 变量 sampled_jobs 用于保存采样出来的 sampled_jobs
+    ret, flag = False, False
+    chunk_size, idx = 3, 0
+    # 若能在 batch_instance.csv 中找到的最小的 job_name_num_in_batch_task, 仍然比 batch_task 中的大, 提前返回
+    job_name_num_in_batch_instance = 0
+    job_name_num_in_batch_task = int(re.findall(r"\d+\.?\d*", job_name)[0])
+    for chunk in pd.read_csv(batch_instance_path, header=None, chunksize=chunk_size):
+        # print(chunk)
+        sampled_jobs = pd.DataFrame()  # 变量 sampled_jobs 用于保存采样出来的 sampled_jobs
 
-    df_len_batch_instance = df_batch_instance.shape[0]
-    idx = 0
+        # 在 batch_instance.csv 中查找名为 job_name 的 job, 将其挑选出来, 保存到文件中
+        i = 0
+        while i < chunk_size:
+            instance_nums = 0  # 计数：所有 job name 相同的
 
-    # 在 batch_instance.csv 中查找名为 job_name 的 job, 将其挑选出来
-    while idx < df_len_batch_instance:
-        instance_nums = 0
-        while (idx + instance_nums) < df_len_batch_instance \
-                and job_name == df_batch_instance.loc[idx + instance_nums, 'job_name']:
-            instance_nums = instance_nums + 1
-        if instance_nums == 0:
-            idx = idx + 1
+            print(job_name + " - " + chunk.loc[idx + i + instance_nums, 2])
+
+            # 若 job_name_num_in_batch_task < job_name_num_in_batch_instance 可以提前终止
+            job_name_num_in_batch_instance = int(re.findall(r"\d+\.?\d*", chunk.loc[idx + i + instance_nums, 2])[0])
+            if job_name_num_in_batch_task < job_name_num_in_batch_instance:
+                return ret, job_name_num_in_batch_instance
+
+            while job_name == chunk.loc[idx + i + instance_nums, 2]:
+                instance_nums += 1
+            if instance_nums == 0:  # 当前条目不符，查找下一个条目
+                i += 1
+            else:  # 找到了条件相符的 job, 将其保存下来
+                sampled_jobs = pd.concat([sampled_jobs, chunk.loc[idx + i: idx + i + instance_nums - 1].copy()], axis=0)
+                i += instance_nums
+                idx += i
+                job_name_num_in_batch_instance = job_name_num_in_batch_task
+                # if i < chunk_size:
+                #     break
+
+        if not sampled_jobs.empty:
+            with open(selected_batch_instance_path, 'a') as f:
+                sampled_jobs.to_csv(f, header=False)
+            ret = True  # 如果 batch_instance 中有和 batch_task 一致的 task_name, 返回 True
         else:
-            sampled_jobs = pd.concat([sampled_jobs, df_batch_instance.loc[idx: idx + instance_nums - 1].copy()], axis=0)
-            break
+            idx = idx + chunk_size
 
-    if not sampled_jobs.empty:
-        sampled_jobs.to_csv(selected_batch_instance_path, index=False)
-        return True  # 如果 batch_instance 中有和 batch_task 一致的 task_name, 返回 True
-    else:
-        return False
+    return ret, job_name_num_in_batch_instance
 
 
 def get_topological_order(selected_DAG_path=SELECTED_DAG_PATH, sorted_DAG_path=SORTED_DAG_PATH):
@@ -227,3 +253,8 @@ def get_topological_order(selected_DAG_path=SELECTED_DAG_PATH, sorted_DAG_path=S
         bar.update(percent)
 
     df.to_csv(sorted_DAG_path, index=False)
+
+
+if __name__ == "__main__":
+    sample_jobs()
+    # exist_in_batch_instance("j_1")
