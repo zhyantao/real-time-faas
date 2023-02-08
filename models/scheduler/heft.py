@@ -1,590 +1,413 @@
-"""Core code to be used for scheduling a task DAG with HEFT"""
+"""
+Implement the HEFT algorithm.
+This script refers the code from https://github.com/mrocklin/heft/.
 
-import argparse
-import logging
-from collections import deque, namedtuple
-from enum import Enum
-from math import inf
-from types import SimpleNamespace
+Cast of Characters:
 
-import matplotlib.pyplot as plt
-import networkx as nx
+job - the job to be allocated
+orders - dict {agent: [jobs-run-on-agent-in-order]}，可理解为 agent 上的 event 列表
+jobson - dict {job: agent-on-which-job-is-run}，可理解为运行 job 的 agent 列表
+prev - dict {job: (jobs which directly precede job)}，可理解为 job 的直接前驱列表
+succ - dict {job: (jobs which directly succeed job)}，可理解为 job 的直接后继列表
+comp_cost - function :: job, agent -> time to compute job on agent
+comm_cost - function :: job, job, agent, agent -> time to transfer results
+                        of one job needed by another between two agents
+
+(function ---> job, edge server ---> agent)
+"""
+import random
+from collections import namedtuple
+from functools import partial
+from itertools import chain
+
 import numpy as np
+import pandas as pd
 
-logger = logging.getLogger('heft')
-
-ScheduleEvent = namedtuple('ScheduleEvent', 'task start end proc')
-
-"""
-Default computation matrix - taken from Topcuoglu 2002 HEFT paper
-computation matrix: v x q matrix with v tasks and q PEs
-计算成本矩阵（默认）：v 行 q 列，v 表示有 v 个任务，q 个处理器
-"""
-W0 = np.array([
-    [14, 16, 9],
-    [13, 19, 18],
-    [11, 13, 19],
-    [13, 8, 17],
-    [12, 13, 10],
-    [13, 16, 9],
-    [7, 15, 11],
-    [5, 11, 14],
-    [18, 12, 20],
-    [21, 7, 16]
-])
-
-"""
-Default communication matrix - not listed in Topcuoglu 2002 HEFT paper
-communication matrix: q x q matrix with q PEs
-
-Note that a communication cost of 0 is used for a given processor to itself
-通信成本矩阵：q 行 q 列，表示 q 个处理器两两之间的通信延迟
-"""
-C0 = np.array([
-    [0, 1, 1],
-    [1, 0, 1],
-    [1, 1, 0]
-])
-
-"""
-Default communication startup cost vector
-通信冷启动延迟矩阵：q 列，表示每个处理器启动通信模块的延迟
-"""
-L0 = np.array([0, 0, 0])
+from models.utils.dataset import reverse_dict
+from models.utils.parameters import *
+from models.utils.scenario import bar, para
 
 
-# 任务排序的依据：平均值、最坏值、最优值或者 EDP
-class RankMetric(Enum):
-    MEAN = "MEAN"
-    WORST = "WORST"
-    BEST = "BEST"
-    EDP = "EDP"  # energy-delay product
-
-
-# 猜测：OpMode 是任务执行后的时间依据
-class OpMode(Enum):
-    EFT = "EFT"
-    EDP_REL = "EDP RELATIVE"
-    EDP_ABS = "EDP ABSOLUTE"
-    ENERGY = "ENERGY"
-
-
-def schedule_dag(dag, computation_matrix=W0, communication_matrix=C0, communication_startup=L0, proc_schedules=None,
-                 time_offset=0, relabel_nodes=True, rank_metric=RankMetric.MEAN, **kwargs):
+def get_agents():
     """
-    Given an application DAG and a set of matrices specifying PE (processing elements) bandwidth and (task, pe) execution times,
-    computes the HEFT schedule of that DAG onto that set of PEs
-    根据所提供的的数据，将 task 调度到 processing elements (处理单元) 上。
+    Agents start from zero.
 
-    :param dag: 任务序列，DAG 图
-    :param computation_matrix: 计算成本矩阵
-    :param communication_matrix: 通信成本矩阵
-    :param communication_startup: 通信模块启动延迟
-    :param proc_schedules: 现有的 processor 列表
-    :param time_offset: 不太清楚
-    :param relabel_nodes: 是否需要重新对设置标签
-    :param rank_metric: 指明在对 task 进行优先级排序是依据的标准
-    :param kwargs: 附加参数，可包含 power_dict
-    :return: HEFT 算法的调度结果（将任务分配到处理器上）
+    作者设置的默认参数，共 4 台 server。
+    作者代码中的 server 和 agent 是同一个东西，都是能够运行代码的处理单元。
+    function 和 task 是同一个东西，都代表 FaaS 中的一个函数实例。
     """
+    servers = [str(n) for n in range(para.get_server_num())]
+    return ''.join(servers)
 
-    if proc_schedules == None:
-        proc_schedules = {}
 
-    _self = {
-        'computation_matrix': computation_matrix,
-        'communication_matrix': communication_matrix,
-        'communication_startup': communication_startup,
-        'task_schedules': {},
-        'proc_schedules': proc_schedules,
-        'numExistingJobs': 0,
-        'time_offset': time_offset,
-        'root_node': None
-    }
-    _self = SimpleNamespace(**_self)
+all_agents = get_agents()
+Event = namedtuple('Event', 'job start end')
 
-    # 统计需要调度的任务数量
-    for proc in proc_schedules:
-        _self.numExistingJobs = _self.numExistingJobs + len(proc_schedules[proc])
 
-    if relabel_nodes:
-        dag = nx.relabel_nodes(dag, dict(
-            map(lambda node: (node, node + _self.numExistingJobs), list(dag.nodes()))))
-    else:
-        # Negates any offsets that would have been needed had the jobs been relabeled
-        _self.numExistingJobs = 0
+class HEFT:
+    def __init__(self, G, bw, pp, simple_paths, reciprocals_list, proportions_list, pp_required, data_stream):
+        # get the generated edge computing scenario
+        self.G, self.bw, self.pp = G, bw, pp
+        self.simple_paths, self.reciprocals_list, self.proportions_list = simple_paths, reciprocals_list, proportions_list
+        # get the generated functions' requirements
+        self.pp_required, self.data_stream = pp_required, data_stream
 
-    for i in range(_self.numExistingJobs + len(_self.computation_matrix)):
-        _self.task_schedules[i] = None
-    for i in range(len(_self.communication_matrix)):
-        if i not in _self.proc_schedules:
-            _self.proc_schedules[i] = []
+    def get_response_time(self, sorted_DAG_path=BATCH_TASK_TOPOLOGICAL_ORDER_PATH):
+        """
+        Calculate the overall finish time of all DAGs achieved by HEFT algorithm.
+        """
+        if not os.path.exists(sorted_DAG_path):
+            print('DAGs\' topological order has not been obtained! Please get topological order firstly.')
+            return
 
-    for proc in proc_schedules:
-        for schedule_event in proc_schedules[proc]:
-            _self.task_schedules[schedule_event.task] = schedule_event
+        df = pd.read_csv(sorted_DAG_path)
+        df_len = df.shape[0]
+        idx = 0
 
-    # Nodes with no successors cause any expression to be empty
-    # 无后继节点将导致所有表达式为空
-    root_node = [node for node in dag.nodes() if not any(True for _ in dag.predecessors(node))]
-    assert len(root_node) == 1, f"Expected a single root node, found {len(root_node)}"  # 只允许有一个根节点
-    root_node = root_node[0]
-    _self.root_node = root_node
+        makespan_of_all_DAGs = 0
+        DAGs_deploy = []
+        DAGs_orders = []
 
-    # 核心代码部分：计算 Rank-U
-    logger.debug("====================== Performing Rank-U Computation ======================\n")
-    _compute_ranku(_self, dag, metric=rank_metric, **kwargs)
+        required_num = REQUIRED_NUM
+        all_DAG_num = sum(required_num)
+        calculated_num = 0
+        print('\nGetting makespan for %d DAGs by HEFT algorithm ...' % all_DAG_num)
+        while idx < df_len:
+            # get a DAG
+            DAG_name = df.loc[idx, 'job_name']
+            DAG_len = 0
+            while (idx + DAG_len < df_len) and (df.loc[idx + DAG_len, 'job_name'] == DAG_name):
+                DAG_len = DAG_len + 1
+            DAG = df.loc[idx: idx + DAG_len]  # DAG 是 DataFrame 格式的数据
 
-    # 对每个 (task, processor) 对计算最早完成时间，并按照降序的 Rank-U 将任务调度调度到处理器
-    logger.debug("====================== "
-                 "Computing EFT for each (task, processor) pair and scheduling in order of decreasing Rank-U "
-                 "======================")
-    sorted_nodes = sorted(dag.nodes(), key=lambda node: dag.nodes()[node]['ranku'],
-                          reverse=True)  # 调用 Python 默认的包，逆序 Rank-U
-    # 如果逆序后第一个节点不是 root，那么将 root 跟第一个交换位置，以便能够有程序入口
-    if sorted_nodes[0] != root_node:
-        logger.debug("Root node was not the first node in the sorted list. "
-                     "Must be a zero-cost and zero-weight placeholder node. Rearranging it so it is scheduled first\n")
-        idx = sorted_nodes.index(root_node)
-        sorted_nodes[idx], sorted_nodes[0] = sorted_nodes[0], sorted_nodes[idx]
-    # 将任务调度到处理器上
-    for node in sorted_nodes:
-        if _self.task_schedules[node] is not None:
-            continue
-        minTaskSchedule = ScheduleEvent(node, inf, inf, -1)
-        minEDP = inf
-        op_mode = kwargs.get("op_mode", OpMode.EFT)
+            # 设置 CPU 需求 和 数据大小
+            DAG_pp_required = self.pp_required[:DAG_len]  # 将 pp_required 复制到 DAG_pp_required
+            DAG_data_stream = self.data_stream[:DAG_len]
 
-        # 作者的创新点主要集中于 if op_mode 这几个代码
-        # 参考作者发表的期刊，已经提出的两个算法是 EDP_ABS 和 EDP_REL，其他改进还没有实现
-        if op_mode == OpMode.EDP_ABS:
-            assert "power_dict" in kwargs, \
-                "In order to perform EDP-based processor assignment, a power_dict is required"
+            # 获取 DAG 信息
+            funcs_num = HEFT.get_funcs_num(DAG, idx, DAG_len)  # 获取 funcs 编号。注意：代码中的 funcs = tasks，func = task
+            succ = HEFT.get_succ(DAG, idx, DAG_len)  # dict 类型
+            comp_cost_array = self.get_comp_cost(funcs_num, DAG_pp_required)  # 获取计算成本
+            comm_cost_array = self.get_comm_cost(succ, DAG_data_stream)  # 获取通信成本
 
-            # 这里没看懂在做什么
-            for proc in range(len(communication_matrix)):
-                taskschedule = _compute_eft(_self, dag, node, proc)  # 计算最早完成时间
-                edp_t = ((taskschedule.end - taskschedule.start) ** 2) * kwargs["power_dict"][node][proc]
-                if (edp_t < minEDP):
-                    minEDP = edp_t
-                    minTaskSchedule = taskschedule
-                elif (edp_t == minEDP and taskschedule.end < minTaskSchedule.end):
-                    minTaskSchedule = taskschedule
+            # 根据计算成本和通信成本将 task 分散到 server 上
+            orders, jobson, makespan = HEFT.schedule(succ, all_agents,
+                                                     HEFT.comp_cost, comp_cost_array,
+                                                     HEFT.comm_cost, comm_cost_array)
 
-        elif op_mode == OpMode.EDP_REL:
-            assert "power_dict" in kwargs, \
-                "In order to perform EDP-based processor assignment, a power_dict is required"
-            taskschedules = []
-            minScheduleStart = inf
+            makespan_of_all_DAGs += makespan
+            DAGs_deploy.append(jobson)
+            DAGs_orders.append(orders)
 
-            for proc in range(len(communication_matrix)):
-                taskschedules.append(_compute_eft(_self, dag, node, proc))
-                if taskschedules[proc].start < minScheduleStart:
-                    minScheduleStart = taskschedules[proc].start
+            calculated_num += 1
+            percent = calculated_num / float(all_DAG_num) * 100
+            # for overflow
+            if percent > 100:
+                percent = 100
+            bar.update(percent)
+            idx += DAG_len
 
-            for taskschedule in taskschedules:
-                # Use the makespan relative to the earliest potential assignment to encourage load balancing
-                edp_t = ((taskschedule.end - minScheduleStart) ** 2) * kwargs["power_dict"][node][taskschedule.proc]
-                if (edp_t < minEDP):
-                    minEDP = edp_t
-                    minTaskSchedule = taskschedule
-                elif (edp_t == minEDP and taskschedule.end < minTaskSchedule.end):
-                    minTaskSchedule = taskschedule
+        print('The overall makespan achieved by HEFT: %f second' % makespan_of_all_DAGs)
+        print('The average makespan: %f second' % (makespan_of_all_DAGs / sum(REQUIRED_NUM)))
+        return DAGs_orders, DAGs_deploy
 
-        elif op_mode == OpMode.ENERGY:
-            assert False, "Feature not implemented"
+    @staticmethod
+    def get_funcs_num(DAG, idx, DAG_len):
+        """
+        Get each function's number sequentially for the given DAG.
 
-        else:
-            for proc in range(len(communication_matrix)):
-                taskschedule = _compute_eft(_self, dag, node, proc)
-                if (taskschedule.end < minTaskSchedule.end):
-                    minTaskSchedule = taskschedule
+        获取给定 DAG 中所有的 task 编号
+        """
+        funcs_num = []
+        for i in range(DAG_len):
+            name_str_list = DAG.loc[i + idx, 'task_name'].strip().split('_')
+            func_str_len = len(name_str_list[0])
+            func_num = int(name_str_list[0][1:func_str_len])
+            funcs_num.append(func_num)
+        return funcs_num
 
-        _self.task_schedules[node] = minTaskSchedule
-        _self.proc_schedules[minTaskSchedule.proc].append(minTaskSchedule)
-        _self.proc_schedules[minTaskSchedule.proc] = sorted(
-            _self.proc_schedules[minTaskSchedule.proc],
-            key=lambda schedule_event: (schedule_event.end, schedule_event.start))
-        if logger.isEnabledFor(logging.DEBUG):
-            logger.debug('\n')
-            for proc, jobs in _self.proc_schedules.items():
-                logger.debug(f"Processor {proc} has the following jobs:")
-                logger.debug(f"\t{jobs}")
-            logger.debug('\n')
-        for proc in range(len(_self.proc_schedules)):
-            for job in range(len(_self.proc_schedules[proc]) - 1):
-                first_job = _self.proc_schedules[proc][job]
-                second_job = _self.proc_schedules[proc][job + 1]
-                assert first_job.end <= second_job.start, \
-                    f"Jobs on a particular processor must finish before the next can begin, but job " \
-                    f"{first_job.task} on processor {first_job.proc} ends at {first_job.end} and its successor " \
-                    f"{second_job.task} starts at {second_job.start}"
+    @staticmethod
+    def get_succ(DAG, idx, DAG_len):
+        """
+        Get a DAG structure from the dataset. For example: for DAG
+            "M1,12846.0,j_3,1,Terminated,157213,157295,100.0,0.3
+            R2_1,371.0,j_3,1,Terminated,157297,157322,100.0,0.49
+            R3,371.0,j_3,1,Terminated,157297,157325,100.0,0.49
+            M4,1.0,j_3,1,Terminated,157322,157328,100.0,0.39
+            R5,1.0,j_3,1,Terminated,157326,157330,100.0,0.39
+            M6,1.0,j_3,1,Terminated,157326,157330,100.0,0.39
+            M7,1.0,j_3,1,Terminated,157326,157330,100.0,0.39
+            J8_6_7,1111.0,j_3,1,Terminated,157329,157376,100.0,0.59
+            R9,1.0,j_3,1,Terminated,157376,157381,100.0,0.39
+            J10_8_9,1111.0,j_3,1,Terminated,157331,157376,100.0,0.59
+            R11_5_10,1.0,j_3,1,Terminated,157376,157381,100.0,0.39
+            R12_4_11,1.0,j_3,1,Terminated,157376,157381,100.0,0.39
+            R13_2_3_12,1.0,j_3,1,Terminated,157376,157381,100.0,0.39
+            R14_13,1.0,j_3,1,Terminated,157376,157381,100.0,0.39",
+        the output is
+            {1: (2,),
+             2: (13,),
+             3: (13,),
+             4: (12,),
+             5: (11,),
+             6: (8,),
+             7: (8,),
+             8: (10,),
+             9: (10,),
+             10: (11,),
+             11: (12,),
+             12: (13,),
+             13: (14,),
+             14: ()}.
 
-    dict_output = {}
-    for proc_num, proc_tasks in _self.proc_schedules.items():
-        for idx, task in enumerate(proc_tasks):
-            if idx > 0 and (proc_tasks[idx - 1].end - proc_tasks[idx - 1].start > 0):
-                dict_output[task.task] = (
-                    proc_num, idx, [proc_tasks[idx - 1].task])
+        获取 DAG 中所有结点的直接后继
+        """
+        succ_funcs = [[] for _ in range(DAG_len)]
+        for j in range(DAG_len):
+            # 获取函数编号
+            name_str_list = DAG.loc[j + idx, 'task_name'].strip().split('_')
+            name_str_list_len = len(name_str_list)
+            func_str_len = len(name_str_list[0])
+            func_num = int(name_str_list[0][1:func_str_len])
+
+            if name_str_list_len == 1:  # 如果没有依赖其他函数，则跳过
+                pass
+            else:  # 如果依赖其他函数，在其他函数中添加后继
+                for i in range(name_str_list_len - 1):
+                    if name_str_list[i + 1] == '':
+                        continue
+                    dependent_func_num = int(name_str_list[i + 1])
+                    succ_funcs[dependent_func_num - 1].append(func_num)
+        succ = dict()
+        for i in range(DAG_len):
+            succ[i + 1] = tuple(succ_funcs[i])
+        del succ_funcs
+        return succ
+
+    def get_comp_cost(self, funcs_num, DAG_pp_required):
+        """
+        Get computation cost of each function on each server for a given DAG.
+
+        获取编号为 funcs_num 在每个 server 上的计算成本
+        """
+        comp_cost_array = np.zeros((len(funcs_num) + 1, para.get_server_num()))
+        for i in range(len(funcs_num)):
+            func_num = funcs_num[i]
+            comp_cost_array[func_num] = DAG_pp_required[func_num - 1] / self.pp
+        return comp_cost_array
+
+    @staticmethod
+    def comp_cost(job, agent, comp_cost_array):
+        """
+        计算 job 在 agent 上的计算成本（执行时间）
+        """
+        a = int(agent)
+        return comp_cost_array[job][a]
+
+    @staticmethod
+    def w_bar(ni, agents, comp_cost, comp_cost_array):
+        """
+        计算 task_ni 在所有 agents 中的平均计算成本
+        """
+        return sum(comp_cost(ni, agent, comp_cost_array) for agent in agents) / len(agents)
+
+    def get_comm_cost(self, succ, DAG_data_stream):
+        """
+        Get the data transmission cost between any two servers for a given DAG.
+        """
+        # fix the path chosen between any two node
+        fix_path_reciprocals = np.zeros((para.get_server_num(), para.get_server_num()))
+        for n1 in range(para.get_server_num()):
+            for n2 in range(para.get_server_num()):
+                if n1 != n2:
+                    paths_num = len(self.reciprocals_list[n1][n2])
+                    chosen_path = random.randint(0, paths_num - 1)
+                    fix_path_reciprocals[n1][n2] = self.reciprocals_list[n1][n2][chosen_path]
+
+        comm_cost_array = []
+        for dependent_func_num, funcs_num in succ.items():
+            if funcs_num is ():
+                pass
             else:
-                dict_output[task.task] = (proc_num, idx, [])
+                trans_size = DAG_data_stream[dependent_func_num - 1]
+                trans_cost = np.zeros((para.get_server_num(), para.get_server_num()))  # n * n 的矩阵
+                for n1 in range(para.get_server_num()):
+                    for n2 in range(para.get_server_num()):
+                        if n1 != n2:
+                            trans_cost[n1][n2] = trans_size * fix_path_reciprocals[n1][n2]
+                comm_cost_array.append([dependent_func_num, funcs_num, trans_cost])
+        del fix_path_reciprocals
+        return comm_cost_array
 
-    return _self.proc_schedules, _self.task_schedules, dict_output
+    @staticmethod
+    def comm_cost(ni, nj, A, B, comm_cost_array):
+        """
+        Get the data transmission cost from ni to nj when ni is placed on A and nj is placed on B.
 
+        计算 agent_A 上的 job_ni 和 agent_B 上的 job_nj 之间的通信成本。
+        """
+        a1 = int(A)
+        a2 = int(B)
+        for d in range(len(comm_cost_array)):
+            if ni == comm_cost_array[d][0]:
+                funcs_num = comm_cost_array[d][1]
+                for f in range(len(funcs_num)):
+                    if nj == funcs_num[f]:
+                        return comm_cost_array[d][2][a1][a2]
+        return 0.
 
-def _scale_by_operating_freq(_self, **kwargs):
-    if "operating_freqs" not in kwargs:
-        logger.debug("No operating frequency argument is present, assuming at max frequency and values are unchanged")
-        return
-    return  # TODO
-    # for pe_num, freq in enumerate(kwargs["operating_freqs"]):
-    # _self.computation_matrix[:, pe_num] = _self.computation_matrix[:, pe_num] * (1 + compute_DVFS_performance_slowdown(pe_num, freq))
+    @staticmethod
+    def c_bar(ni, nj, agents, comm_cost, comm_cost_array):
+        """
+        计算 task_ni 和 task_nj 在所有 agents 之间的平均通信成本
+        """
+        n = len(agents)
+        if n == 1:
+            return 0
+        n_pairs = para.get_n_pairs()
+        return 1. * sum(comm_cost(ni, nj, a1, a2, comm_cost_array) for a1 in agents for a2 in agents
+                        if a1 != a2) / n_pairs
 
+    @staticmethod
+    def ranku(ni, agents, succ, comp_cost, comm_cost, comp_cost_array, comm_cost_array):
+        """
+        Rank of job.
+        This code is designed to mirror the wikipedia entry.
+        Please see https://en.wikipedia.org/wiki/Heterogeneous_Earliest_Finish_Time for details.
 
-def _compute_ranku(_self, dag, metric=RankMetric.MEAN, **kwargs):
-    """
-    Uses a basic BFS approach to traverse upwards through the graph assigning ranku along the way
-    使用广度优先遍历算法对任务分配优先级
-    输入：DAG，使用平均值计算优先级，其他参数
-    输出：通过 nx 包，将计算优先级的计算结果保存到 dag 图中
-    """
+        对 task_ni 计算优先级，公式参考 https://en.wikipedia.org/wiki/Heterogeneous_Earliest_Finish_Time
+        """
+        # 使用偏函数固定某些参数，使调用更方便
+        rank = partial(HEFT.ranku, comp_cost=comp_cost, comm_cost=comm_cost,
+                       succ=succ, agents=agents, comp_cost_array=comp_cost_array, comm_cost_array=comm_cost_array)
+        w = partial(HEFT.w_bar, agents=agents, comp_cost=comp_cost, comp_cost_array=comp_cost_array)
+        c = partial(HEFT.c_bar, agents=agents, comm_cost=comm_cost, comm_cost_array=comm_cost_array)
 
-    # 如果 node 没有后继，any 返回 false -> if not 返回 true -> terminal_node 统计了后继节点
-    # 如果 node 有后继，any 返回 true -> if not 返回 false -> terminal_node = []
-    terminal_node = [node for node in dag.nodes() if not any(True for _ in dag.successors(node))]
-    # terminal_node 应当只有一个后继（因为这是出口函数）
-    assert len(terminal_node) == 1, f"Expected a single terminal node, found {len(terminal_node)}"
-    terminal_node = terminal_node[0]
-
-    # TODO: Should this be configurable?
-    # avgCommunicationCost = np.mean(_self.communication_matrix[np.where(_self.communication_matrix > 0)])
-    diagonal_mask = np.ones(_self.communication_matrix.shape, dtype=bool)  # 对角线掩膜
-    np.fill_diagonal(diagonal_mask, 0)  # 将对角线填充为 0，其余保持 1，表示这是一个全连接网络
-
-    # 计算平均通信成本
-    avgCommunicationCost = np.mean(_self.communication_matrix[diagonal_mask]) + np.mean(_self.communication_startup)
-    for edge in dag.edges():
-        logger.debug(
-            f"Assigning {edge}'s average weight based on average communication cost. "
-            f"{float(dag.get_edge_data(*edge)['weight'])} => {float(dag.get_edge_data(*edge)['weight']) / avgCommunicationCost}")
-        nx.set_edge_attributes(dag, {edge: float(dag.get_edge_data(*edge)['weight']) / avgCommunicationCost},
-                               'avgweight')
-
-    # Utilize a masked array so that np.mean, etc., calculations ignore the entries that are inf
-    # 使用掩码数组，以便 np.mean 等计算忽略 inf 项
-    comp_matrix_masked = np.ma.masked_where(_self.computation_matrix == inf, _self.computation_matrix)
-
-    nx.set_node_attributes(dag, {terminal_node: np.mean(comp_matrix_masked[terminal_node - _self.numExistingJobs])},
-                           "ranku")
-
-    # 访问队列，将 terminal_node 的前驱节点添加到 双端队列 中
-    visit_queue = deque(dag.predecessors(terminal_node))
-    while visit_queue:
-        node = visit_queue.pop()
-        while _node_can_be_processed(_self, dag, node) is not True:
-            try:
-                node2 = visit_queue.pop()
-            except IndexError:
-                raise RuntimeError(
-                    f"Node {node} cannot be processed, and there are no other nodes in the queue to process instead!")
-            visit_queue.appendleft(node)
-            node = node2
-
-        logger.debug(f"Assigning ranku for node: {node}")
-        if metric == RankMetric.MEAN:
-            max_successor_ranku = -1
-            for succnode in dag.successors(node):
-                logger.debug(f"\tLooking at successor node: {succnode}")
-                logger.debug(
-                    f"\tThe edge weight from node {node} to node {succnode} is {dag[node][succnode]['avgweight']},"
-                    f" and the ranku for node {node} is {dag.nodes()[succnode]['ranku']}")
-                val = float(dag[node][succnode]['avgweight']) + dag.nodes()[succnode]['ranku']
-                if val > max_successor_ranku:
-                    max_successor_ranku = val
-            assert max_successor_ranku >= 0, \
-                f"Expected maximum successor ranku to be greater or equal to 0 but was {max_successor_ranku}"
-            nx.set_node_attributes(dag,
-                                   {node: np.mean(
-                                       comp_matrix_masked[node - _self.numExistingJobs]) + max_successor_ranku},
-                                   "ranku")
-
-        elif metric == RankMetric.WORST:
-            max_successor_ranku = -1
-            max_node_idx = np.where(
-                comp_matrix_masked[node - _self.numExistingJobs] == max(
-                    comp_matrix_masked[node - _self.numExistingJobs])
-            )[0][0]
-            logger.debug(
-                f"\tNode {node} has maximum computation cost of "
-                f"{comp_matrix_masked[node - _self.numExistingJobs][max_node_idx]} on processor {max_node_idx}")
-            for succnode in dag.successors(node):
-                logger.debug(f"\tLooking at successor node: {succnode}")
-                max_succ_idx = np.where(comp_matrix_masked[succnode - _self.numExistingJobs] == max(
-                    comp_matrix_masked[succnode - _self.numExistingJobs]))[0][0]
-                logger.debug(
-                    f"\tNode {succnode} has maximum computation cost of "
-                    f"{comp_matrix_masked[succnode - _self.numExistingJobs][max_succ_idx]} on processor {max_succ_idx}")
-                val = _self.communication_matrix[max_node_idx,
-                max_succ_idx] + dag.nodes()[succnode]['ranku']
-                if val > max_successor_ranku:
-                    max_successor_ranku = val
-            assert max_successor_ranku >= 0, \
-                f"Expected maximum successor ranku to be greater or equal to 0 but was {max_successor_ranku}"
-            nx.set_node_attributes(dag, {
-                node: comp_matrix_masked[node - _self.numExistingJobs, max_node_idx] + max_successor_ranku}, "ranku")
-
-        elif metric == RankMetric.BEST:
-            min_successor_ranku = inf
-            min_node_idx = np.where(comp_matrix_masked[node - _self.numExistingJobs] == min(
-                comp_matrix_masked[node - _self.numExistingJobs]))[0][0]
-            logger.debug(
-                f"\tNode {node} has minimum computation cost on processor {min_node_idx}")
-            for succnode in dag.successors(node):
-                logger.debug(f"\tLooking at successor node: {succnode}")
-                min_succ_idx = np.where(comp_matrix_masked[succnode - _self.numExistingJobs] == min(
-                    comp_matrix_masked[succnode - _self.numExistingJobs]))[0][0]
-                logger.debug(
-                    f"\tThis successor node has minimum computation cost on processor {min_succ_idx}")
-                val = _self.communication_matrix[min_node_idx,
-                min_succ_idx] + dag.nodes()[succnode]['ranku']
-                if val < min_successor_ranku:
-                    min_successor_ranku = val
-            assert min_successor_ranku >= 0, \
-                f"Expected minimum successor ranku to be greater or equal to 0 but was {min_successor_ranku}"
-            nx.set_node_attributes(dag, {
-                node: comp_matrix_masked[node - _self.numExistingJobs, min_node_idx] + min_successor_ranku}, "ranku")
-
-        elif metric == RankMetric.EDP:
-            assert "power_dict" in kwargs, "In order to perform EDP-based Rank Method, a power_dict is required"
-            power_dict = kwargs.get("power_dict", np.array([[]]))
-            power_dict_masked = np.ma.masked_where(
-                power_dict[node] == inf, power_dict[node])
-            max_successor_ranku = -1
-            for succnode in dag.successors(node):
-                logger.debug(f"\tLooking at successor node: {succnode}")
-                logger.debug(
-                    f"\tThe edge weight from node {node} to node {succnode} is "
-                    f"{dag[node][succnode]['avgweight']}, and the ranku for node {node} is "
-                    f"{dag.nodes()[succnode]['ranku']}")
-                val = float(dag[node][succnode]['avgweight']) + \
-                      dag.nodes()[succnode]['ranku']
-                if val > max_successor_ranku:
-                    max_successor_ranku = val
-            assert max_successor_ranku >= 0, \
-                f"Expected maximum successor ranku to be greater or equal to 0 but was {max_successor_ranku}"
-            avg_edp = np.mean(
-                comp_matrix_masked[node - _self.numExistingJobs]) ** 2 * np.mean(power_dict_masked)
-            nx.set_node_attributes(
-                dag, {node: avg_edp + max_successor_ranku}, "ranku")
-
+        # 递归调用上面定义的偏函数
+        if ni in succ and succ[ni]:  # 若 ni 有后继？这么理解对吗
+            return w(ni) + max(c(ni, nj) + rank(nj) for nj in succ[ni])
         else:
-            raise RuntimeError(
-                f"Unrecognied Rank-U metric {metric}, unable to compute upward rank")
+            return w(ni)
 
-        visit_queue.extendleft([prednode for prednode in dag.predecessors(node) if prednode not in visit_queue])
+    @staticmethod
+    def end_time(job, events):
+        """
+        End time of job in list of events.
 
-    logger.debug("")
-    for node in dag.nodes():
-        logger.debug(f"Node: {node}, Rank U: {dag.nodes()[node]['ranku']}")
+        在 events 列表中搜索 job 的结束时间。
+        """
+        for e in events:
+            if e.job == job:
+                return e.end
 
+    @staticmethod
+    def find_first_gap(agent_orders, desired_start_time, duration):
+        """
+        Find the first gap in an agent's list of jobs. The gap must be after `desired_start_time`
+        and of length at least `duration`.
 
-def _node_can_be_processed(_self, dag, node):
-    """
-    Validates that a node is able to be processed in Rank U calculations. Namely, that all of its successors have
-    their Rank U values properly assigned. Otherwise, errors can occur in processing DAGs of the form
-    A
-    |\
-    | B
-    |/
-    C
-    Where C enqueues A and B, A is popped off, and it is unable to be processed because B's Rank U has not been computed
+        将 job 插入到最先匹配的时间间隙中（该间隙的开始时间 <= desired_start_time，且间隙的长度 >= duration）
+        返回最早的可插入时间
+        """
+        # 如果 agent 中没有需要执行的 orders，那么可直接运行 job，无需等待
+        if (agent_orders is None) or (len(agent_orders)) == 0:
+            return desired_start_time
 
-    判断给 node 分配的 Rank-U 优先级是否有效。换句话说，它所有的后继节点都被分配了合适的 Rank-U 值。否则，在处理类似如下所示的 DAG 时会出现问题
-        A
-        |\
-        | B
-        |/
-        C
-    节点 C 依赖于 A 和 B，如果 A 被弹出，将无法继续处理，因为 B 的 Rank-U 还没有被计算
-    """
-    for succnode in dag.successors(node):
-        if 'ranku' not in dag.nodes()[succnode]:
-            logger.debug(
-                f"Attempted to compute the Rank U for node {node} but found that it has an unprocessed successor "
-                f"{dag.nodes()[succnode]}. Will try with the next node in the queue")
-            return False
-    return True
+        # Try to fit it in between each pair of Events, but first prepend a
+        # dummy Event which ends at time 0 to check for gaps before any real
+        # Event starts.
+        # 在每两个相邻的 event 中尝试插入当前任务
+        # 在 agent_orders 之前插入一个 dummy event，方便在任何真实 event 开始之前检查间隙
+        a = chain([Event(None, None, 0)], agent_orders[:-1])  # chain('ABC', 'DEF') --> A B C D E F
+        for e1, e2 in zip(a, agent_orders):  # zip([1, 2], ['sugar', 'spice']) --> (1, 'sugar'), (2, 'spice')
+            earliest_start = max(desired_start_time, e1.end)
+            if e2.start - earliest_start > duration:
+                return earliest_start
 
+        # No gaps found: put it at the end, or whenever the task is ready
+        return max(agent_orders[-1].end, desired_start_time)
 
-def _compute_eft(_self, dag, node, proc):
-    """
-    Computes the EFT of a particular node if it were scheduled on a particular processor.
-    It does this by first looking at all predecessor tasks of a particular node and determining the earliest time
-    a task would be ready for execution (ready_time).
-    It then looks at the list of tasks scheduled on this particular processor and determines the earliest time
-    (after ready_time) a given node can be inserted into this processor's queue.
+    @staticmethod
+    def start_time(agent, job, orders, jobson, prev, comm_cost, comm_cost_array, comp_cost, comp_cost_array):
+        """
+        Earliest time that job can be executed on agent.
 
-    如果某个 node 被调度到了处理器上，计算它的 EFT。
-    - 首先遍历该 node 所有的前置任务，确定能够执行的最早时间
-    - 然后在这个 processor 上遍历所有需要执行的任务，确定能够在该 processor 上最早执行的时间，它可以备插入到该 processor 的任务队列中
-    """
-    ready_time = _self.time_offset
-    logger.debug(f"Computing EFT for node {node} on processor {proc}")
-    for prednode in list(dag.predecessors(node)):
-        predjob = _self.task_schedules[prednode]
-        assert predjob != None, f"Predecessor nodes must be scheduled before their children, but node {node} " \
-                                f"has an unscheduled predecessor of {prednode}"
-        logger.debug(
-            f"\tLooking at predecessor node {prednode} with job {predjob} to determine ready time")
-        if _self.communication_matrix[predjob.proc, proc] == 0:
-            ready_time_t = predjob.end
+        计算 job 能够在 agent 上执行的最早时间
+        """
+        duration = comp_cost(job, agent, comp_cost_array)  # 获取 job 在 agent 上的计算成本
+
+        # 如果直接前驱中包含 job 说明需要等待前驱执行完毕，才能执行 job
+        if job in prev:
+            comm_ready = max([HEFT.end_time(p, orders[jobson[p]])  # p 在 jobson[p] 上的完成时间
+                              # agent 上的 p 和 jobson[p] 上的 job 的通信成本
+                              + comm_cost(p, job, agent, jobson[p], comm_cost_array)
+                              for p in prev[job]])
         else:
-            ready_time_t = predjob.end + dag[predjob.task][node]['weight'] / _self.communication_matrix[
-                predjob.proc, proc] + _self.communication_startup[predjob.proc]
-        logger.debug(
-            f"\tNode {prednode} can have its data routed to processor {proc} by time {ready_time_t}")
-        if ready_time_t > ready_time:
-            ready_time = ready_time_t
-    logger.debug(f"\tReady time determined to be {ready_time}")
+            comm_ready = 0
 
-    computation_time = _self.computation_matrix[node - _self.numExistingJobs, proc]
-    job_list = _self.proc_schedules[proc]
-    for idx in range(len(job_list)):
-        prev_job = job_list[idx]
-        if idx == 0:
-            if (prev_job.start - computation_time) - ready_time > 0:
-                logger.debug(
-                    f"Found an insertion slot before the first job {prev_job} on processor {proc}")
-                job_start = ready_time
-                min_schedule = ScheduleEvent(
-                    node, job_start, job_start + computation_time, proc)
-                break
-        if idx == len(job_list) - 1:
-            job_start = max(ready_time, prev_job.end)
-            min_schedule = ScheduleEvent(
-                node, job_start, job_start + computation_time, proc)
-            break
-        next_job = job_list[idx + 1]
-        # Start of next job - computation time == latest we can start in this window
-        # Max(ready_time, previous job's end) == earliest we can start in this window
-        # If there's space in there, schedule in it
-        logger.debug(f"\tLooking to fit a job of length {computation_time} into a slot of size "
-                     f"{next_job.start - max(ready_time, prev_job.end)}")
-        if (next_job.start - computation_time) - max(ready_time, prev_job.end) >= 0:
-            job_start = max(ready_time, prev_job.end)
-            logger.debug(f"\tInsertion is feasible. Inserting job with start time {job_start} and end time "
-                         f"{job_start + computation_time} into the time slot [{prev_job.end}, {next_job.start}]")
-            min_schedule = ScheduleEvent(
-                node, job_start, job_start + computation_time, proc)
-            break
-    else:
-        # For-else loop: the else executes if the for loop exits without break-ing,
-        # which in this case means the number of jobs on this processor are 0
-        min_schedule = ScheduleEvent(node, ready_time, ready_time + computation_time, proc)
-    logger.debug(f"\tFor node {node} on processor {proc}, the EFT is {min_schedule}")
-    return min_schedule
+        return HEFT.find_first_gap(orders[agent], comm_ready, duration)
 
+    @staticmethod
+    def allocate(job, orders, jobson, prev, comm_cost, comm_cost_array, comp_cost, comp_cost_array):
+        """
+        Allocate job to the machine with the earliest finish time. Operates in place.
 
-def readCsvToNumpyMatrix(csv_file):
-    """
-    Given an input file consisting of a comma separated list of numeric values with a single header row and header
-    column, this function reads that data into a numpy matrix and strips the top row and leftmost column.
+        将 job 分配到能 最早完成 该 job 的 agent 上。
+        空间复杂度为 O(1)
+        """
+        st = partial(HEFT.start_time, job=job, orders=orders, jobson=jobson, prev=prev,
+                     comm_cost=comm_cost, comm_cost_array=comm_cost_array,
+                     comp_cost=comp_cost, comp_cost_array=comp_cost_array)
 
-    给定一个 CSV 文件，将其转化为 NumPy 矩阵。
-    该函数删除了 CSV 中第一行和第一列的数据。
-    """
-    with open(csv_file) as fd:
-        logger.debug(f"Reading the contents of {csv_file} into a matrix")
-        contents = fd.read()
-        contentsList = contents.split('\n')
-        contentsList = list(map(lambda line: line.split(','), contentsList))
-        contentsList = list(filter(lambda arr: arr != [''], contentsList))
+        # ft = lambda machine: st(machine) + comp_cost(job, machine, comp_cost_array)
+        def ft(machine):
+            return st(machine) + comp_cost(job, machine, comp_cost_array)
 
-        matrix = np.array(contentsList)
-        # delete the first row (entry 0 along axis 0)
-        matrix = np.delete(matrix, 0, 0)
-        # delete the first column (entry 0 along axis 1)
-        matrix = np.delete(matrix, 0, 1)
-        matrix = matrix.astype(float)
-        logger.debug(f"After deleting the first row and column of input data, we are left with this matrix:\n{matrix}")
-        return matrix
+        agent = min(orders.keys(), key=ft)  # 将 orders.keys() 作为参数传入 ft，选择能最早执行 task 的 agent
+        start = st(agent)
+        end = ft(agent)
 
+        orders[agent].append(Event(job, start, end))
+        orders[agent] = sorted(orders[agent], key=lambda e: e.start)  # 自定义排序规则：按照 e.start 升序
+        # Might be better to use a different data structure to keep each
+        # agent's orders sorted at a lower cost.
 
-def readCsvToDict(csv_file):
-    """
-    Given an input file consisting of a comma separated list of numeric values with a single header row and header
-    column, this function reads that data into a dictionary with keys that are node numbers and values that are
-    the CSV lists.
+        jobson[job] = agent
 
-    输入：CSV 文件（以逗号分隔符分隔数据，只有一行 header row 和一列 header column）
-    输出：Python 字典（key 是 node 编号，values 是 CSV 文件中的值
-    """
+    @staticmethod
+    def makespan(orders):
+        """
+        计算最后一个 job 的完成时间。
+        """
+        return max(v[-1].end for v in orders.values() if v)
 
-    with open(csv_file) as fd:
-        matrix = readCsvToNumpyMatrix(csv_file)
+    @staticmethod
+    def schedule(succ, agents, comp_cost, comp_cost_array, comm_cost, comm_cost_array):
+        """
+        根据 DAG 将 job 调度到 agents 上。
 
-        outputDict = {}
-        for row_num, row in enumerate(matrix):
-            outputDict[row_num] = row
-        return outputDict
+        :param succ: 若 DAG 中的某个 task = {a: (b, c)} 则 b 和 c 是 a 的直接后继
+        :param agents: agents 的集合，可用于执行任务
+        :param comp_cost: 这是函数，返回 job 在 agent 上的执行时间
+        :param comp_cost_array: 计算成本列表
+        :param comm_cost: 这是函数，返回 agent1 上的 job1 和 agent2 上的 job2 之间的通信时间
+        :param comm_cost_array: 通信成本列表
+        :return: orders: agent 上运行的 job 列表, jobson: 为 job 分配的 agent, makespan: 最后一个任务的完成时间
+        """
+        rank = partial(HEFT.ranku, agents=agents, succ=succ,
+                       comp_cost=comp_cost, comp_cost_array=comp_cost_array,
+                       comm_cost=comm_cost, comm_cost_array=comm_cost_array)
+        prev = reverse_dict(succ)
 
+        jobs = set(succ.keys()) | set(x for xx in succ.values() for x in xx)
+        jobs = sorted(jobs, key=rank)
 
-def readDagMatrix(dag_file, show_dag=False):
-    """
-    Given an input file consisting of a connectivity matrix, reads and parses it into a networkx
-    Directional Graph (DiGraph)
+        orders = {agent: [] for agent in agents}
+        jobson = dict()
+        for job in reversed(jobs):
+            HEFT.allocate(job, orders, jobson, prev, comm_cost, comm_cost_array, comp_cost, comp_cost_array)
 
-    输入：CSV 文件（标注了各个节点之间的连接性）
-    输出：networkx 能够识别的 DiGraph 格式
-    """
+        for n in range(para.get_server_num()):
+            orders['server ' + str(n + 1)] = orders.pop(str(n))
 
-    matrix = readCsvToNumpyMatrix(dag_file)
-
-    dag = nx.DiGraph(matrix)
-    dag.remove_edges_from(
-        # Remove all edges with weight of 0 since we have no placeholder for "this edge doesn't exist" in the input file
-        [edge for edge in dag.edges() if dag.get_edge_data(*edge)['weight'] == '0.0']
-    )
-
-    if show_dag:
-        nx.draw(dag, pos=nx.nx_pydot.graphviz_layout(dag, prog='dot'), with_labels=True)
-        plt.show()
-
-    return dag
-
-
-def generate_argparser():
-    parser = argparse.ArgumentParser(description="A tool for finding HEFT schedules for given DAG task graphs")
-    parser.add_argument(
-        "-d", "--dag_file",
-        help="File containing input DAG to be scheduled. Uses default 10 node dag from Topcuoglu 2002 if none given.",
-        type=str, default="../../dataset/canonicalgraph_task_connectivity.csv")
-    parser.add_argument(
-        "-p", "--pe_connectivity_file",
-        help="File containing connectivity/bandwidth information about PEs. Uses a default 3x3 matrix from "
-             "Topcuoglu 2002 if none given. If communication startup costs (L) are needed, a \"Startup\" row can be "
-             "used as the last CSV row",
-        type=str, default="../../dataset/canonicalgraph_resource_BW.csv")
-    parser.add_argument(
-        "-t", "--task_execution_file",
-        help="File containing execution times of each task on each particular PE. Uses a default 10x3 matrix from "
-             "Topcuoglu 2002 if none given.",
-        type=str, default="../../dataset/canonicalgraph_task_exe_time.csv")
-    parser.add_argument(
-        "-l", "--loglevel",
-        help="The log level to be used in this module. Default: INFO",
-        type=str, default="DEBUG", dest="loglevel",
-        choices=["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"])
-    parser.add_argument(
-        "--metric",
-        help="Specify which metric to use when performing upward rank calculation",
-        type=RankMetric, default=RankMetric.MEAN, dest="rank_metric", choices=list(RankMetric))
-    parser.add_argument(
-        "--showDAG",
-        help="Switch used to enable display of the incoming task DAG",
-        dest="showDAG", action="store_true")
-    parser.add_argument(
-        "--showGantt",
-        help="Switch used to enable display of the final scheduled Gantt chart",
-        dest="showGantt", action="store_true")
-    return parser
+        return orders, jobson, HEFT.makespan(orders)

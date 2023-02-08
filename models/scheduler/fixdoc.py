@@ -16,7 +16,7 @@ class FixDoc:
         # get the generated functions' requirements
         self.pp_required, self.data_stream = pp_required, data_stream
 
-    def get_response_time(self, sorted_DAG_path=SORTED_DAG_PATH):
+    def get_response_time(self, sorted_DAG_path=BATCH_TASK_TOPOLOGICAL_ORDER_PATH):
         """
         Calculate the overall finish time of all DAGs achieved by FixDoc algorithm.
         In FixDoc paper, the authors claim that a function might be executed repeatedly on multiple servers.
