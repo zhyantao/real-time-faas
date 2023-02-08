@@ -1,44 +1,47 @@
 import networkx as nx
-import numpy as np
 import pandas as pd
 from matplotlib import pyplot as plt
 
 
-def show(job):
+def show(job, job_name=None):
     """
     根据给定 job 绘制 DAG 图.
 
+    :param job_name: 用户可指定 job 的名称
     :param job: 一个包含（或不包含）依赖关系的 job（DataFrame 格式）
     :return: 无返回值，绘制 DAG 图
     """
-    job_name = job['job_name'].loc[job.index[0]]
-    task_name_list = job.loc[:, 'task_name']
-    node_nums = len(task_name_list)  # 该 job 包含的节点数量
+    if job_name is None:
+        job_name = job['job_name'].loc[job.index[0]]
 
-    # 填充邻接矩阵
-    adj_matrix = np.zeros((node_nums, node_nums))  # 邻接矩阵
+    task_name_list = job.loc[:, 'task_name']
+
+    # 填充有向图 DiGraph 的属性
+    G = nx.DiGraph()
     for task_name in task_name_list:
         node_name_list = task_name.split('_')
         node_name_len = len(node_name_list[0])
         node_name_list[0] = node_name_list[0][1:node_name_len]
 
         if not node_name_list[0].isdigit():
+            G.add_node(task_name)
             continue
 
-        curr_node_num = int(node_name_list[0])
-        i = 1
-        while i < len(node_name_list):
-            dep_node_num = int(node_name_list[i])
-            adj_matrix[dep_node_num - 1, curr_node_num - 1] = 1.0  # 边的权重统一设置为 1, 后面可以改
-            i += 1
+        curr_node_num = node_name_list[0]
+        if len(node_name_list) == 1:
+            G.add_node(curr_node_num)
+        else:
+            i = 1
+            while i < len(node_name_list):
+                dep_node_num = node_name_list[i]
+                G.add_edge(dep_node_num, curr_node_num, weight=1.0)  # 边的权重统一设置为 1, 后面可以改
+                i += 1
 
-    # 使用邻接矩阵画图
+    # 展示图像
     plt.figure(figsize=(10, 5))
     ax = plt.gca()
     ax.set_title(job_name)
-    dag = nx.DiGraph(adj_matrix)
-    dag.remove_edges_from([edge for edge in dag.edges() if dag.get_edge_data(*edge)['weight'] == '0.0'])
-    nx.draw(dag, with_labels=True, pos=nx.nx_agraph.graphviz_layout(dag, prog='dot'), ax=ax)
+    nx.draw(G, with_labels=True, pos=nx.nx_agraph.graphviz_layout(G, prog='dot'), ax=ax)
     plt.show()
 
 
