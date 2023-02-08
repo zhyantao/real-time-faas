@@ -3,13 +3,8 @@ This script defines all the parameters used.
 """
 import os
 
-
 # csv file path
 DIR_PATH = 'E:/Workshop/real-time-faas/dataset/'
-DATASET_PATH = os.path.join(DIR_PATH, 'batch_task.csv')
-SELECTED_DAG_PATH = os.path.join(DIR_PATH, 'selected_DAGs.csv')
-SORTED_DAG_PATH = os.path.join(DIR_PATH, 'topological_order.csv')
-TEST_DAG_PATH = os.path.join(DIR_PATH, 'test.csv')
 
 BATCH_TASK_PATH = os.path.join(DIR_PATH, "batch_task.csv")
 SELECTED_BATCH_TASK_PATH = os.path.join(DIR_PATH, "selected_batch_task.csv")

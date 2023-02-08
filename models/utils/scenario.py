@@ -9,7 +9,7 @@ import random
 import numpy as np
 
 from models.utils.parameters import *
-from models.utils.progress_bar import ProgressBar
+from models.utils.visualization import ProgressBar
 
 bar = ProgressBar()
 para = Parameter()

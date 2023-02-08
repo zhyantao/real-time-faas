@@ -25,7 +25,7 @@ import pandas as pd
 
 from models.utils.parameters import *
 from models.utils.scenario import bar, para
-from models.utils.progress_bar import reverse_dict
+from models.utils.visualization import reverse_dict
 
 
 def get_agents():

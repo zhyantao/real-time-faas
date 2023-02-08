@@ -13,7 +13,7 @@ import numpy as np
 import pandas as pd
 
 from models.utils.parameters import *
-from models.utils.progress_bar import ProgressBar
+from models.utils.visualization import ProgressBar
 
 bar = ProgressBar()
 
@@ -242,6 +242,19 @@ def get_topological_order(selected_batch_task_path=SELECTED_BATCH_TASK_PATH,
     df.to_csv(batch_task_topological_order_path, index=False)
 
 
-if __name__ == "__main__":
-    sample_jobs()
-    get_topological_order()
+def get_next_job():
+    pass
+
+
+
+def reverse_dict(d):
+    """ Reverses direction of dependence dict.
+    e.g.:
+    d = {'a': (1, 2), 'b': (2, 3), 'c':()}
+    reverse_dict(d) = {1: ('a',), 2: ('a', 'b'), 3: ('b',)}
+    """
+    result = {}
+    for key in d:
+        for val in d[key]:
+            result[val] = result.get(val, tuple()) + (key, )
+    return result
