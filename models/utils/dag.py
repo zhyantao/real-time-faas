@@ -5,7 +5,13 @@ from matplotlib import pyplot as plt
 
 
 def show(job):
-    job_name = job.loc[idx, 'job_name']
+    """
+    根据给定 job 绘制 DAG 图.
+
+    :param job: 一个包含（或不包含）依赖关系的 job（DataFrame 格式）
+    :return: 无返回值，绘制 DAG 图
+    """
+    job_name = job['job_name'].loc[job.index[0]]
     task_name_list = job.loc[:, 'task_name']
     node_nums = len(task_name_list)  # 该 job 包含的节点数量
 
@@ -37,18 +43,11 @@ def show(job):
 
 
 def merge(job1, job2):
-    pass
+    """
+    合并两个 job1 和 job2，返回合并后的 job。
 
-
-if __name__ == '__main__':
-    df_batch_task = pd.read_csv("E:/Workshop/real-time-faas/dataset/selected_batch_task.csv")
-    df_rows = df_batch_task.shape[0]
-    idx = 0
-    while idx < df_rows:
-        job_name = df_batch_task.loc[idx, 'job_name']
-        task_nums = 0
-        while (idx + task_nums < df_rows) and (job_name == df_batch_task.loc[idx + task_nums, 'job_name']):
-            task_nums += 1
-        job = df_batch_task.loc[idx: idx + task_nums - 1].copy()
-        show(job)  # 绘制 DAG 图
-        idx += task_nums
+    :param job1:
+    :param job2:
+    :return: job（DataFrame 格式）
+    """
+    return pd.concat([job1, job2], axis=0)
