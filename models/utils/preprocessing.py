@@ -1,13 +1,11 @@
 """
-This script processes the Alibaba cluster trace dataset (v2018). v2018 has 6 CSV files. We only use the file
-batch_task.csv.
+从 batch_task.csv 和 batch_instance 中 1) 提取 100 个 job, 并进行 2) 拓扑排序, 将 1 和 2 的结果保存到文件中.
 
-- Firstly, we sample 2119 DAGs from the dataset and save them into selected_DAGs.csv.
-- Then, we sort the functions of each DAG in topological order (used for DPE and FixDoc) and save the results to
-    topological_order.csv.
-- At last, we 'rank' the functions of each DAG (used for HEFT) and save the results to rank.scv.
+- job: 对应本文的（用户请求），不含依赖
+- task: 对应本文的 function，含依赖
+- instance: 对应本文的容器（Docker），不含依赖
 
-(task --> function, func_num --> DAG)
+注：一个 job 含有若干 task，一个 task 含有若干 instance.
 """
 import re
 
@@ -24,18 +22,11 @@ def sample_jobs(batch_task_path=BATCH_TASK_PATH, selected_batch_task_path=SELECT
                 batch_instance_path=BATCH_INSTANCE_PATH,
                 selected_batch_instance_path=SELECTED_BATCH_INSTANCE_PATH):
     """
-    参考全局变量 REQUIRED_NUM:
-    采样 20 个含有 2 个 task 的 sampled_jobs_batch_task,
-    80 个含有 3 ~ 10 个 task 的 sampled_jobs_batch_task,
-    60 个含有 11 ~ 50 个 task 的 sampled_jobs_batch_task,
-    40 个含有 51 ~ 100 个 task 的 sampled_jobs_batch_task,
-    19 个含有超过 100 个 task 的 sampled_jobs_batch_task.
-
-    :return: 将采样的 sampled_jobs_batch_task 保存的文件中
+    :return: 从 batch_task.csv 和 batch_instance.csv 中提取 100 个 job_name 相同的 jobs, 保存到文件中
     """
-    # if os.path.exists(selected_batch_task_path):
-    #     print("batch_task & batch_instance is already selected.")
-    #     return
+    if os.path.exists(selected_batch_task_path):
+        print("batch_task & batch_instance is already selected.")
+        return
 
     if not os.path.exists(selected_batch_instance_path):
         columns = ['instance_name', 'task_name', 'job_name', 'task_type', 'status',
@@ -50,9 +41,6 @@ def sample_jobs(batch_task_path=BATCH_TASK_PATH, selected_batch_task_path=SELECT
         df = pd.DataFrame(columns=columns)
         df.to_csv(selected_batch_task_path, index=False)
 
-    required_num = REQUIRED_NUM
-    counters = np.zeros(5)
-
     chunk_size = 3
     idx_batch_instance, idx_batch_task = 0, 0
 
@@ -62,9 +50,9 @@ def sample_jobs(batch_task_path=BATCH_TASK_PATH, selected_batch_task_path=SELECT
     current_chunk_batch_task = chunk_batch_task.get_chunk(chunk_size)
     current_chunk_batch_instance = chunk_batch_instance.get_chunk(chunk_size)
 
-    i, j = 0, 0
+    i, j, count, total = 0, 0, 0, 100  # count 是当前已经采集的 job 数量, total 是总共的
     while (not current_chunk_batch_instance.empty) and (not current_chunk_batch_task.empty):
-        # 双指针不是两个 while 嵌套，而是两个 while 并列
+        print("Sampling data from batch_task.csv & batch_instance.csv ...")
 
         job_name_batch_task = current_chunk_batch_task.loc[idx_batch_task + i, 2]
         job_name_num_batch_task = int(re.findall(r"\d+\.?\d*", job_name_batch_task)[0])
@@ -72,17 +60,12 @@ def sample_jobs(batch_task_path=BATCH_TASK_PATH, selected_batch_task_path=SELECT
         job_name_batch_instance = current_chunk_batch_instance.loc[idx_batch_instance + j, 2]
         job_name_num_batch_instance = int(re.findall(r"\d+\.?\d*", job_name_batch_instance)[0])
 
-        # print(current_chunk_batch_task)
-        # print(current_chunk_batch_instance)
-
-        print(job_name_num_batch_instance, job_name_num_batch_task)
-
         if job_name_num_batch_task == job_name_num_batch_instance:
             job_name_num_batch_task_tmp = job_name_num_batch_task
             # First 保存 batch task
             while i < chunk_size:
                 item_batch_task = current_chunk_batch_task.loc[idx_batch_task + i: idx_batch_task + i]
-                print(item_batch_task)
+                # print(item_batch_task)
                 with open(selected_batch_task_path, 'a') as f:
                     item_batch_task.to_csv(f, header=False, index=False, lineterminator="\n")
 
@@ -101,7 +84,7 @@ def sample_jobs(batch_task_path=BATCH_TASK_PATH, selected_batch_task_path=SELECT
             # Second 保存 batch instance
             while j < chunk_size:
                 item_batch_instance = current_chunk_batch_instance.loc[idx_batch_instance + j: idx_batch_instance + j]
-                print(item_batch_instance)
+                # print(item_batch_instance)
                 with open(selected_batch_instance_path, 'a') as f:
                     item_batch_instance.to_csv(f, header=False, index=False, lineterminator="\n")
 
@@ -116,6 +99,12 @@ def sample_jobs(batch_task_path=BATCH_TASK_PATH, selected_batch_task_path=SELECT
 
                 if job_name_num_batch_task_tmp != job_name_num_batch_instance:
                     break
+
+            count += 1
+            percent = count / float(total) * 100
+            bar.update(percent)
+            if count == total:
+                return
 
         elif job_name_num_batch_task < job_name_num_batch_instance:
             while i < chunk_size:
