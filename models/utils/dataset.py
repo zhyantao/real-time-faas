@@ -242,11 +242,6 @@ def get_topological_order(selected_batch_task_path=SELECTED_BATCH_TASK_PATH,
     df.to_csv(batch_task_topological_order_path, index=False)
 
 
-def get_next_job():
-    pass
-
-
-
 def reverse_dict(d):
     """ Reverses direction of dependence dict.
     e.g.:
@@ -256,5 +251,5 @@ def reverse_dict(d):
     result = {}
     for key in d:
         for val in d[key]:
-            result[val] = result.get(val, tuple()) + (key, )
+            result[val] = result.get(val, tuple()) + (key,)
     return result
