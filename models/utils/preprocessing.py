@@ -41,6 +41,8 @@ def sample_jobs(batch_task_path=BATCH_TASK_PATH, selected_batch_task_path=SELECT
         df = pd.DataFrame(columns=columns)
         df.to_csv(selected_batch_task_path, index=False)
 
+    print("Sampling data from batch_task.csv & batch_instance.csv ...")
+
     chunk_size = 3
     idx_batch_instance, idx_batch_task = 0, 0
 
@@ -52,7 +54,6 @@ def sample_jobs(batch_task_path=BATCH_TASK_PATH, selected_batch_task_path=SELECT
 
     i, j, count, total = 0, 0, 0, 100  # count 是当前已经采集的 job 数量, total 是总共的
     while (not current_chunk_batch_instance.empty) and (not current_chunk_batch_task.empty):
-        print("Sampling data from batch_task.csv & batch_instance.csv ...")
 
         job_name_batch_task = current_chunk_batch_task.loc[idx_batch_task + i, 2]
         job_name_num_batch_task = int(re.findall(r"\d+\.?\d*", job_name_batch_task)[0])
@@ -231,4 +232,3 @@ def get_topological_order(selected_DAG_path=SELECTED_DAG_PATH, sorted_DAG_path=S
 
 if __name__ == "__main__":
     sample_jobs()
-    # exist_in_batch_instance("j_1")
