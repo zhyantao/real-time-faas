@@ -226,7 +226,7 @@ class HEFT:
 
         comm_cost_array = []
         for dependent_func_num, funcs_num in succ.items():
-            if funcs_num is ():
+            if funcs_num == ():
                 pass
             else:
                 trans_size = DAG_data_stream[dependent_func_num - 1]

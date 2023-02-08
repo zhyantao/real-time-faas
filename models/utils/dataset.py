@@ -242,6 +242,24 @@ def get_topological_order(selected_batch_task_path=SELECTED_BATCH_TASK_PATH,
     df.to_csv(batch_task_topological_order_path, index=False)
 
 
+def get_one_job(jobs, start_idx=0):
+    """
+    从当前 start_idx 开始，获取一个 job，并返回下一个 job 的 idx.
+
+    :param jobs: jobs 列表，DataFrame 格式
+    :param start_idx: 指明需要从哪里开始获取，没有指定默认是 0
+    :return: 返回从 start_idx 开始的第一个 job，以及下一个 job 的起始 idx
+    """
+    job_name = jobs.loc[start_idx, 'job_name']
+    rows = jobs.shape[0]
+    task_nums = 0
+    while (start_idx + task_nums < rows) and (jobs.loc[start_idx + task_nums, 'job_name'] == job_name):
+        task_nums = task_nums + 1
+    job = jobs.loc[start_idx: start_idx + task_nums - 1].copy()
+    next_idx = start_idx + task_nums
+    return job, next_idx
+
+
 def reverse_dict(d):
     """ Reverses direction of dependence dict.
     e.g.:
