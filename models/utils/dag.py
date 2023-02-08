@@ -1,3 +1,5 @@
+import random
+
 import networkx as nx
 import pandas as pd
 from matplotlib import pyplot as plt
@@ -34,14 +36,20 @@ def show(job, job_name=None):
             i = 1
             while i < len(node_name_list):
                 dep_node_num = node_name_list[i]
-                G.add_edge(dep_node_num, curr_node_num, weight=1.0)  # 边的权重统一设置为 1, 后面可以改
+                weight = round(random.random(), 1)
+                G.add_edge(dep_node_num, curr_node_num, weight=weight)  # 边的权重统一设置为 1, 后面可以改
                 i += 1
 
     # 展示图像
-    plt.figure(figsize=(10, 5))
+    pos = nx.nx_agraph.graphviz_layout(G, prog='dot')
+    edge_labels = nx.get_edge_attributes(G, "weight")
+    nx.draw(G, pos, font_color='white', with_labels=True)
+    nx.draw_networkx_edge_labels(G, pos, edge_labels=edge_labels, font_size=8)
+
     ax = plt.gca()
     ax.set_title(job_name)
-    nx.draw(G, with_labels=True, pos=nx.nx_agraph.graphviz_layout(G, prog='dot'), ax=ax)
+
+    plt.axis("on")
     plt.show()
 
 
