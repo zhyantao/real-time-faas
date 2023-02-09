@@ -11,37 +11,41 @@ from models.utils.scenario import bar, para
 
 
 class DPE:
-    def __init__(self, G, bw, pp, simple_paths, reciprocals_list, proportions_list, pp_required, data_stream):
+    def __init__(self, jobs, bw, pp, simple_paths, reciprocal_list, proportion_list, pp_required, data_stream):
         # get the generated edge computing scenario
-        self.G, self.bw, self.pp = G, bw, pp
-        self.simple_paths, self.reciprocals_list, self.proportions_list = simple_paths, reciprocals_list, proportions_list
+        self.jobs, self.bw, self.pp = jobs, bw, pp
+        self.simple_paths, self.reciprocal_list, self.proportion_list = simple_paths, reciprocal_list, proportion_list
         # get the generated functions' requirements
         self.pp_required, self.data_stream = pp_required, data_stream
 
-    def get_response_time(self, sorted_DAG_path=BATCH_TASK_TOPOLOGICAL_ORDER_PATH):
+    def get_response_time(self, sorted_job_path=BATCH_TASK_TOPOLOGICAL_ORDER_PATH):
         """
         Calculate the overall finish time of all DAGs achieved by DPE algorithm.
         """
-        if not os.path.exists(sorted_DAG_path):
+        if not os.path.exists(sorted_job_path):
             print('DAGs\' topological order has not been obtained! Please get topological order firstly.')
             return
 
-        df = pd.read_csv(sorted_DAG_path)  # 读取 batch_task_topological_order.csv
+        df = pd.read_csv(sorted_job_path)  # 读取 batch_task_topological_order.csv
         rows = df.shape[0]
         idx = 0
 
-        makespan_of_all_DAGs = 0
-        DAGs_deploy = []
-        T_optimal_all = []
-        start_time_all = []
-        process_sequence_all = []
+        makespan_all = 0
+        task_deployment_all = []
+        cpu_earliest_finish_time_all = []
+        task_start_time_all = []
+        cpu_task_mapping_list_all = []
 
-        all_DAG_num = TOTAL_JOBS  # 需要采样的 job 的数量
+        total_job_nums = TOTAL_JOBS  # 需要采样的 job 的数量
         calculated_num = 0  # 已经计算的 job，用于监控当前处理进度
-        print('\nGetting makespan for %d DAGs by DPE algorithm ...' % all_DAG_num)
+        print('\nGetting makespan for %d jobs by DPE algorithm ...' % total_job_nums)
 
+        # 遍历所有的 jobs
         while idx < rows:
 
+            task_nums = 0
+
+            # 对 jobs 中的每个 job 进行单独处理
             task_name = df.loc[idx, 'task_name'].split('_')[0]
 
             # if...else 一次处理一个 job
@@ -52,164 +56,171 @@ class DPE:
                 job, next_idx = get_one_job(df, idx)
                 task_nums = next_idx - idx
 
-                DAG_pp_required = self.pp_required[:task_nums]
-                DAG_data_stream = self.data_stream[:task_nums]
+                job_pp_required = self.pp_required[:task_nums]  # 要求的处理能力 processor power
+                job_data_stream = self.data_stream[:task_nums]  # 要求传输的数据量
 
-                T_optimal = np.zeros((task_nums, para.get_server_num()))  # 存储每个 task 在每个 cpu 上的最早完成时间
-                start_time = np.zeros(task_nums)
-                task_deploy = -1 * np.ones(task_nums)
-                cpu_sequence = []  # 记录每个 cpu 上的 task 处理序列
-                server_runtime = np.zeros(para.get_server_num())  # 记录每个 cpu 上 `最近的 task 的完成时间`
+                cpu_earliest_finish_time = np.zeros((task_nums, para.get_server_num()))
+                task_start_time = np.zeros(task_nums)  # 记录每个 task 的开始时间
+                task_deployment = -1 * np.ones(task_nums)  # 记录每个 task 是否已被分配
+                cpu_task_mapping_list = []  # 记录每个 cpu 上的 task 处理序列
+                cpu_finish_time = np.zeros(para.get_server_num())  # 记录每个 cpu 上 `最近的 task 的完成时间`
 
                 makespan = 0
                 for j in range(task_nums + 1):  # +1 是因为人为创建了一个 dummy tail task
                     if j == task_nums:  # 处理 dummy tail task，用于连接所有的出口函数，更新 makespan
                         for e in range(task_nums):
-                            if task_deploy[e] == -1.:
-                                task_deploy[e] = int(np.argmin(T_optimal[e]))
-                                cpu_sequence.append(e + 1)
-                                if min(T_optimal[e]) > makespan:
-                                    makespan = min(T_optimal[e])
+                            if task_deployment[e] == -1.:
+                                task_deployment[e] = int(
+                                    np.argmin(cpu_earliest_finish_time[e]))  # 将任务分配到完成时间最早的 cpu 上
+                                cpu_task_mapping_list.append(e + 1)  # e 是 task 编号，将 task 添加到 mapping list 中
+                                if min(cpu_earliest_finish_time[e]) > makespan:
+                                    makespan = min(cpu_earliest_finish_time[e])
                         break
 
-                    # 获取 task 编号（实际是 task 编号）
+                    # 获取 task 编号（int 类型）
                     task_name_list = job.loc[j + idx, 'task_name'].strip().split('_')
                     task_name_list_len = len(task_name_list)
                     task_name_len = len(task_name_list[0])
                     task_name = int(task_name_list[0][1:task_name_len])
 
-                    if task_name_list_len == 1:
-                        # func is an entry function
-                        # 入口函数
+                    if task_name_list_len == 1:  # 长度 == 1，说明这是个入口 task
                         pass
-                    else:
-                        # func is not an entry function, func has dependencies
-                        # enumerate the deployment of func
-                        # 非入口函数，应当解决首先解决依赖
-                        for server_i in range(para.get_server_num()):
-                            # get t(p(f_j)) where p(f_j) is server_i
-                            process_cost = DAG_pp_required[task_name - 1] / self.pp[server_i]
-                            all_min_phi = []  # 记录当前服务器上的 function 所依赖的所有其他函数最早完成时间
+                    else:  # 根据 task 之间的依赖关系处理分配
+                        for cpu_current in range(para.get_server_num()):
+                            # get t(p(f_j)) where p(f_j) is cpu_current
+                            comp_cost = job_pp_required[task_name - 1] / self.pp[cpu_current]
+                            all_min_phi = []  # 记录当前 cpu 上的 task 所依赖的所有其他 task 最早完成时间
+
+                            # TODO: for 循环是 FIFO 模式，编号小的 task 优先被部署，这在实际场景下可能造成耗时过长，有待优化
+                            # 如果同时有 M2, R4_2 和 R5_2, M2，我们怎么去选择先部署 M4 还是 R5？作者先部署 R4，因为编号 4 < 5。
                             for i in range(task_name_list_len - 1):
                                 if task_name_list[i + 1] == '':
                                     continue
-                                dependent_func_num = int(task_name_list[i + 1])
+                                dependent_task_name = int(task_name_list[i + 1])
 
-                                if task_deploy[dependent_func_num - 1] != -1.:
-                                    # dependent_func_num has been deployed beforehand, get min_phi directly
-                                    # 若 dependent_func_num 之前已经被部署，那么直接获取 min_phi
-
-                                    # ==== DIR_PATH is where we can improve (maybe in the next paper) ====
-                                    # For example, for job 'M2, R4_2 and R5_2', M2's placement is decided by R4 if we
-                                    # process (M2, R4) firstly. R5 will not affect the placement of M2. However, we don't
-                                    # know that if we process (M2, R5) firstly, whether the makespan can be decreased further.
-                                    # =================================================================
-                                    where_deployed = int(task_deploy[dependent_func_num - 1])
-                                    if server_i == task_deploy[dependent_func_num - 1]:
-                                        trans_cost = 0
+                                # Case 1: 若 dependent_task 之前已经被部署，那么直接获取 min_phi
+                                if task_deployment[dependent_task_name - 1] != -1.:
+                                    cpu_deployed_to = int(task_deployment[dependent_task_name - 1])
+                                    if cpu_current == cpu_deployed_to:
+                                        comm_cost = 0  # 若 dependent_task 与 curr_task 分配到同一个 cpu 上，通信成本为 0
                                     else:
-                                        trans_cost = self.proportions_list[where_deployed][server_i] * \
-                                                     DAG_data_stream[dependent_func_num - 1] * \
-                                                     self.reciprocals_list[where_deployed][server_i][0]
-                                    min_phi = T_optimal[dependent_func_num - 1][
-                                                  where_deployed] + trans_cost + process_cost
+                                        comm_cost = self.proportion_list[cpu_deployed_to][cpu_current] * \
+                                                    job_data_stream[dependent_task_name - 1] * \
+                                                    self.reciprocal_list[cpu_deployed_to][cpu_current][0]
+                                    min_phi = cpu_earliest_finish_time[dependent_task_name - 1][
+                                                  cpu_deployed_to] + comm_cost + comp_cost
                                     all_min_phi.append(min_phi)
                                     continue
 
-                                # 如果 dependent_func_num 没有部署过，应当检查 dependent_func 依赖的其他函数是否需要部署
+                                # Case 2: 如果 dependent_task 没有部署过，先检查 dependent_task 所依赖 task 是否已经部署
                                 for h in range(task_nums):
-                                    name_str_list_inner = job.loc[h + idx, 'task_name'].strip().split('_')
-                                    func_str_inner_len = len(name_str_list_inner[0])
-                                    # 用 if-else 找到 dependent_func 依赖的 function
-                                    if int(name_str_list_inner[0][1:func_str_inner_len]) != dependent_func_num:
-                                        continue
-                                    else:
-                                        # dependent_func_num is found
-                                        # 找到了 dependent_func_num
-                                        name_str_list_inner_len = len(name_str_list_inner)
-                                        if name_str_list_inner_len == 1:
-                                            # dependent_func_num is an entry function. Set its T_optimal
-                                            T_optimal[dependent_func_num - 1] = \
-                                                DAG_pp_required[dependent_func_num - 1] / self.pp + server_runtime
-                                        else:
-                                            # although T_optimal of dependent_func_num has been set, but it has to be
-                                            # updated because server_runtime may be changed!!!
-                                            # 虽然 dependent_func_num 的 T_optimal 已经被设置了，但是应该更新一下 server_runtime
-                                            process_begin_time = np.zeros(para.get_server_num())
-                                            for k in range(para.get_server_num()):
-                                                min_process_begin_time = 0
-                                                # dependent_func_num is deployed on k
-                                                for h_inner in range(name_str_list_inner_len - 1):
-                                                    # dependent_func_num's one predecessor and its deployment
-                                                    if name_str_list_inner[h_inner + 1] == '':
-                                                        continue
-                                                    dependent_func_num_predecessor = int(
-                                                        name_str_list_inner[h_inner + 1])
-                                                    where_deployed_predecessor = int(
-                                                        task_deploy[dependent_func_num_predecessor - 1])
-                                                    if where_deployed_predecessor == -1.:
-                                                        print('Sth. wrong! It\'s impossible!')
-                                                    if k == where_deployed_predecessor:
-                                                        trans_cost = 0
-                                                    else:
-                                                        trans_cost = self.proportions_list[where_deployed_predecessor][
-                                                                         k] * \
-                                                                     DAG_data_stream[dependent_func_num - 1] * \
-                                                                     self.reciprocals_list[where_deployed_predecessor][
-                                                                         k][0]
-                                                    tmp = T_optimal[dependent_func_num_predecessor - 1][
-                                                              where_deployed_predecessor] + trans_cost
-                                                    # the process of dependent_func_num can be started if and only if the slowest predecessor of it has finished data transfer
-                                                    if tmp > min_process_begin_time:
-                                                        min_process_begin_time = tmp
-                                                if min_process_begin_time > server_runtime[k]:
-                                                    process_begin_time[k] = min_process_begin_time
-                                                else:
-                                                    process_begin_time[k] = server_runtime[k]
+                                    task_name_list_of_dependent_task_depends = job.loc[
+                                        h + idx, 'task_name'].strip().split('_')
+                                    task_name_len_of_dependent_task_depends = len(
+                                        task_name_list_of_dependent_task_depends[0])
+                                    task_name_of_dependent_task_depends = task_name_list_of_dependent_task_depends[0][
+                                                                          1:task_name_len_of_dependent_task_depends]
 
-                                            T_optimal[dependent_func_num - 1] = \
-                                                DAG_pp_required[dependent_func_num - 1] / self.pp + process_begin_time
+                                    # 用 if-else 找到 dependent_task 依赖的 task
+                                    if int(task_name_of_dependent_task_depends) != dependent_task_name:
+                                        continue
+
+                                    else:  # 找到了 dependent_task_name
+                                        name_str_list_inner_len = len(task_name_list_of_dependent_task_depends)
+
+                                        if name_str_list_inner_len == 1:  # 入口函数直接设置它的 cpu_earliest_finish_time
+                                            cpu_earliest_finish_time[dependent_task_name - 1] = job_pp_required[
+                                                                                                    dependent_task_name - 1] / self.pp + cpu_finish_time
+
+                                        else:  # 虽然 dependent_task_name 的 cpu_earliest_finish_time 已经被设置了，cpu_finish_time 仍有可能被更新
+                                            cpu_begin_time = np.zeros(para.get_server_num())
+
+                                            for cpu_k in range(para.get_server_num()):
+                                                min_cpu_begin_time = 0
+
+                                                # dependent_task_name 被部署到 cpu_k 上
+                                                for h_inner in range(name_str_list_inner_len - 1):
+
+                                                    # dependent_task_name 的一个 “前辈” 和它的部署情况
+                                                    if task_name_list_of_dependent_task_depends[h_inner + 1] == '':
+                                                        continue
+
+                                                    dependent_predecessor_task_num = int(
+                                                        task_name_list_of_dependent_task_depends[h_inner + 1])
+                                                    predecessor_task_deployed_to = int(
+                                                        task_deployment[dependent_predecessor_task_num - 1])
+
+                                                    if predecessor_task_deployed_to == -1.:
+                                                        print('Sth. wrong! It\'s impossible!')
+
+                                                    if cpu_k == predecessor_task_deployed_to:
+                                                        comm_cost = 0
+                                                    else:
+                                                        comm_cost = self.proportion_list[predecessor_task_deployed_to][
+                                                                        cpu_k] * job_data_stream[
+                                                                        dependent_task_name - 1] * \
+                                                                    self.reciprocal_list[predecessor_task_deployed_to][
+                                                                        cpu_k][0]
+                                                    tmp = cpu_earliest_finish_time[dependent_predecessor_task_num - 1][
+                                                              predecessor_task_deployed_to] + comm_cost
+
+                                                    # 只有 dependent_task_name 最慢的 “前辈” 完成数据传输，dependent_task_name 才能开始执行
+                                                    if tmp > min_cpu_begin_time:
+                                                        min_cpu_begin_time = tmp
+
+                                                if min_cpu_begin_time > cpu_finish_time[cpu_k]:
+                                                    cpu_begin_time[cpu_k] = min_cpu_begin_time
+                                                else:
+                                                    cpu_begin_time[cpu_k] = cpu_finish_time[cpu_k]
+
+                                            cpu_earliest_finish_time[dependent_task_name - 1] = job_pp_required[
+                                                                                                    dependent_task_name - 1] / self.pp + cpu_begin_time
                                         break
 
-                                # decide the optimal deployment for dependent_func_num
+                                # 确定 dependent_task_name 的最佳部署 cpu
                                 min_phi = MAX_VALUE
-                                selected_server = -1
-                                for m in range(para.get_server_num()):
-                                    if server_i == m:
-                                        trans_cost = 0
+                                cpu_selected = -1
+
+                                # 以遍历的方式确定最佳部署 cpu（有待优化）
+                                for cpu_m in range(para.get_server_num()):
+                                    if cpu_current == cpu_m:
+                                        comm_cost = 0
                                     else:
-                                        trans_cost = self.proportions_list[m][server_i] * \
-                                                     DAG_data_stream[dependent_func_num - 1] * \
-                                                     self.reciprocals_list[m][server_i][0]
-                                    phi = T_optimal[dependent_func_num - 1][m] + trans_cost + process_cost
+                                        comm_cost = self.proportion_list[cpu_m][cpu_current] * job_data_stream[
+                                            dependent_task_name - 1] * self.reciprocal_list[cpu_m][cpu_current][0]
+                                    phi = cpu_earliest_finish_time[dependent_task_name - 1][
+                                              cpu_m] + comm_cost + comp_cost
+
                                     if phi < min_phi:
                                         min_phi = phi
-                                        selected_server = m
+                                        cpu_selected = cpu_m
 
-                                # this is where a function really be deployed
-                                task_deploy[dependent_func_num - 1] = selected_server
-                                cpu_sequence.append(dependent_func_num)
-                                server_runtime[selected_server] = T_optimal[dependent_func_num - 1][selected_server]
-                                start_time[dependent_func_num - 1] = server_runtime[selected_server] - DAG_pp_required[
-                                    dependent_func_num - 1] / self.pp[selected_server]
+                                # 整理 dependent_task_name 的部署结果
+                                task_deployment[dependent_task_name - 1] = cpu_selected
+                                cpu_task_mapping_list.append(dependent_task_name)
+                                cpu_finish_time[cpu_selected] = cpu_earliest_finish_time[dependent_task_name - 1][
+                                    cpu_selected]
+                                task_start_time[dependent_task_name - 1] = cpu_finish_time[cpu_selected] - \
+                                                                           job_pp_required[dependent_task_name - 1] / \
+                                                                           self.pp[cpu_selected]
                                 all_min_phi.append(min_phi)
 
-                            # now, all the predecessors of func has been deployed, use their T_optimal to update T_optimal of func
-                            T_optimal[task_name - 1][server_i] = max(all_min_phi)
+                            # task 依赖所有 task 被部署成功，使用 max(all_min_phi) 更新 task 的 cpu_earliest_finish_time
+                            cpu_earliest_finish_time[task_name - 1][cpu_current] = max(all_min_phi)
 
-                makespan_of_all_DAGs += makespan  # 累计 2119 个 job 的 makespan
-                DAGs_deploy.append(task_deploy)  # 每部署完一个 job，将其 append 到 DAGs_deploy 中
-                process_sequence_all.append(cpu_sequence)
-                T_optimal_all.append(T_optimal)  # 记录所有 job 的最早完成时间
-                start_time_all.append(start_time)  # 记录所有所有 job 的最早开始时间
+                makespan_all += makespan  # 累计所有 job 的 makespan
+                task_deployment_all.append(task_deployment)  # 每部署完一个 job，将其 append 到 task_deployment_all 中
+                cpu_task_mapping_list_all.append(cpu_task_mapping_list)
+                cpu_earliest_finish_time_all.append(cpu_earliest_finish_time)  # 记录所有 job 的最早完成时间
+                task_start_time_all.append(task_start_time)  # 记录所有所有 job 的最早开始时间
 
             calculated_num += 1
-            percent = calculated_num / float(all_DAG_num) * 100
+            percent = calculated_num / float(total_job_nums) * 100
             # for overflow
             if percent > 100:
                 percent = 100
             bar.update(percent)
             idx += task_nums
-        print('The overall makespan achieved by DPE: %f second' % makespan_of_all_DAGs)
-        print('The average makespan: %f second' % (makespan_of_all_DAGs / sum(REQUIRED_NUM)))
-        return T_optimal_all, DAGs_deploy, process_sequence_all, start_time_all
+        print('The overall makespan achieved by DPE: %f seconds' % makespan_all)
+        print('The average makespan: %f seconds' % (makespan_all / total_job_nums))
+        return cpu_earliest_finish_time_all, task_deployment_all, cpu_task_mapping_list_all, task_start_time_all

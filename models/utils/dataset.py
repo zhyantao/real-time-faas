@@ -12,8 +12,8 @@ import re
 import numpy as np
 import pandas as pd
 
+from models.utils.figure import ProgressBar
 from models.utils.parameters import *
-from models.utils.visualization import ProgressBar
 
 bar = ProgressBar()
 

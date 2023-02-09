@@ -15,7 +15,6 @@ SELECTED_BATCH_INSTANCE_PATH = os.path.join(DIR_PATH, "selected_batch_instance.c
 BATCH_INSTANCE_TOPOLOGICAL_ORDER_PATH = os.path.join(DIR_PATH, 'batch_instance_topological_order.csv')
 
 MAX_VALUE = 9e+4
-REQUIRED_NUM = [20, 80, 60, 40, 19]
 MAX_FUNC_NUM = 250
 TOTAL_JOBS = 100
 

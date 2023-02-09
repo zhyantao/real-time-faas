@@ -23,7 +23,7 @@ from itertools import chain
 import numpy as np
 import pandas as pd
 
-from models.utils.dataset import reverse_dict
+from models.utils.dataset import reverse_dict, get_one_job
 from models.utils.parameters import *
 from models.utils.scenario import bar, para
 
@@ -45,91 +45,95 @@ Event = namedtuple('Event', 'job start end')
 
 
 class HEFT:
-    def __init__(self, G, bw, pp, simple_paths, reciprocals_list, proportions_list, pp_required, data_stream):
+    def __init__(self, jobs, bw, pp, simple_paths, reciprocal_list, proportion_list, pp_required, data_stream):
         # get the generated edge computing scenario
-        self.G, self.bw, self.pp = G, bw, pp
-        self.simple_paths, self.reciprocals_list, self.proportions_list = simple_paths, reciprocals_list, proportions_list
+        self.jobs, self.bw, self.pp = jobs, bw, pp
+        self.simple_paths, self.reciprocal_list, self.proportion_list = simple_paths, reciprocal_list, proportion_list
         # get the generated functions' requirements
         self.pp_required, self.data_stream = pp_required, data_stream
 
-    def get_response_time(self, sorted_DAG_path=BATCH_TASK_TOPOLOGICAL_ORDER_PATH):
+    def get_response_time(self, sorted_job_path=BATCH_TASK_TOPOLOGICAL_ORDER_PATH):
         """
         Calculate the overall finish time of all DAGs achieved by HEFT algorithm.
         """
-        if not os.path.exists(sorted_DAG_path):
-            print('DAGs\' topological order has not been obtained! Please get topological order firstly.')
+        if not os.path.exists(sorted_job_path):
+            print('Jobs\' topological order has not been obtained! Please get topological order firstly.')
             return
 
-        df = pd.read_csv(sorted_DAG_path)
-        df_len = df.shape[0]
+        df = pd.read_csv(sorted_job_path)
+        rows = df.shape[0]
         idx = 0
 
-        makespan_of_all_DAGs = 0
-        DAGs_deploy = []
-        DAGs_orders = []
+        makespan_all = 0
+        task_deployment_all = []
+        cpu_task_mapping_list_all = []
 
-        required_num = REQUIRED_NUM
-        all_DAG_num = sum(required_num)
+        total_job_nums = TOTAL_JOBS
         calculated_num = 0
-        print('\nGetting makespan for %d DAGs by HEFT algorithm ...' % all_DAG_num)
-        while idx < df_len:
-            # get a DAG
-            DAG_name = df.loc[idx, 'job_name']
-            DAG_len = 0
-            while (idx + DAG_len < df_len) and (df.loc[idx + DAG_len, 'job_name'] == DAG_name):
-                DAG_len = DAG_len + 1
-            DAG = df.loc[idx: idx + DAG_len]  # DAG 是 DataFrame 格式的数据
-            # DAG, _ = get_one_job(df, idx)
+        print('\nGetting makespan for %d jobs by HEFT algorithm ...' % total_job_nums)
+        while idx < rows:
 
-            # 设置 CPU 需求 和 数据大小
-            DAG_pp_required = self.pp_required[:DAG_len]  # 将 pp_required 复制到 DAG_pp_required
-            DAG_data_stream = self.data_stream[:DAG_len]
+            # get a job
+            task_nums = 0
 
-            # 获取 DAG 信息
-            funcs_num = HEFT.get_funcs_num(DAG, idx, DAG_len)  # 获取 funcs 编号。注意：代码中的 funcs = tasks，func = task
-            succ = HEFT.get_succ(DAG, idx, DAG_len)  # dict 类型
-            comp_cost_array = self.get_comp_cost(funcs_num, DAG_pp_required)  # 获取计算成本
-            comm_cost_array = self.get_comm_cost(succ, DAG_data_stream)  # 获取通信成本
+            task_name = df.loc[idx, 'task_name'].split('_')[0]
 
-            # 根据计算成本和通信成本将 task 分散到 server 上
-            orders, jobson, makespan = HEFT.schedule(succ, all_agents,
-                                                     HEFT.comp_cost, comp_cost_array,
-                                                     HEFT.comm_cost, comm_cost_array)
+            if task_name == 'task' or task_name == "MergeTask":
+                _, idx = get_one_job(df, idx)  # 仅增加 idx
 
-            makespan_of_all_DAGs += makespan
-            DAGs_deploy.append(jobson)
-            DAGs_orders.append(orders)
+            else:
+                job, next_idx = get_one_job(df, idx)
+                task_nums = next_idx - idx
+
+                # 设置 CPU 需求 和 数据大小
+                job_pp_required = self.pp_required[:task_nums]  # 将 pp_required 复制到 job_pp_required
+                job_data_stream = self.data_stream[:task_nums]
+
+                # 获取 job 信息
+                task_name_list = HEFT.get_task_name_list(job, idx, task_nums)
+                succ = HEFT.get_succ(job, idx, task_nums)  # dict 类型
+                comp_cost_array = self.get_comp_cost(task_name_list, job_pp_required)  # 获取计算成本
+                comm_cost_array = self.get_comm_cost(succ, job_data_stream)  # 获取通信成本
+
+                # 根据计算成本和通信成本将 task 分散到 server 上
+                orders, jobson, makespan = HEFT.schedule(succ, all_agents,
+                                                         HEFT.comp_cost, comp_cost_array,
+                                                         HEFT.comm_cost, comm_cost_array)
+
+                makespan_all += makespan
+                task_deployment_all.append(jobson)
+                cpu_task_mapping_list_all.append(orders)
 
             calculated_num += 1
-            percent = calculated_num / float(all_DAG_num) * 100
+            percent = calculated_num / float(total_job_nums) * 100
             # for overflow
             if percent > 100:
                 percent = 100
             bar.update(percent)
-            idx += DAG_len
+            idx += task_nums
 
-        print('The overall makespan achieved by HEFT: %f second' % makespan_of_all_DAGs)
-        print('The average makespan: %f second' % (makespan_of_all_DAGs / sum(REQUIRED_NUM)))
-        return DAGs_orders, DAGs_deploy
+        print('The overall makespan achieved by HEFT: %f second' % makespan_all)
+        print('The average makespan: %f second' % (makespan_all / total_job_nums))
+        return cpu_task_mapping_list_all, task_deployment_all
 
     @staticmethod
-    def get_funcs_num(DAG, idx, DAG_len):
+    def get_task_name_list(job, idx, task_nums):
         """
-        Get each function's number sequentially for the given DAG.
-
-        获取给定 DAG 中所有的 task 编号
+        根据拓扑排序后的结果，获取给定 job 中所有的 task 编号
         """
-        funcs_num = []
-        for i in range(DAG_len):
-            name_str_list = DAG.loc[i + idx, 'task_name'].strip().split('_')
-            func_str_len = len(name_str_list[0])
-            func_num = int(name_str_list[0][1:func_str_len])
-            funcs_num.append(func_num)
-        return funcs_num
+        task_num_list = []
+        for i in range(task_nums):
+            name_str_list = job.loc[i + idx, 'task_name'].strip().split('_')
+            task_name_str_len = len(name_str_list[0])
+            task_num = int(name_str_list[0][1:task_name_str_len])
+            task_num_list.append(task_num)
+        return task_num_list
 
     @staticmethod
     def get_succ(DAG, idx, DAG_len):
         """
+        获取 DAG 中所有结点的直接后继.
+
         Get a DAG structure from the dataset. For example: for DAG
             "M1,12846.0,j_3,1,Terminated,157213,157295,100.0,0.3
             R2_1,371.0,j_3,1,Terminated,157297,157322,100.0,0.49
@@ -160,8 +164,6 @@ class HEFT:
              12: (13,),
              13: (14,),
              14: ()}.
-
-        获取 DAG 中所有结点的直接后继
         """
         succ_funcs = [[] for _ in range(DAG_len)]
         for j in range(DAG_len):
@@ -221,9 +223,9 @@ class HEFT:
         for n1 in range(para.get_server_num()):
             for n2 in range(para.get_server_num()):
                 if n1 != n2:
-                    paths_num = len(self.reciprocals_list[n1][n2])
+                    paths_num = len(self.reciprocal_list[n1][n2])
                     chosen_path = random.randint(0, paths_num - 1)
-                    fix_path_reciprocals[n1][n2] = self.reciprocals_list[n1][n2][chosen_path]
+                    fix_path_reciprocals[n1][n2] = self.reciprocal_list[n1][n2][chosen_path]
 
         comm_cost_array = []
         for dependent_func_num, funcs_num in succ.items():

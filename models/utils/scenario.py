@@ -8,8 +8,8 @@ import random
 
 import numpy as np
 
+from models.utils.figure import ProgressBar
 from models.utils.parameters import *
-from models.utils.visualization import ProgressBar
 
 bar = ProgressBar()
 para = Parameter()
@@ -45,7 +45,7 @@ def generate_scenario():
                 G[i, k], G[k, i] = 1, 1
 
         for i in range(para.get_server_num()):
-            # 将 G 的连通性信息复制到 D
+            # 将 jobs 的连通性信息复制到 D
             for j in range(para.get_server_num()):
                 if G[i, j] == 1:
                     D[i, j], D[j, i] = 1, 1
