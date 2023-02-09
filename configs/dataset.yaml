@@ -1,0 +1,7 @@
+total_jobs: 100
+batch_task_path: "E:/Workshop/real-time-faas/dataset/batch_task.csv"
+selected_batch_task_path: "E:/Workshop/real-time-faas/dataset/selected_batch_task.csv"
+batch_task_topological_order_path: "E:/Workshop/real-time-faas/dataset/batch_task_topological_order.csv"
+batch_instance_path: "E:/Workshop/real-time-faas/dataset/batch_instance.csv"
+selected_batch_instance_path: "E:/Workshop/real-time-faas/dataset/selected_batch_instance.csv"
+batch_instance_topological_order_path: "E:/Workshop/real-time-faas/dataset/batch_instance_topological_order.csv"

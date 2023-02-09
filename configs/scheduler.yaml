@@ -1,0 +1,22 @@
+# edge computing environment settings
+cpu_nums: 4
+n_pairs: 12
+
+# density is used to adjust the connectivity of the graph
+density: 10
+
+# bandwidth generation scope
+bw_lower: 30
+bw_upper: 70
+
+# processing power scope
+pp_lower: 7
+pp_upper: 14
+
+# job settings (processing power required by each task, the data stream size of each link)
+pp_required_lower: 1
+pp_required_upper: 2
+data_stream_size_lower: 1
+data_stream_size_upper: 10
+max_task_nums: 250
+max_value: 9e+4

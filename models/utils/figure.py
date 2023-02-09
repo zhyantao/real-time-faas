@@ -6,10 +6,10 @@ import sys
 from collections import namedtuple
 
 import matplotlib.pyplot as plt
+import yaml
 
-from models.utils.parameters import *
-
-para = Parameter()
+with open("../configs/scheduler.yaml", 'r') as f:
+    para = yaml.load(f, Loader=yaml.FullLoader)
 
 
 class ProgressBar:
@@ -87,14 +87,14 @@ class SchedulingResult:
         cpu_task_mapping_list = self.cpu_task_mapping_list_all[self.job_num]
         task_start_time = self.task_start_time_all[self.job_num]
 
-        schedules = [[] for _ in range(para.get_server_num())]
+        schedules = [[] for _ in range(para.get("cpu_nums"))]
         for task_num in cpu_task_mapping_list:
             cpu_selected = int(task_deployment[task_num - 1])
             pair = {'task_num=' + str(task_num): self.Event(start=task_start_time[task_num - 1],
                                                             end=cpu_earliest_finish_time[task_num - 1][cpu_selected])}
             schedules[cpu_selected].append(pair)
         schedules_dict = {}
-        for n in range(para.get_server_num()):
+        for n in range(para.get("cpu_nums")):
             schedules_dict['cpu ' + str(n + 1)] = schedules[n]
         print('\nThe finish time of each task on the selected cpu for job #%d:' % self.job_num)
         pprint.pprint(schedules_dict)

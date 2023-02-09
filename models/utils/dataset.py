@@ -7,20 +7,25 @@
 
 注：一个 job 含有若干 task，一个 task 含有若干 instance.
 """
+import os
 import re
 
 import numpy as np
 import pandas as pd
+import yaml
 
 from models.utils.figure import ProgressBar
-from models.utils.parameters import *
 
 bar = ProgressBar()
 
+with open("../configs/dataset.yaml", 'r') as f:
+    dataset = yaml.load(f, Loader=yaml.FullLoader)
 
-def sample_jobs(batch_task_path=BATCH_TASK_PATH, selected_batch_task_path=SELECTED_BATCH_TASK_PATH,
-                batch_instance_path=BATCH_INSTANCE_PATH,
-                selected_batch_instance_path=SELECTED_BATCH_INSTANCE_PATH):
+
+def sample_jobs(batch_task_path=dataset.get("batch_task_path"),
+                selected_batch_task_path=dataset.get("selected_batch_task_path"),
+                batch_instance_path=dataset.get("batch_instance_path"),
+                selected_batch_instance_path=dataset.get("selected_batch_instance_path")):
     """
     :return: 从 batch_task.csv 和 batch_instance.csv 中提取 100 个 job_name 相同的 jobs, 保存到文件中
     """
@@ -102,9 +107,9 @@ def sample_jobs(batch_task_path=BATCH_TASK_PATH, selected_batch_task_path=SELECT
                     break
 
             count += 1
-            percent = count / float(TOTAL_JOBS) * 100
+            percent = count / float(dataset.get("total_jobs")) * 100
             bar.update(percent)
-            if count == TOTAL_JOBS:
+            if count == dataset.get("total_jobs"):
                 return
 
         elif job_name_num_batch_task < job_name_num_batch_instance:
@@ -137,8 +142,8 @@ def sample_jobs(batch_task_path=BATCH_TASK_PATH, selected_batch_task_path=SELECT
                     break
 
 
-def get_topological_order(selected_batch_task_path=SELECTED_BATCH_TASK_PATH,
-                          batch_task_topological_order_path=BATCH_TASK_TOPOLOGICAL_ORDER_PATH):
+def get_topological_order(selected_batch_task_path=dataset.get("selected_batch_task_path"),
+                          batch_task_topological_order_path=dataset.get("batch_task_topological_order_path")):
     """
     获取每个 job 中 task 的拓扑排序，保存到文件中。
     """
@@ -154,7 +159,7 @@ def get_topological_order(selected_batch_task_path=SELECTED_BATCH_TASK_PATH,
     rows = df.shape[0]  # CSV 文件的行数
     idx = 0
 
-    total_jobs = TOTAL_JOBS
+    total_jobs = dataset.get("total_jobs")
     sorted_num = 0
 
     print('Getting topological order for %d jobs ...' % total_jobs)

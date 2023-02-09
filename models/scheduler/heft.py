@@ -20,11 +20,7 @@ from collections import namedtuple
 from functools import partial
 from itertools import chain
 
-import numpy as np
-import pandas as pd
-
-from models.utils.dataset import reverse_dict, get_one_job
-from models.utils.parameters import *
+from models.utils.dataset import *
 from models.utils.scenario import bar, para
 
 
@@ -36,7 +32,7 @@ def get_agents():
     作者代码中的 server 和 agent 是同一个东西，都是能够运行代码的处理单元。
     function 和 task 是同一个东西，都代表 FaaS 中的一个函数实例。
     """
-    servers = [str(n) for n in range(para.get_server_num())]
+    servers = [str(n) for n in range(para.get("cpu_nums"))]
     return ''.join(servers)
 
 
@@ -52,7 +48,7 @@ class HEFT:
         # get the generated functions' requirements
         self.pp_required, self.data_stream = pp_required, data_stream
 
-    def get_response_time(self, sorted_job_path=BATCH_TASK_TOPOLOGICAL_ORDER_PATH):
+    def get_response_time(self, sorted_job_path=dataset.get("batch_task_topological_order_path")):
         """
         Calculate the overall finish time of all DAGs achieved by HEFT algorithm.
         """
@@ -68,7 +64,7 @@ class HEFT:
         task_deployment_all = []
         cpu_task_mapping_list_all = []
 
-        total_job_nums = TOTAL_JOBS
+        total_job_nums = dataset.get("total_jobs")
         calculated_num = 0
         print('\nGetting makespan for %d jobs by HEFT algorithm ...' % total_job_nums)
         while idx < rows:
@@ -193,7 +189,7 @@ class HEFT:
 
         获取编号为 funcs_num 在每个 server 上的计算成本
         """
-        comp_cost_array = np.zeros((len(funcs_num) + 1, para.get_server_num()))
+        comp_cost_array = np.zeros((len(funcs_num) + 1, para.get("cpu_nums")))
         for i in range(len(funcs_num)):
             func_num = funcs_num[i]
             comp_cost_array[func_num] = DAG_pp_required[func_num - 1] / self.pp
@@ -219,9 +215,9 @@ class HEFT:
         Get the data transmission cost between any two servers for a given DAG.
         """
         # fix the path chosen between any two node
-        fix_path_reciprocals = np.zeros((para.get_server_num(), para.get_server_num()))
-        for n1 in range(para.get_server_num()):
-            for n2 in range(para.get_server_num()):
+        fix_path_reciprocals = np.zeros((para.get("cpu_nums"), para.get("cpu_nums")))
+        for n1 in range(para.get("cpu_nums")):
+            for n2 in range(para.get("cpu_nums")):
                 if n1 != n2:
                     paths_num = len(self.reciprocal_list[n1][n2])
                     chosen_path = random.randint(0, paths_num - 1)
@@ -233,9 +229,9 @@ class HEFT:
                 pass
             else:
                 trans_size = DAG_data_stream[dependent_func_num - 1]
-                trans_cost = np.zeros((para.get_server_num(), para.get_server_num()))  # n * n 的矩阵
-                for n1 in range(para.get_server_num()):
-                    for n2 in range(para.get_server_num()):
+                trans_cost = np.zeros((para.get("cpu_nums"), para.get("cpu_nums")))  # n * n 的矩阵
+                for n1 in range(para.get("cpu_nums")):
+                    for n2 in range(para.get("cpu_nums")):
                         if n1 != n2:
                             trans_cost[n1][n2] = trans_size * fix_path_reciprocals[n1][n2]
                 comm_cost_array.append([dependent_func_num, funcs_num, trans_cost])
@@ -267,7 +263,7 @@ class HEFT:
         n = len(agents)
         if n == 1:
             return 0
-        n_pairs = para.get_n_pairs()
+        n_pairs = para.get("n_pairs")
         return 1. * sum(comm_cost(ni, nj, a1, a2, comm_cost_array) for a1 in agents for a2 in agents
                         if a1 != a2) / n_pairs
 
@@ -410,7 +406,7 @@ class HEFT:
         for job in reversed(jobs):
             HEFT.allocate(job, orders, jobson, prev, comm_cost, comm_cost_array, comp_cost, comp_cost_array)
 
-        for n in range(para.get_server_num()):
+        for n in range(para.get("cpu_nums")):
             orders['server ' + str(n + 1)] = orders.pop(str(n))
 
         return orders, jobson, HEFT.makespan(orders)

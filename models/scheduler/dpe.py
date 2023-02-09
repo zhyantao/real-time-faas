@@ -5,8 +5,7 @@ DPE 算法实现：
 import numpy as np
 import pandas as pd
 
-from models.utils.dataset import get_one_job
-from models.utils.parameters import *
+from models.utils.dataset import *
 from models.utils.scenario import bar, para
 
 
@@ -18,7 +17,7 @@ class DPE:
         # get the generated functions' requirements
         self.pp_required, self.data_stream = pp_required, data_stream
 
-    def get_response_time(self, sorted_job_path=BATCH_TASK_TOPOLOGICAL_ORDER_PATH):
+    def get_response_time(self, sorted_job_path=dataset.get("batch_task_topological_order_path")):
         """
         Calculate the overall finish time of all DAGs achieved by DPE algorithm.
         """
@@ -36,7 +35,7 @@ class DPE:
         task_start_time_all = []
         cpu_task_mapping_list_all = []
 
-        total_job_nums = TOTAL_JOBS  # 需要采样的 job 的数量
+        total_job_nums = dataset.get("total_jobs")  # 需要采样的 job 的数量
         calculated_num = 0  # 已经计算的 job，用于监控当前处理进度
         print('\nGetting makespan for %d jobs by DPE algorithm ...' % total_job_nums)
 
@@ -59,11 +58,11 @@ class DPE:
                 job_pp_required = self.pp_required[:task_nums]  # 要求的处理能力 processor power
                 job_data_stream = self.data_stream[:task_nums]  # 要求传输的数据量
 
-                cpu_earliest_finish_time = np.zeros((task_nums, para.get_server_num()))
+                cpu_earliest_finish_time = np.zeros((task_nums, para.get("cpu_nums")))
                 task_start_time = np.zeros(task_nums)  # 记录每个 task 的开始时间
                 task_deployment = -1 * np.ones(task_nums)  # 记录每个 task 是否已被分配
                 cpu_task_mapping_list = []  # 记录每个 cpu 上的 task 处理序列
-                cpu_finish_time = np.zeros(para.get_server_num())  # 记录每个 cpu 上 `最近的 task 的完成时间`
+                cpu_finish_time = np.zeros(para.get("cpu_nums"))  # 记录每个 cpu 上 `最近的 task 的完成时间`
 
                 makespan = 0
                 for j in range(task_nums + 1):  # +1 是因为人为创建了一个 dummy tail task
@@ -86,7 +85,7 @@ class DPE:
                     if task_name_list_len == 1:  # 长度 == 1，说明这是个入口 task
                         pass
                     else:  # 根据 task 之间的依赖关系处理分配
-                        for cpu_current in range(para.get_server_num()):
+                        for cpu_current in range(para.get("cpu_nums")):
                             # get t(p(f_j)) where p(f_j) is cpu_current
                             comp_cost = job_pp_required[task_name - 1] / self.pp[cpu_current]
                             all_min_phi = []  # 记录当前 cpu 上的 task 所依赖的所有其他 task 最早完成时间
@@ -133,9 +132,9 @@ class DPE:
                                                                                                     dependent_task_name - 1] / self.pp + cpu_finish_time
 
                                         else:  # 虽然 dependent_task_name 的 cpu_earliest_finish_time 已经被设置了，cpu_finish_time 仍有可能被更新
-                                            cpu_begin_time = np.zeros(para.get_server_num())
+                                            cpu_begin_time = np.zeros(para.get("cpu_nums"))
 
-                                            for cpu_k in range(para.get_server_num()):
+                                            for cpu_k in range(para.get("cpu_nums")):
                                                 min_cpu_begin_time = 0
 
                                                 # dependent_task_name 被部署到 cpu_k 上
@@ -178,11 +177,11 @@ class DPE:
                                         break
 
                                 # 确定 dependent_task_name 的最佳部署 cpu
-                                min_phi = MAX_VALUE
+                                min_phi = eval(para.get("max_value"))
                                 cpu_selected = -1
 
                                 # 以遍历的方式确定最佳部署 cpu（有待优化）
-                                for cpu_m in range(para.get_server_num()):
+                                for cpu_m in range(para.get("cpu_nums")):
                                     if cpu_current == cpu_m:
                                         comm_cost = 0
                                     else:
