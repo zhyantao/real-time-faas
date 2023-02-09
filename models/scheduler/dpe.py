@@ -55,39 +55,30 @@ class DPE:
                 DAG_pp_required = self.pp_required[:task_nums]
                 DAG_data_stream = self.data_stream[:task_nums]
 
-                # T_optimal stores the earliest finish time of each function on each server
-                # T_optimal 存储了每个 function 在每个 server 上的最早完成时间
-                T_optimal = np.zeros((task_nums, para.get_server_num()))
+                T_optimal = np.zeros((task_nums, para.get_server_num()))  # 存储每个 task 在每个 cpu 上的最早完成时间
                 start_time = np.zeros(task_nums)
-                funcs_deploy = -1 * np.ones(task_nums)
-                process_sequence = []  # 记录每个 agent 上的 function 处理序列
-                # server_runtime records the moment when the newest func on each server is finished
-                # server_runtime 记录了最近的 function 在每个 server 上的完成时间
-                server_runtime = np.zeros(para.get_server_num())
+                task_deploy = -1 * np.ones(task_nums)
+                cpu_sequence = []  # 记录每个 cpu 上的 task 处理序列
+                server_runtime = np.zeros(para.get_server_num())  # 记录每个 cpu 上 `最近的 task 的完成时间`
 
                 makespan = 0
-                for j in range(task_nums + 1):
-                    # 处理最后一个结点，收尾工作
-                    if j == task_nums:
-                        # this is the dummy tail function, update all the exit functions' deployment and return the makespan
-                        # makespan is the slowest 'exit function's earliest finish time'
-                        # 这是一个 dummy tail function，用于将所有的出口函数连接起来，更新 makespan
+                for j in range(task_nums + 1):  # +1 是因为人为创建了一个 dummy tail task
+                    if j == task_nums:  # 处理 dummy tail task，用于连接所有的出口函数，更新 makespan
                         for e in range(task_nums):
-                            if funcs_deploy[e] == -1.:
-                                funcs_deploy[e] = int(np.argmin(T_optimal[e]))
-                                process_sequence.append(e + 1)
+                            if task_deploy[e] == -1.:
+                                task_deploy[e] = int(np.argmin(T_optimal[e]))
+                                cpu_sequence.append(e + 1)
                                 if min(T_optimal[e]) > makespan:
                                     makespan = min(T_optimal[e])
                         break
 
-                    # get the number of this function and store in func_num
-                    # 获取 function 编号（实际是 task 编号）
-                    name_str_list = job.loc[j + idx, 'task_name'].strip().split('_')
-                    name_str_list_len = len(name_str_list)
-                    func_str_len = len(name_str_list[0])
-                    func_num = int(name_str_list[0][1:func_str_len])
+                    # 获取 task 编号（实际是 task 编号）
+                    task_name_list = job.loc[j + idx, 'task_name'].strip().split('_')
+                    task_name_list_len = len(task_name_list)
+                    task_name_len = len(task_name_list[0])
+                    task_name = int(task_name_list[0][1:task_name_len])
 
-                    if name_str_list_len == 1:
+                    if task_name_list_len == 1:
                         # func is an entry function
                         # 入口函数
                         pass
@@ -97,14 +88,14 @@ class DPE:
                         # 非入口函数，应当解决首先解决依赖
                         for server_i in range(para.get_server_num()):
                             # get t(p(f_j)) where p(f_j) is server_i
-                            process_cost = DAG_pp_required[func_num - 1] / self.pp[server_i]
+                            process_cost = DAG_pp_required[task_name - 1] / self.pp[server_i]
                             all_min_phi = []  # 记录当前服务器上的 function 所依赖的所有其他函数最早完成时间
-                            for i in range(name_str_list_len - 1):
-                                if name_str_list[i + 1] == '':
+                            for i in range(task_name_list_len - 1):
+                                if task_name_list[i + 1] == '':
                                     continue
-                                dependent_func_num = int(name_str_list[i + 1])
+                                dependent_func_num = int(task_name_list[i + 1])
 
-                                if funcs_deploy[dependent_func_num - 1] != -1.:
+                                if task_deploy[dependent_func_num - 1] != -1.:
                                     # dependent_func_num has been deployed beforehand, get min_phi directly
                                     # 若 dependent_func_num 之前已经被部署，那么直接获取 min_phi
 
@@ -113,8 +104,8 @@ class DPE:
                                     # process (M2, R4) firstly. R5 will not affect the placement of M2. However, we don't
                                     # know that if we process (M2, R5) firstly, whether the makespan can be decreased further.
                                     # =================================================================
-                                    where_deployed = int(funcs_deploy[dependent_func_num - 1])
-                                    if server_i == funcs_deploy[dependent_func_num - 1]:
+                                    where_deployed = int(task_deploy[dependent_func_num - 1])
+                                    if server_i == task_deploy[dependent_func_num - 1]:
                                         trans_cost = 0
                                     else:
                                         trans_cost = self.proportions_list[where_deployed][server_i] * \
@@ -155,7 +146,7 @@ class DPE:
                                                     dependent_func_num_predecessor = int(
                                                         name_str_list_inner[h_inner + 1])
                                                     where_deployed_predecessor = int(
-                                                        funcs_deploy[dependent_func_num_predecessor - 1])
+                                                        task_deploy[dependent_func_num_predecessor - 1])
                                                     if where_deployed_predecessor == -1.:
                                                         print('Sth. wrong! It\'s impossible!')
                                                     if k == where_deployed_predecessor:
@@ -196,19 +187,19 @@ class DPE:
                                         selected_server = m
 
                                 # this is where a function really be deployed
-                                funcs_deploy[dependent_func_num - 1] = selected_server
-                                process_sequence.append(dependent_func_num)
+                                task_deploy[dependent_func_num - 1] = selected_server
+                                cpu_sequence.append(dependent_func_num)
                                 server_runtime[selected_server] = T_optimal[dependent_func_num - 1][selected_server]
                                 start_time[dependent_func_num - 1] = server_runtime[selected_server] - DAG_pp_required[
                                     dependent_func_num - 1] / self.pp[selected_server]
                                 all_min_phi.append(min_phi)
 
                             # now, all the predecessors of func has been deployed, use their T_optimal to update T_optimal of func
-                            T_optimal[func_num - 1][server_i] = max(all_min_phi)
+                            T_optimal[task_name - 1][server_i] = max(all_min_phi)
 
                 makespan_of_all_DAGs += makespan  # 累计 2119 个 job 的 makespan
-                DAGs_deploy.append(funcs_deploy)  # 每部署完一个 job，将其 append 到 DAGs_deploy 中
-                process_sequence_all.append(process_sequence)
+                DAGs_deploy.append(task_deploy)  # 每部署完一个 job，将其 append 到 DAGs_deploy 中
+                process_sequence_all.append(cpu_sequence)
                 T_optimal_all.append(T_optimal)  # 记录所有 job 的最早完成时间
                 start_time_all.append(start_time)  # 记录所有所有 job 的最早开始时间
 

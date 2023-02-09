@@ -21,29 +21,29 @@ def show(job, job_name=None):
     # 填充有向图 DiGraph 的属性
     G = nx.DiGraph()
     for task_name in task_name_list:
-        node_name_list = task_name.split('_')
-        node_name_len = len(node_name_list[0])
-        node_name_list[0] = node_name_list[0][1:node_name_len]
+        dependencies = task_name.split('_')
+        task_name_len = len(dependencies[0])
+        dependencies[0] = dependencies[0][1:task_name_len]
 
-        if not node_name_list[0].isdigit():
+        if not dependencies[0].isdigit():
             G.add_node(task_name)
             continue
 
-        curr_node_num = node_name_list[0]
-        if len(node_name_list) == 1:
-            G.add_node(curr_node_num)
+        curr_task = dependencies[0]
+        if len(dependencies) == 1:
+            G.add_node(curr_task)
         else:
             i = 1
-            while i < len(node_name_list):
-                dep_node_num = node_name_list[i]
+            while i < len(dependencies):
+                dependency = dependencies[i]
                 weight = round(random.random(), 1)
-                G.add_edge(dep_node_num, curr_node_num, weight=weight)  # 边的权重统一设置为 1, 后面可以改
+                G.add_edge(dependency, curr_task, weight=weight)  # 边的权重统一设置为 1, 后面可以改
                 i += 1
 
     # 展示图像
     pos = nx.nx_agraph.graphviz_layout(G, prog='dot')
     edge_labels = nx.get_edge_attributes(G, "weight")
-    nx.draw(G, pos, font_color='white', with_labels=True)
+    nx.draw(G, pos, font_color='whitesmoke', with_labels=True)
     nx.draw_networkx_edge_labels(G, pos, edge_labels=edge_labels, font_size=8)
 
     ax = plt.gca()

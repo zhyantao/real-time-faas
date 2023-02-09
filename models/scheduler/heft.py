@@ -79,6 +79,7 @@ class HEFT:
             while (idx + DAG_len < df_len) and (df.loc[idx + DAG_len, 'job_name'] == DAG_name):
                 DAG_len = DAG_len + 1
             DAG = df.loc[idx: idx + DAG_len]  # DAG 是 DataFrame 格式的数据
+            # DAG, _ = get_one_job(df, idx)
 
             # 设置 CPU 需求 和 数据大小
             DAG_pp_required = self.pp_required[:DAG_len]  # 将 pp_required 复制到 DAG_pp_required
