@@ -17,7 +17,7 @@ class DPE:
         # get the generated functions' requirements
         self.pp_required, self.data_stream = pp_required, data_stream
 
-    def get_response_time(self, sorted_job_path=dataset.get("batch_task_topological_order_path")):
+    def get_response_time(self, sorted_job_path=para.get("batch_task_topological_order_path")):
         """
         Calculate the overall finish time of all DAGs achieved by DPE algorithm.
         """
@@ -35,7 +35,7 @@ class DPE:
         task_start_time_all = []
         cpu_task_mapping_list_all = []
 
-        total_job_nums = dataset.get("total_jobs")  # 需要采样的 job 的数量
+        total_job_nums = para.get("total_jobs")  # 需要采样的 job 的数量
         calculated_num = 0  # 已经计算的 job，用于监控当前处理进度
         print('\nGetting makespan for %d jobs by DPE algorithm ...' % total_job_nums)
 

@@ -18,14 +18,14 @@ from models.utils.figure import ProgressBar
 
 bar = ProgressBar()
 
-with open("../configs/dataset.yaml", 'r') as f:
-    dataset = yaml.load(f, Loader=yaml.FullLoader)
+with open("../configs/parameter.yaml", 'r') as f:
+    para = yaml.load(f, Loader=yaml.FullLoader)
 
 
-def sample_jobs(batch_task_path=dataset.get("batch_task_path"),
-                selected_batch_task_path=dataset.get("selected_batch_task_path"),
-                batch_instance_path=dataset.get("batch_instance_path"),
-                selected_batch_instance_path=dataset.get("selected_batch_instance_path")):
+def sample_jobs(batch_task_path=para.get("batch_task_path"),
+                selected_batch_task_path=para.get("selected_batch_task_path"),
+                batch_instance_path=para.get("batch_instance_path"),
+                selected_batch_instance_path=para.get("selected_batch_instance_path")):
     """
     :return: 从 batch_task.csv 和 batch_instance.csv 中提取 100 个 job_name 相同的 jobs, 保存到文件中
     """
@@ -107,9 +107,9 @@ def sample_jobs(batch_task_path=dataset.get("batch_task_path"),
                     break
 
             count += 1
-            percent = count / float(dataset.get("total_jobs")) * 100
+            percent = count / float(para.get("total_jobs")) * 100
             bar.update(percent)
-            if count == dataset.get("total_jobs"):
+            if count == para.get("total_jobs"):
                 return
 
         elif job_name_num_batch_task < job_name_num_batch_instance:
@@ -142,8 +142,8 @@ def sample_jobs(batch_task_path=dataset.get("batch_task_path"),
                     break
 
 
-def get_topological_order(selected_batch_task_path=dataset.get("selected_batch_task_path"),
-                          batch_task_topological_order_path=dataset.get("batch_task_topological_order_path")):
+def get_topological_order(selected_batch_task_path=para.get("selected_batch_task_path"),
+                          batch_task_topological_order_path=para.get("batch_task_topological_order_path")):
     """
     获取每个 job 中 task 的拓扑排序，保存到文件中。
     """
@@ -159,7 +159,7 @@ def get_topological_order(selected_batch_task_path=dataset.get("selected_batch_t
     rows = df.shape[0]  # CSV 文件的行数
     idx = 0
 
-    total_jobs = dataset.get("total_jobs")
+    total_jobs = para.get("total_jobs")
     sorted_num = 0
 
     print('Getting topological order for %d jobs ...' % total_jobs)

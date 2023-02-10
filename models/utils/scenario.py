@@ -13,7 +13,7 @@ from models.utils.figure import ProgressBar
 
 bar = ProgressBar()
 
-with open('../configs/scheduler.yaml', 'r') as f:
+with open('../configs/parameter.yaml', 'r') as f:
     para = yaml.load(f, Loader=yaml.FullLoader)
 
 

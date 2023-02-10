@@ -48,7 +48,7 @@ class HEFT:
         # get the generated functions' requirements
         self.pp_required, self.data_stream = pp_required, data_stream
 
-    def get_response_time(self, sorted_job_path=dataset.get("batch_task_topological_order_path")):
+    def get_response_time(self, sorted_job_path=para.get("batch_task_topological_order_path")):
         """
         Calculate the overall finish time of all DAGs achieved by HEFT algorithm.
         """
@@ -64,7 +64,7 @@ class HEFT:
         task_deployment_all = []
         cpu_task_mapping_list_all = []
 
-        total_job_nums = dataset.get("total_jobs")
+        total_job_nums = para.get("total_jobs")
         calculated_num = 0
         print('\nGetting makespan for %d jobs by HEFT algorithm ...' % total_job_nums)
         while idx < rows:
