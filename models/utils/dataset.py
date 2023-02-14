@@ -276,3 +276,24 @@ def reverse_dict(d):
         for val in d[key]:
             result[val] = result.get(val, tuple()) + (key,)
     return result
+
+
+def sample_machines(total_machines=para.get("total_machines"),
+                    container_usage_path=para.get("container_usage_path"),
+                    selected_container_usage_path=para.get("selected_container_usage_path")):
+    """
+    从 container_usage.csv 文件中提取指定数量的 machines
+
+    :return: 无返回值（保存到文件）
+    """
+    if os.path.exists(selected_container_usage_path):
+        print("Dataset container_usage.csv is already selected.")
+        return
+
+    if not os.path.exists(selected_container_usage_path):
+        columns = ['container_id', 'machine_id', 'time_stamp', 'cpu_util_percent', 'mem_util_percent',
+                   'cpi', 'mem_gps', 'mpki', 'net_in', 'net_out', 'disk_io_percent']
+        df = pd.DataFrame(columns=columns)
+        df.to_csv(selected_container_usage_path, index=False)
+
+    pass

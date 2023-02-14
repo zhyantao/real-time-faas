@@ -1,5 +1,5 @@
 ################
-# Dataset      #
+# Dataset
 ################
 total_jobs: 100
 batch_task_path: "E:/Workshop/real-time-faas/dataset/batch_task.csv"
@@ -10,7 +10,7 @@ selected_batch_instance_path: "E:/Workshop/real-time-faas/dataset/selected_batch
 batch_instance_topological_order_path: "E:/Workshop/real-time-faas/dataset/batch_instance_topological_order.csv"
 
 ################
-# Scheduler    #
+# Scheduler
 ################
 # edge computing environment settings
 cpu_nums: 4
@@ -36,5 +36,8 @@ max_task_nums: 250
 max_value: 9e+4
 
 ################
-# Autoscaler   #
+# Autoscaler
 ################
+total_machines: 100
+container_usage_path: "E:/Workshop/real-time-faas/dataset/container_usage.csv"
+selected_container_usage_path: "E:/Workshop/real-time-faas/dataset/selected_container_usage.csv"
