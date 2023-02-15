@@ -8,7 +8,7 @@ from collections import namedtuple
 import matplotlib.pyplot as plt
 import yaml
 
-with open("../configs/parameter.yaml", 'r') as f:
+with open("E:/Workshop/real-time-faas/configs/parameter.yaml", 'r') as f:
     para = yaml.load(f, Loader=yaml.FullLoader)
 
 

@@ -18,7 +18,7 @@ from models.utils.figure import ProgressBar
 
 bar = ProgressBar()
 
-with open("../configs/parameter.yaml", 'r') as f:
+with open("E:/Workshop/real-time-faas/configs/parameter.yaml", 'r') as f:
     para = yaml.load(f, Loader=yaml.FullLoader)
 
 
@@ -324,3 +324,19 @@ def sample_machines(container_usage_path=para.get("container_usage_path"),
                 bar.update(percent)
                 if count == para.get("total_machines"):
                     return
+
+
+def get_one_machine(machines, start_idx=0):
+    """
+    从当前 start_idx 开始，获取一个 machine，并返回下一个 machine 的 idx
+    :return: 返回从 start_idx 开始的第一个 machine，以及下一个 machine 的起始 idx
+    """
+    machine_id = machines.loc[start_idx, 'machine_id']
+    rows = machines.shape[0]
+    machine_nums = 0
+    while (start_idx + machine_nums < rows) and (machines.loc[start_idx + machine_nums, 'machine_id'] == machine_id):
+        machine_nums += 1
+
+    machine = machines.loc[start_idx: start_idx + machine_nums - 1].copy()
+    next_idx = start_idx + machine_nums
+    return machine, next_idx
