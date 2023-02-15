@@ -122,10 +122,10 @@ class LSTM(nn.Module):
 
             plt.axvline(x=train_size, c='r', linestyle='--')
 
-            plt.plot(data_y_plot)
-            plt.plot(data_predict)
+            plt.plot(data_y_plot, label=['Real CPU Util.', 'Real Mem Util.'])
+            plt.plot(data_predict, label=['Predicted CPU Util.', 'Predicted Mem Util.'])
             plt.suptitle('CPU and Mem Usage Prediction')
             plt.ylabel("Utilization Rate (%)")
             plt.xlabel("Relative Time (s)")
-            plt.legend(['Real CPU Util.', 'Real Mem Util.', 'Predicted CPU Util.', 'Predicted Mem Util.'])
+            plt.legend()
             plt.show()
