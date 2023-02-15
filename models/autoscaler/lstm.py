@@ -7,19 +7,6 @@ from torch.autograd import Variable
 from models.utils.dataset import *
 
 
-def sliding_windows(data, seq_length):
-    x = []
-    y = []
-
-    for i in range(len(data) - seq_length - 1):
-        _x = data[i:i + seq_length]
-        _y = data[i + seq_length]
-        x.append(_x)
-        y.append(_y)
-
-    return np.array(x), np.array(y)
-
-
 class LSTM(nn.Module):
 
     def __init__(self, num_classes, input_size, hidden_size, num_layers, seq_length):
@@ -50,94 +37,95 @@ class LSTM(nn.Module):
 
         return out
 
+    def sliding_windows(self, data):
+        x = []
+        y = []
 
-def predict(selected_container_usage_path=para.get("selected_container_usage_path")):
-    """
-    测试选中的 container usage 预测效果
+        for i in range(len(data) - self.seq_length - 1):
+            _x = data[i:i + self.seq_length]
+            _y = data[i + self.seq_length]
+            x.append(_x)
+            y.append(_y)
 
-    :param selected_container_usage_path:
-    :return:
-    """
-    if not os.path.exists(selected_container_usage_path):
-        print("container_usage.csv has not been selected.")
+        return np.array(x), np.array(y)
 
-    df = pd.read_csv(selected_container_usage_path)
-    rows = df.shape[0]
-    idx = 0
+    def predict(self, selected_container_usage_path=para.get("selected_container_usage_path")):
+        """
+        测试选中的 container usage 预测效果
 
-    while idx < rows:
-        machine, idx = get_one_machine(df, idx)
-        # print(machine)
+        :param selected_container_usage_path:
+        :return:
+        """
+        if not os.path.exists(selected_container_usage_path):
+            print("container_usage.csv has not been selected.")
 
-        # 处理单个 machine 的代码
-        training_set = machine
-        training_set = training_set.iloc[:, 3:5].values
-        # plt.plot(training_set, label="cpu_util_percent")
-        # plt.show()
+        df = pd.read_csv(selected_container_usage_path)
+        rows = df.shape[0]
+        idx = 0
 
-        # 归一化处理
-        sc = MinMaxScaler()
-        training_data = sc.fit_transform(training_set)
+        while idx < rows:
+            machine, idx = get_one_machine(df, idx)
+            # print(machine)
 
-        seq_length = 4
-        x, y = sliding_windows(training_data, seq_length)
+            # 处理单个 machine 的代码
+            training_set = machine.iloc[:, 3:5].values
+            # plt.plot(training_set, label="cpu_util_percent")
+            # plt.show()
 
-        train_size = int(len(y) * 0.67)
-        test_size = len(y) - train_size
+            # 归一化处理
+            sc = MinMaxScaler()
+            training_data = sc.fit_transform(training_set)
 
-        dataX = Variable(torch.Tensor(np.array(x)))
-        dataY = Variable(torch.Tensor(np.array(y)))
+            x, y = self.sliding_windows(training_data)
 
-        trainX = Variable(torch.Tensor(np.array(x[0:train_size])))
-        trainY = Variable(torch.Tensor(np.array(y[0:train_size])))
+            train_size = int(len(y) * 0.67)
+            test_size = len(y) - train_size
 
-        testX = Variable(torch.Tensor(np.array(x[train_size:len(x)])))
-        testY = Variable(torch.Tensor(np.array(y[train_size:len(y)])))
+            data_x = Variable(torch.Tensor(np.array(x)))
+            data_y = Variable(torch.Tensor(np.array(y)))
 
-        num_epochs = 2000
-        learning_rate = 0.01
+            train_x = Variable(torch.Tensor(np.array(x[0:train_size])))
+            train_y = Variable(torch.Tensor(np.array(y[0:train_size])))
 
-        input_size = 2
-        hidden_size = 2
-        num_layers = 1
+            test_x = Variable(torch.Tensor(np.array(x[train_size:len(x)])))
+            test_y = Variable(torch.Tensor(np.array(y[train_size:len(y)])))
 
-        num_classes = 2
+            num_epochs = 2000
+            learning_rate = 0.01
 
-        lstm = LSTM(num_classes, input_size, hidden_size, num_layers, seq_length)
+            criterion = torch.nn.MSELoss()  # mean-squared error for regression
+            optimizer = torch.optim.Adam(self.parameters(), lr=learning_rate)
+            # optimizer = torch.optim.SGD(lstm.parameters(), lr=learning_rate)
 
-        criterion = torch.nn.MSELoss()  # mean-squared error for regression
-        optimizer = torch.optim.Adam(lstm.parameters(), lr=learning_rate)
-        # optimizer = torch.optim.SGD(lstm.parameters(), lr=learning_rate)
+            # Train the model
+            for epoch in range(num_epochs):
+                outputs = self(train_x)
+                optimizer.zero_grad()
 
-        # Train the model
-        for epoch in range(num_epochs):
-            outputs = lstm(trainX)
-            optimizer.zero_grad()
+                # obtain the loss function
+                loss = criterion(outputs, train_y)
 
-            # obtain the loss function
-            loss = criterion(outputs, trainY)
+                loss.backward()
 
-            loss.backward()
+                optimizer.step()
+                # if epoch % 100 == 0:
+                #     print("Epoch: %d, loss: %1.5f" % (epoch, loss.item()))
 
-            optimizer.step()
-            # if epoch % 100 == 0:
-            #     print("Epoch: %d, loss: %1.5f" % (epoch, loss.item()))
+            self.eval()
+            train_predict = self(data_x)
 
-        lstm.eval()
-        train_predict = lstm(dataX)
+            data_predict = train_predict.data.numpy()
+            data_y_plot = data_y.data.numpy()
 
-        data_predict = train_predict.data.numpy()
-        dataY_plot = dataY.data.numpy()
+            data_predict = sc.inverse_transform(data_predict)
+            data_y_plot = sc.inverse_transform(data_y_plot)
 
-        data_predict = sc.inverse_transform(data_predict)
-        dataY_plot = sc.inverse_transform(dataY_plot)
+            plt.axvline(x=train_size, c='r', linestyle='--')
 
-        plt.axvline(x=train_size, c='r', linestyle='--')
-
-        plt.plot(dataY_plot)
-        plt.plot(data_predict)
-        plt.suptitle('CPU and Mem Usage Prediction')
-        plt.ylabel("Usage Percent")
-        plt.xlabel("Instance Number")
-        plt.legend(['CPU Util', 'Mem Util', 'CPU Pred', 'Mem Pred'])
-        plt.show()
+            plt.plot(data_y_plot)
+            plt.plot(data_predict)
+            plt.suptitle('CPU and Mem Usage Prediction')
+            plt.ylabel("Utilization Rate (%)")
+            plt.xlabel("Relative Time (s)")
+            plt.legend(['Real CPU Util.', 'Real Mem Util.', 'Predicted CPU Util.', 'Predicted Mem Util.'])
+            plt.show()
