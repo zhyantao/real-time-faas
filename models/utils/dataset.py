@@ -278,8 +278,7 @@ def reverse_dict(d):
     return result
 
 
-def sample_machines(total_machines=para.get("total_machines"),
-                    container_usage_path=para.get("container_usage_path"),
+def sample_machines(container_usage_path=para.get("container_usage_path"),
                     selected_container_usage_path=para.get("selected_container_usage_path")):
     """
     从 container_usage.csv 文件中提取指定数量的 machines
@@ -296,4 +295,32 @@ def sample_machines(total_machines=para.get("total_machines"),
         df = pd.DataFrame(columns=columns)
         df.to_csv(selected_container_usage_path, index=False)
 
-    pass
+    print("Sampling data from container_usage.csv ...")
+
+    chunk_size = 3
+    chunk_container_usage = pd.read_csv(container_usage_path, header=None, iterator=True)
+    current_chunk_container_usage = chunk_container_usage.get_chunk(chunk_size)
+
+    idx, i, count = 0, 0, 0
+    while not current_chunk_container_usage.empty:
+        machine_id = current_chunk_container_usage.loc[idx + i, 1]
+
+        while i < chunk_size:
+            if machine_id == current_chunk_container_usage.loc[idx + i, 1]:
+                item_container_usage = current_chunk_container_usage.loc[idx + i: idx + i]
+                with open(selected_container_usage_path, 'a') as f:
+                    item_container_usage.to_csv(f, header=False, index=False, lineterminator='\n')
+                i += 1
+
+                if i == chunk_size:
+                    current_chunk_container_usage = chunk_container_usage.get_chunk(chunk_size)
+                    idx += chunk_size
+                    i = 0
+            else:
+                machine_id = current_chunk_container_usage.loc[idx + i, 1]  # 更新为下一个 machine_id
+
+                count += 1
+                percent = count / float(para.get("total_machines")) * 100
+                bar.update(percent)
+                if count == para.get("total_machines"):
+                    return
