@@ -2,8 +2,6 @@
 DPE 算法实现：
 局限性：该算法的改进在于使用了倒数来分配流量，但是时间复杂度是极高的，只适合在简单功能下使用。
 """
-import numpy as np
-import pandas as pd
 
 from models.utils.dataset import *
 from models.utils.scenario import bar, para
@@ -128,8 +126,8 @@ class DPE:
                                         name_str_list_inner_len = len(task_name_list_of_dependent_task_depends)
 
                                         if name_str_list_inner_len == 1:  # 入口函数直接设置它的 cpu_earliest_finish_time
-                                            cpu_earliest_finish_time[dependent_task_name - 1] = job_pp_required[
-                                                                                                    dependent_task_name - 1] / self.pp + cpu_finish_time
+                                            cpu_earliest_finish_time[dependent_task_name - 1] = \
+                                                job_pp_required[dependent_task_name - 1] / self.pp + cpu_finish_time
 
                                         else:  # 虽然 dependent_task_name 的 cpu_earliest_finish_time 已经被设置了，cpu_finish_time 仍有可能被更新
                                             cpu_begin_time = np.zeros(para.get("cpu_nums"))
@@ -172,8 +170,8 @@ class DPE:
                                                 else:
                                                     cpu_begin_time[cpu_k] = cpu_finish_time[cpu_k]
 
-                                            cpu_earliest_finish_time[dependent_task_name - 1] = job_pp_required[
-                                                                                                    dependent_task_name - 1] / self.pp + cpu_begin_time
+                                            cpu_earliest_finish_time[dependent_task_name - 1] = \
+                                                job_pp_required[dependent_task_name - 1] / self.pp + cpu_begin_time
                                         break
 
                                 # 确定 dependent_task_name 的最佳部署 cpu
@@ -197,11 +195,11 @@ class DPE:
                                 # 整理 dependent_task_name 的部署结果
                                 task_deployment[dependent_task_name - 1] = cpu_selected
                                 cpu_task_mapping_list.append(dependent_task_name)
-                                cpu_finish_time[cpu_selected] = cpu_earliest_finish_time[dependent_task_name - 1][
-                                    cpu_selected]
-                                task_start_time[dependent_task_name - 1] = cpu_finish_time[cpu_selected] - \
-                                                                           job_pp_required[dependent_task_name - 1] / \
-                                                                           self.pp[cpu_selected]
+                                cpu_finish_time[cpu_selected] = \
+                                    cpu_earliest_finish_time[dependent_task_name - 1][cpu_selected]
+                                task_start_time[dependent_task_name - 1] = \
+                                    cpu_finish_time[cpu_selected] - job_pp_required[dependent_task_name - 1] / self.pp[
+                                        cpu_selected]
                                 all_min_phi.append(min_phi)
 
                             # task 依赖所有 task 被部署成功，使用 max(all_min_phi) 更新 task 的 cpu_earliest_finish_time
