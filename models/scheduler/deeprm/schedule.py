@@ -283,7 +283,7 @@ class DeepRMTrainer(object):
         if task_index >= len(self.environment.queue):
             task_index = -1
             node_index = -1
-        return (task_index, node_index)
+        return task_index, node_index
 
 
 class DeepRMScheduler(Scheduler):
@@ -320,3 +320,18 @@ class DeepRMScheduler(Scheduler):
         self.environment.timestep()
 
         return actions
+
+    def _explain(self, action_index):
+        """Explain action."""
+        task_limit = self.environment.queue_size
+        node_limit = len(self.environment.nodes)
+        if action_index == task_limit * node_limit:
+            task_index = -1
+            node_index = -1
+        else:
+            task_index = action_index % task_limit
+            node_index = action_index // task_limit
+        if task_index >= len(self.environment.queue):
+            task_index = -1
+            node_index = -1
+        return task_index, node_index
