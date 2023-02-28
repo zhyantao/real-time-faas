@@ -110,7 +110,8 @@ class HEFT:
 
         print('The overall makespan achieved by HEFT: %f second' % makespan_all)
         print('The average makespan: %f second' % (makespan_all / total_job_nums))
-        return cpu_task_mapping_list_all, task_deployment_all
+        makespan_avg = makespan_all / total_job_nums * 1.0
+        return cpu_task_mapping_list_all, task_deployment_all, makespan_avg
 
     @staticmethod
     def get_task_name_list(job, idx, task_nums):

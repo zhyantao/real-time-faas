@@ -81,7 +81,7 @@ class MyARIMA:
             plt.plot(np.append(train_cpu, predictions_cpu), label='Predicted CPU Util.')  # 预测值
             plt.plot(np.append(train_mem, test_mem), label='Real Mem Util.')
             plt.plot(np.append(train_mem, predictions_mem), label='Predicted Mem Util.')
-            plt.suptitle("CPU Usage Prediction")
+            plt.suptitle("CPU and Mem Usage Prediction")
             plt.ylabel("Utilization Rate (%)")
             plt.xlabel("Relative Time (s)")
             plt.legend()

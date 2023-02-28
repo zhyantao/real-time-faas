@@ -220,4 +220,5 @@ class DPE:
             idx += task_nums
         print('The overall makespan achieved by DPE: %f seconds' % makespan_all)
         print('The average makespan: %f seconds' % (makespan_all / total_job_nums))
-        return cpu_earliest_finish_time_all, task_deployment_all, cpu_task_mapping_list_all, task_start_time_all
+        makespan_avg = makespan_all / total_job_nums * 1.0
+        return cpu_earliest_finish_time_all, task_deployment_all, cpu_task_mapping_list_all, task_start_time_all, makespan_avg
