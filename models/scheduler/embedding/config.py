@@ -10,6 +10,7 @@ class CONFIG:
         pass
 
     # You must change this to the filename you wish to use as input data!
+    # 数据集解释：https://www.bnlearn.com/documentation/man/alarm.html
     data_filename = "alarm.csv"
 
     # Epochs
