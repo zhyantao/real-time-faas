@@ -114,3 +114,4 @@ runs/
 __cache__/
 *.gv
 *.pdf
+*.pkl
