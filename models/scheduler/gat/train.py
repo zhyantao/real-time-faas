@@ -15,19 +15,8 @@ from network import *
 from utils import load_data, accuracy
 
 ############################################
-# 设置超参数
+# 指定随机数
 ############################################
-parser = argparse.ArgumentParser()
-parser.add_argument('--no-cuda', action='store_true', default=False, help='Disables CUDA training.')
-parser.add_argument('--fastmode', action='store_true', default=False, help='Validate during training pass.')
-parser.add_argument('--use_mygat', action='store_true', default=True, help='GAT with sparse version or not.')
-parser.add_argument('--lr', type=float, default=0.005, help='Initial learning rate.')
-parser.add_argument('--weight_decay', type=float, default=5e-4, help='Weight decay (L2 loss on parameters).')
-parser.add_argument('--hidden', type=int, default=8, help='Number of hidden units.')
-parser.add_argument('--nb_heads', type=int, default=8, help='Number of head attentions.')
-parser.add_argument('--alpha', type=float, default=0.2, help='Alpha for the leaky_relu.')
-parser.add_argument('--patience', type=int, default=100, help='Patience')
-
 random.seed(42)
 np.random.seed(42)
 torch.manual_seed(42)
