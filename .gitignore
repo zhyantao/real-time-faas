@@ -112,3 +112,5 @@ perf.data
 dataset/
 runs/
 __cache__/
+*.gv
+*.pdf
