@@ -4,7 +4,6 @@ from __future__ import print_function
 import glob
 import math
 import os
-import random
 import time
 
 import numpy as np
@@ -98,6 +97,10 @@ def load_data(path="../../dataset/cora/", dataset="cora"):
 
     features = normalize_features(features)
     adj = normalize_adj(adj + sp.eye(adj.shape[0]))
+    print(features.shape)
+
+    print(adj.shape)
+    print(labels.shape)
 
     idx_train = range(140)
     idx_val = range(200, 500)
@@ -105,12 +108,64 @@ def load_data(path="../../dataset/cora/", dataset="cora"):
 
     adj = torch.FloatTensor(np.array(adj.todense()))
     features = torch.FloatTensor(np.array(features.todense()))
+    print(features)
     labels = torch.LongTensor(np.where(labels)[1])
 
     idx_train = torch.LongTensor(idx_train)
     idx_val = torch.LongTensor(idx_val)
     idx_test = torch.LongTensor(idx_test)
 
+    return adj, features, labels, idx_train, idx_val, idx_test
+
+
+def load_data_from_job(job):
+    print(job)
+    ntasks = job.shape[0]
+
+    # 构建 DAG 的邻接矩阵
+    adj = np.zeros((ntasks, ntasks))
+    task_name_list = job.loc[:, 'task_name']
+    for task_name in task_name_list:
+        dependencies = task_name.split('_')
+        task_name_len = len(dependencies[0])
+        dependencies[0] = dependencies[0][1:task_name_len]
+
+        if not dependencies[0].isdigit():
+            continue
+
+        curr_task = dependencies[0]
+        if len(dependencies) == 1:
+            continue
+        else:
+            i = 1
+            while i < len(dependencies):
+                dependency = dependencies[i]
+                # edges.append([dependency, curr_task])  # dependency --> curr_task
+                adj[int(dependency) - 1, int(curr_task) - 1] = 1  # 有向图 dependency --> curr_task
+                i += 1
+
+    # 构建节点特征 (required_cpu, required_mem, required_invoke_time, required_duration)
+    features = np.random.random((adj.shape[0], 4))  # 行数和 adj 相同，列数可以自定义
+    labels = np.eye(adj.shape[0], 3)  # 行数和 adj 相同，列数跟类别相关
+
+    idx_train = range(int(ntasks * 0.6))
+    idx_val = range(int(ntasks * 0.6), int(ntasks * 0.6) + int(ntasks * 0.2))
+    idx_test = range(int(ntasks * 0.6) + int(ntasks * 0.2), ntasks)
+
+    adj = torch.FloatTensor(adj)
+    features = torch.FloatTensor(features)
+    labels = torch.LongTensor(np.where(labels)[1])
+
+    idx_train = torch.LongTensor(idx_train)
+    idx_val = torch.LongTensor(idx_val)
+    idx_test = torch.LongTensor(idx_test)
+
+    print(adj)
+    print(features)
+    print(labels)
+    print(idx_train)
+    print(idx_val)
+    print(idx_test)
     return adj, features, labels, idx_train, idx_val, idx_test
 
 
@@ -141,13 +196,6 @@ def accuracy(output, labels):
 
 
 if __name__ == '__main__':
-    ############################################
-    # 指定随机数
-    ############################################
-    random.seed(42)
-    np.random.seed(42)
-    torch.manual_seed(42)
-
     ############################################
     # 加载数据集
     ############################################
