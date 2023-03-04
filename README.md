@@ -15,8 +15,8 @@ git submodule update --init --recursive
 #### Windows
 
 - 下载并安装 [Python 3.7.0](https://www.python.org/downloads/release/python-370/)
-- 下载并安装 [Graphviz 7.0.6](https://graphviz.org/download/)（添加至系统环境变量）
-- 下载并安装 [PyGraphviz 1.10](https://pygraphviz.github.io/documentation/stable/install.html#manual-download)
+- 下载并安装 [Graphviz 7.0.6](https://graphviz.org/download/)（注意添加至系统环境变量）
+- 安装 PyGraphviz 1.7：`cd setup && pip install pygraphviz-1.7-cp37-cp37m-win_amd64.whl`
 - 安装依赖 `pip install -r requirements.txt`
 - 用 PyCharm 打开项目，添加解释器，选择系统解释器
 - 将 `real-time-faas` 添加至环境变量 `PYTHONPATH`
