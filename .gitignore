@@ -117,3 +117,4 @@ __cache__/
 *.pkl
 results/
 tpch/
+*.png
