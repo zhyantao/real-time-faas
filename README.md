@@ -14,7 +14,7 @@ git submodule update --init --recursive
 
 #### Windows
 
-- 下载并安装 [Python 3.9.13](https://www.python.org/downloads/release/python-3913/)
+- 下载并安装 [Python 3.7.0](https://www.python.org/downloads/release/python-370/)
 - 下载并安装 [Graphviz 7.0.6](https://graphviz.org/download/)（添加至系统环境变量）
 - 下载并安装 [PyGraphviz 1.10](https://pygraphviz.github.io/documentation/stable/install.html#manual-download)
 - 安装依赖 `pip install -r requirements.txt`

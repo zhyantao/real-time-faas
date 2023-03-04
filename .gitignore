@@ -115,3 +115,5 @@ __cache__/
 *.gv
 *.pdf
 *.pkl
+results/
+tpch/
