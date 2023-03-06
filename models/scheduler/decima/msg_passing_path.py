@@ -1,7 +1,7 @@
 """
 Compute the message passing path in O(num_total_nodes),
-represent the path with sparse adjacency matrices (parent-
-child pairs at each iteration) and frontier masks (aggregation
+represent the path with sparse adjacency matrices (parent-child
+pairs at each iteration) and frontier masks (aggregation
 node points at each iteration)
 """
 
@@ -23,7 +23,7 @@ class Postman(object):
         if len(self.job_dags) != len(job_dags):
             job_dags_changed = True
         else:
-            job_dags_changed = not (all(i is j for \
+            job_dags_changed = not (all(i is j for
                                         (i, j) in zip(self.job_dags, job_dags)))
 
         if job_dags_changed:

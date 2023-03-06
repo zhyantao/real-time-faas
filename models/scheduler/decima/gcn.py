@@ -1,7 +1,7 @@
 """
 Graph Convolutional Network
 
-Propergate node features among neighbors
+Propagate node features among neighbors
 via parameterized message passing scheme
 """
 
