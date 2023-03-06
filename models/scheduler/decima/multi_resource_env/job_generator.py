@@ -11,7 +11,7 @@ def load_job(file_path, query_size, query_idx, wall_time, np_random):
     adj_mat = np.load(
         query_path + 'adj_mat_' + str(query_idx) + '.npy')
     task_durations = np.load(
-        query_path + 'task_duration_' + str(query_idx) + '.npy').item()
+        query_path + 'task_duration_' + str(query_idx) + '.npy', allow_pickle=True).item()
 
     assert adj_mat.shape[0] == adj_mat.shape[1]
     assert adj_mat.shape[0] == len(task_durations)
