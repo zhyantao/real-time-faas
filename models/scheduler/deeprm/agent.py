@@ -9,7 +9,7 @@ import tensorflow as tf
 from keras.layers import Dense, Conv2D, Flatten, Dropout, MaxPooling2D
 from keras.models import Sequential
 
-import env
+from models.scheduler.deeprm.dataset import Dataset
 
 
 class Action(object):
@@ -231,7 +231,7 @@ class DeepRMTrainer(object):
         """Train process of single episode."""
         rewards = 0
         step = 0
-        self.environment, _ = env.load(load_scheduler=False)
+        self.environment, _ = Dataset().load(load_scheduler=False)
         while not self.environment.terminated():
             # observe state and predict action
             observation = self.environment.summary()
