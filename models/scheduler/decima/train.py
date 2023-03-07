@@ -19,20 +19,22 @@ def main():
     create_folder_if_not_exists(args.model_folder)
 
     # initialize communication queues
-    params_queues = [mp.Queue(1) for _ in range(args.num_agents)]
-    reward_queues = [mp.Queue(1) for _ in range(args.num_agents)]
-    adv_queues = [mp.Queue(1) for _ in range(args.num_agents)]
+    params_queues = [mp.Queue(1) for _ in range(args.num_agents)]  # 根据智能体的数量创建多个进程
+    reward_queues = [mp.Queue(1) for _ in range(args.num_agents)]  # 每个 Queue 中只有一个智能体：Queue(maxsize=1)
+    adv_queues = [mp.Queue(1) for _ in range(args.num_agents)]  # Queue 在这里的作用只是为了通信
     gradient_queues = [mp.Queue(1) for _ in range(args.num_agents)]
 
     # set up training agents
+    # 每个智能体单独训练
     agents = []
     for i in range(args.num_agents):
-        agents.append(mp.Process(target=train_agent, args=(
-            i, params_queues[i], reward_queues[i],
-            adv_queues[i], gradient_queues[i])))
+        # 设置每个智能体的参数
+        agents.append(mp.Process(
+            target=train_agent,
+            args=(i, params_queues[i], reward_queues[i], adv_queues[i], gradient_queues[i])))
 
     # start training agents
-    for i in range(args.num_agents):
+    for i in range(args.num_agents):  # 启动进程（每个进程都是一个智能体）
         agents[i].start()
 
     # gpu configuration
@@ -44,8 +46,8 @@ def main():
     sess = tf.Session(config=config)
 
     # set up actor agent
-    actor_agent = ActorAgent(
-        sess, args.node_input_dim, args.job_input_dim,
+    actor_agent = ActorAgent(  # 初始化智能体
+        sess, args.node_input_dim, args.job_input_dim,  # sess 的作用：存储用户指定的 tf 环境
         args.hid_dims, args.output_dim, args.max_depth,
         range(1, args.exec_cap + 1))
 
@@ -57,7 +59,7 @@ def main():
         'entropy_weight'])
 
     # store average reward for computing differential rewards
-    avg_reward_calculator = AveragePerStepReward(
+    avg_reward_calculator = AveragePerStepReward(  # 存储平均奖励，用于计算差分
         args.average_reward_storage_size)
 
     # initialize entropy parameters
@@ -74,18 +76,16 @@ def main():
         actor_params = actor_agent.get_params()
 
         # generate max time stochastically based on reset prob
-        max_time = generate_coin_flips(reset_prob)
+        max_time = generate_coin_flips(reset_prob)  # 基于重置概率随机生成最大时间
 
         # send out parameters to training agents
-        for i in range(args.num_agents):
-            params_queues[i].put([
-                actor_params, args.seed + ep,
-                max_time, entropy_weight])
+        for i in range(args.num_agents):  # 向智能体发送参数
+            params_queues[i].put([actor_params, args.seed + ep, max_time, entropy_weight])
 
         # storage for advantage computation
-        all_rewards, all_diff_times, all_times, \
-            all_num_finished_jobs, all_avg_job_duration, \
-            all_reset_hit, = [], [], [], [], [], []
+        # 存储前向传播的参数
+        all_rewards, all_diff_times, all_times, all_num_finished_jobs, all_avg_job_duration, all_reset_hit \
+            = [], [], [], [], [], []
 
         t1 = time.time()
 
@@ -99,12 +99,10 @@ def main():
                 any_agent_panic = True
                 continue
             else:
-                batch_reward, batch_time, \
-                    num_finished_jobs, avg_job_duration, \
-                    reset_hit = result
+                # 为什么 result 一个值可以赋给多个变量？因为 Python 有自动的装箱和拆箱机制。
+                batch_reward, batch_time, num_finished_jobs, avg_job_duration, reset_hit = result
 
-            diff_time = np.array(batch_time[1:]) - \
-                        np.array(batch_time[:-1])
+            diff_time = np.array(batch_time[1:]) - np.array(batch_time[:-1])
 
             all_rewards.append(batch_reward)
             all_diff_times.append(diff_time)
@@ -113,8 +111,8 @@ def main():
             all_avg_job_duration.append(avg_job_duration)
             all_reset_hit.append(reset_hit)
 
-            avg_reward_calculator.add_list_filter_zero(
-                batch_reward, diff_time)
+            # 这一步是在做什么？
+            avg_reward_calculator.add_list_filter_zero(batch_reward, diff_time)
 
         t2 = time.time()
         print('got reward from workers', t2 - t1, 'seconds')
@@ -133,12 +131,10 @@ def main():
         for i in range(args.num_agents):
             if args.diff_reward_enabled:
                 # differential reward mode on
-                rewards = np.array([r - avg_per_step_reward * t for \
-                                    (r, t) in zip(all_rewards[i], all_diff_times[i])])
+                rewards = np.array([r - avg_per_step_reward * t for (r, t) in zip(all_rewards[i], all_diff_times[i])])
             else:
                 # regular reward
-                rewards = np.array([r for \
-                                    (r, t) in zip(all_rewards[i], all_diff_times[i])])
+                rewards = np.array([r for (r, t) in zip(all_rewards[i], all_diff_times[i])])
 
             cum_reward = discount(rewards, args.gamma)
 
@@ -148,7 +144,7 @@ def main():
         baselines = get_piecewise_linear_fit_baseline(all_cum_reward, all_times)
 
         # give worker back the advantage
-        for i in range(args.num_agents):
+        for i in range(args.num_agents):  # advantage 是什么？
             batch_adv = all_cum_reward[i] - baselines[i]
             batch_adv = np.reshape(batch_adv, [len(batch_adv), 1])
             adv_queues[i].put(batch_adv)
@@ -191,16 +187,14 @@ def main():
             entropy_weight])
 
         # decrease entropy weight
-        entropy_weight = decrease_var(entropy_weight,
-                                      args.entropy_weight_min, args.entropy_weight_decay)
+        # 减少 entropy weight 的方差
+        entropy_weight = decrease_var(entropy_weight, args.entropy_weight_min, args.entropy_weight_decay)
 
         # decrease reset probability
-        reset_prob = decrease_var(reset_prob,
-                                  args.reset_prob_min, args.reset_prob_decay)
+        reset_prob = decrease_var(reset_prob, args.reset_prob_min, args.reset_prob_decay)
 
         if ep % args.model_save_interval == 0:
-            actor_agent.save_model(args.model_folder + \
-                                   'model_ep_' + str(ep))
+            actor_agent.save_model(args.model_folder + 'model_ep_' + str(ep))
 
     sess.close()
 

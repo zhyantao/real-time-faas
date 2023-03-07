@@ -12,8 +12,7 @@ from utils import OrderedSet
 
 class Postman(object):
     """
-    Check if the set of DAGs changes and then compute the
-    message passing path, to save computation
+    Check if the set of DAGs changes and then compute the message passing path, to save computation
     """
 
     def __init__(self):
@@ -37,7 +36,7 @@ class Postman(object):
             job_dags_changed
 
     def reset(self):
-        self.job_dags = OrderedSet()
+        self.job_dags = OrderedSet()  # 用 OrderedDict 实现
         self.msg_mats = []
         self.msg_masks = []
         self.dag_summ_backward_map = None

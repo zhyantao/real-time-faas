@@ -26,23 +26,18 @@ class GraphCNN(object):
         self.scope = scope
 
         # message passing
-        self.adj_mats = [tf.sparse_placeholder(
-            tf.float32, [None, None]) for _ in range(self.max_depth)]
-        self.masks = [tf.placeholder(
-            tf.float32, [None, 1]) for _ in range(self.max_depth)]
+        self.adj_mats = [tf.sparse_placeholder(tf.float32, [None, None]) for _ in range(self.max_depth)]
+        self.masks = [tf.placeholder(tf.float32, [None, 1]) for _ in range(self.max_depth)]
 
         # initialize message passing transformation parameters
         # h: x -> x'
-        self.prep_weights, self.prep_bias = \
-            self.init(self.input_dim, self.hid_dims, self.output_dim)
+        self.prep_weights, self.prep_bias = self.init(self.input_dim, self.hid_dims, self.output_dim)
 
         # f: x' -> e
-        self.proc_weights, self.proc_bias = \
-            self.init(self.output_dim, self.hid_dims, self.output_dim)
+        self.proc_weights, self.proc_bias = self.init(self.output_dim, self.hid_dims, self.output_dim)
 
         # g: e -> e
-        self.agg_weights, self.agg_bias = \
-            self.init(self.output_dim, self.hid_dims, self.output_dim)
+        self.agg_weights, self.agg_bias = self.init(self.output_dim, self.hid_dims, self.output_dim)
 
         # graph message passing
         self.outputs = self.forward()
@@ -59,10 +54,8 @@ class GraphCNN(object):
 
         # hidden layers
         for hid_dim in hid_dims:
-            weights.append(
-                glorot([curr_in_dim, hid_dim], scope=self.scope))
-            bias.append(
-                zeros([hid_dim], scope=self.scope))
+            weights.append(glorot([curr_in_dim, hid_dim], scope=self.scope))
+            bias.append(zeros([hid_dim], scope=self.scope))
             curr_in_dim = hid_dim
 
         # output layer

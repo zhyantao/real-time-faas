@@ -1,20 +1,20 @@
 import matplotlib
 import tensorflow as tf
 
-matplotlib.use('agg')
-from spark_env.env import Environment
-from spark_agent import SparkAgent
-from heuristic_agent import DynamicPartitionAgent
 from actor_agent import ActorAgent
-from spark_env.canvas import *
+from heuristic_agent import DynamicPartitionAgent
 from param import *
+from spark_agent import SparkAgent
+from spark_env.canvas import *
+from spark_env.env import Environment
 from utils import *
 
+matplotlib.use('agg')
 # create result folder
 if not os.path.exists(args.result_folder):
     os.makedirs(args.result_folder)
 
-# tensorflo seeding
+# tensorflow seeding
 tf.set_random_seed(args.seed)
 
 # set up environment
@@ -70,12 +70,12 @@ for exp in range(args.num_exp):
         if args.canvs_visualization:
             visualize_dag_time_save_pdf(
                 env.finished_job_dags, env.executors,
-                args.result_folder + 'visualization_exp_' + \
-                str(exp) + '_scheme_' + scheme + \
+                args.result_folder + 'visualization_exp_' +
+                str(exp) + '_scheme_' + scheme +
                 '.png', plot_type='app')
         else:
             visualize_executor_usage(env.finished_job_dags,
-                                     args.result_folder + 'visualization_exp_' + \
+                                     args.result_folder + 'visualization_exp_' +
                                      str(exp) + '_scheme_' + scheme + '.png')
 
     # plot CDF of performance

@@ -15,11 +15,25 @@ class ActorAgent(Agent):
     def __init__(self, sess, node_input_dim, job_input_dim, hid_dims, output_dim,
                  max_depth, executor_levels, eps=1e-6, act_fn=leaky_relu,
                  optimizer=tf.train.AdamOptimizer, scope='actor_agent'):
+        """
+
+        :param sess:
+        :param node_input_dim: node input dimensions to graph embedding (default: 5)
+        :param job_input_dim: job input dimensions to graph embedding (default: 3)
+        :param hid_dims: hidden dimensions throughout graph embedding (default: [16, 8])
+        :param output_dim: output dimensions throughout graph embedding (default: 8)
+        :param max_depth: Maximum depth of root-leaf message passing (default: 8)
+        :param executor_levels: TODO (default: [1, 100])
+        :param eps: epsilon (default: 1e-6)
+        :param act_fn: 激活函数 leaky_relu
+        :param optimizer: 优化器 Adam
+        :param scope: (default: actor_agent)
+        """
 
         Agent.__init__(self)
 
         self.sess = sess
-        self.node_input_dim = node_input_dim
+        self.node_input_dim = node_input_dim  # job 是含有依赖的 task 的集合，node 是具有连通性的 machine 的集合
         self.job_input_dim = job_input_dim
         self.hid_dims = hid_dims
         self.output_dim = output_dim
@@ -34,9 +48,11 @@ class ActorAgent(Agent):
         self.postman = Postman()
 
         # node input dimension: [total_num_nodes, num_features]
+        # total_num_nodes 任意，但是 features 是固定的
         self.node_inputs = tf.placeholder(tf.float32, [None, self.node_input_dim])
 
         # job input dimension: [total_num_jobs, num_features]
+        # total_num_jobs 任意，但是 features 是固定的
         self.job_inputs = tf.placeholder(tf.float32, [None, self.job_input_dim])
 
         self.gcn = GraphCNN(
@@ -44,17 +60,21 @@ class ActorAgent(Agent):
             self.output_dim, self.max_depth, self.act_fn, self.scope)
 
         self.gsn = GraphSNN(
-            tf.concat([self.node_inputs, self.gcn.outputs], axis=1),
-            self.node_input_dim + self.output_dim, self.hid_dims,
+            tf.concat([self.node_inputs, self.gcn.outputs], axis=1),  # 输入数据：其中一部分是 DAG 的嵌入信息，另一个部分是 node 的拓扑连接
+            self.node_input_dim + self.output_dim,
+            self.hid_dims,  # GraphSNN 的输入维度：self.node_input_dim + self.output_dim
             self.output_dim, self.act_fn, self.scope)
 
         # valid mask for node action ([batch_size, total_num_nodes])
+        # TODO 什么是 node valid mask
         self.node_valid_mask = tf.placeholder(tf.float32, [None, None])
 
         # valid mask for executor limit on jobs ([batch_size, num_jobs * num_exec_limits])
+        # TODO 什么是 node valid mask
         self.job_valid_mask = tf.placeholder(tf.float32, [None, None])
 
-        # map back the dag summeraization to each node ([total_num_nodes, num_dags])
+        # map back the dag summarization to each node ([total_num_nodes, num_dags])
+        # TODO: 为什么需要 map back
         self.dag_summ_backward_map = tf.placeholder(tf.float32, [None, None])
 
         # map gcn_outputs and raw_inputs to action probabilities
@@ -82,7 +102,7 @@ class ActorAgent(Agent):
         # Selected action for job, 0-1 vector ([batch_size, num_jobs, num_limits])
         self.job_act_vec = tf.placeholder(tf.float32, [None, None, None])
 
-        # advantage term (from Monte Calro or critic) ([batch_size, 1])
+        # advantage term (from Monte Carlo or critic) ([batch_size, 1])
         self.adv = tf.placeholder(tf.float32, [None, 1])
 
         # use entropy to promote exploration, this term decays over time
@@ -98,35 +118,37 @@ class ActorAgent(Agent):
             self.job_act_probs, self.job_act_vec),
             reduction_indices=2), reduction_indices=1, keep_dims=True)
 
-        # actor loss due to advantge (negated)
-        self.adv_loss = tf.reduce_sum(tf.multiply(
-            tf.log(self.selected_node_prob * self.selected_job_prob + \
-                   self.eps), -self.adv))
+        # actor loss due to advantage (negated)
+        self.adv_loss = tf.reduce_sum(
+            tf.multiply(
+                tf.log(self.selected_node_prob * self.selected_job_prob + self.eps),
+                -self.adv))
 
         # node_entropy
-        self.node_entropy = tf.reduce_sum(tf.multiply(
-            self.node_act_probs, tf.log(self.node_act_probs + self.eps)))
+        self.node_entropy = tf.reduce_sum(
+            tf.multiply(
+                self.node_act_probs,
+                tf.log(self.node_act_probs + self.eps)))
 
         # prob on each job
         self.prob_each_job = tf.reshape(
-            tf.sparse_tensor_dense_matmul(self.gsn.summ_mats[0],
-                                          tf.reshape(self.node_act_probs, [-1, 1])),
+            tf.sparse_tensor_dense_matmul(self.gsn.summ_mats[0], tf.reshape(self.node_act_probs, [-1, 1])),
             [tf.shape(self.node_act_probs)[0], -1])
 
         # job entropy
-        self.job_entropy = \
-            tf.reduce_sum(tf.multiply(self.prob_each_job,
-                                      tf.reduce_sum(tf.multiply(self.job_act_probs,
-                                                                tf.log(self.job_act_probs + self.eps)),
-                                                    reduction_indices=2)))
+        self.job_entropy = tf.reduce_sum(
+            tf.multiply(self.prob_each_job,
+                        tf.reduce_sum(tf.multiply(
+                            self.job_act_probs,
+                            tf.log(self.job_act_probs + self.eps)),
+                            reduction_indices=2)))
 
         # entropy loss
         self.entropy_loss = self.node_entropy + self.job_entropy
 
         # normalize entropy
-        self.entropy_loss /= \
-            (tf.log(tf.cast(tf.shape(self.node_act_probs)[1], tf.float32)) + \
-             tf.log(float(len(self.executor_levels))))
+        self.entropy_loss /= (tf.log(tf.cast(tf.shape(self.node_act_probs)[1], tf.float32)) +
+                              tf.log(float(len(self.executor_levels))))
         # normalize over batch size (note: adv_loss is sum)
         # * tf.cast(tf.shape(self.node_act_probs)[0], tf.float32)
 
@@ -138,8 +160,7 @@ class ActorAgent(Agent):
             tf.GraphKeys.TRAINABLE_VARIABLES, scope=self.scope)
 
         # operations for setting network parameters
-        self.input_params, self.set_params_op = \
-            self.define_params_op()
+        self.input_params, self.set_params_op = self.define_params_op()
 
         # actor gradients
         self.act_gradients = tf.gradients(self.act_loss, self.params)
@@ -151,60 +172,50 @@ class ActorAgent(Agent):
         self.act_opt = self.optimizer(self.lr_rate).minimize(self.act_loss)
 
         # apply gradient directly to update parameters
-        self.apply_grads = self.optimizer(self.lr_rate). \
-            apply_gradients(zip(self.act_gradients, self.params))
+        self.apply_grads = self.optimizer(self.lr_rate).apply_gradients(zip(self.act_gradients, self.params))
 
-        # network paramter saver
+        # network parameter saver
         self.saver = tf.train.Saver(max_to_keep=args.num_saved_models)
         self.sess.run(tf.global_variables_initializer())
 
         if args.saved_model is not None:
             self.saver.restore(self.sess, args.saved_model)
 
-    def actor_network(self, node_inputs, gcn_outputs, job_inputs,
-                      gsn_dag_summary, gsn_global_summary,
-                      node_valid_mask, job_valid_mask,
-                      gsn_summ_backward_map, act_fn):
+    def actor_network(self, node_inputs, gcn_outputs, job_inputs, gsn_dag_summary, gsn_global_summary,
+                      node_valid_mask, job_valid_mask, gsn_summ_backward_map, act_fn):
 
         # takes output from graph embedding and raw_input from environment
 
         batch_size = tf.shape(node_valid_mask)[0]
 
         # (1) reshape node inputs to batch format
-        node_inputs_reshape = tf.reshape(
-            node_inputs, [batch_size, -1, self.node_input_dim])
+        node_inputs_reshape = tf.reshape(node_inputs, [batch_size, -1, self.node_input_dim])
 
         # (2) reshape job inputs to batch format
-        job_inputs_reshape = tf.reshape(
-            job_inputs, [batch_size, -1, self.job_input_dim])
+        job_inputs_reshape = tf.reshape(job_inputs, [batch_size, -1, self.job_input_dim])
 
         # (4) reshape gcn_outputs to batch format
-        gcn_outputs_reshape = tf.reshape(
-            gcn_outputs, [batch_size, -1, self.output_dim])
+        gcn_outputs_reshape = tf.reshape(gcn_outputs, [batch_size, -1, self.output_dim])
 
         # (5) reshape gsn_dag_summary to batch format
-        gsn_dag_summ_reshape = tf.reshape(
-            gsn_dag_summary, [batch_size, -1, self.output_dim])
-        gsn_summ_backward_map_extend = tf.tile(
-            tf.expand_dims(gsn_summ_backward_map, axis=0), [batch_size, 1, 1])
-        gsn_dag_summ_extend = tf.matmul(
-            gsn_summ_backward_map_extend, gsn_dag_summ_reshape)
+        gsn_dag_summ_reshape = tf.reshape(gsn_dag_summary, [batch_size, -1, self.output_dim])
+        gsn_summ_backward_map_extend = tf.tile(tf.expand_dims(gsn_summ_backward_map, axis=0), [batch_size, 1, 1])
+        gsn_dag_summ_extend = tf.matmul(gsn_summ_backward_map_extend, gsn_dag_summ_reshape)
 
         # (6) reshape gsn_global_summary to batch format
-        gsn_global_summ_reshape = tf.reshape(
-            gsn_global_summary, [batch_size, -1, self.output_dim])
-        gsn_global_summ_extend_job = tf.tile(
-            gsn_global_summ_reshape, [1, tf.shape(gsn_dag_summ_reshape)[1], 1])
-        gsn_global_summ_extend_node = tf.tile(
-            gsn_global_summ_reshape, [1, tf.shape(gsn_dag_summ_extend)[1], 1])
+        gsn_global_summ_reshape = tf.reshape(gsn_global_summary, [batch_size, -1, self.output_dim])
+        gsn_global_summ_extend_job = tf.tile(gsn_global_summ_reshape, [1, tf.shape(gsn_dag_summ_reshape)[1], 1])
+        gsn_global_summ_extend_node = tf.tile(gsn_global_summ_reshape, [1, tf.shape(gsn_dag_summ_extend)[1], 1])
 
         # (4) actor neural network
         with tf.variable_scope(self.scope):
             # -- part A, the distribution over nodes --
             merge_node = tf.concat([
-                node_inputs_reshape, gcn_outputs_reshape,
+                node_inputs_reshape,
+                gcn_outputs_reshape,
                 gsn_dag_summ_extend,
-                gsn_global_summ_extend_node], axis=2)
+                gsn_global_summ_extend_node],
+                axis=2)
 
             node_hid_0 = tl.fully_connected(merge_node, 32, activation_fn=act_fn)
             node_hid_1 = tl.fully_connected(node_hid_0, 16, activation_fn=act_fn)
@@ -220,17 +231,17 @@ class ActorAgent(Agent):
             # apply mask
             node_outputs = node_outputs + node_valid_mask
 
-            # do masked softmax over nodes on the graph
+            # do mask softmax over nodes on the graph
             node_outputs = tf.nn.softmax(node_outputs, dim=-1)
 
             # -- part B, the distribution over executor limits --
             merge_job = tf.concat([
                 job_inputs_reshape,
                 gsn_dag_summ_reshape,
-                gsn_global_summ_extend_job], axis=2)
+                gsn_global_summ_extend_job],
+                axis=2)
 
-            expanded_state = expand_act_on_state(
-                merge_job, [l / 50.0 for l in self.executor_levels])
+            expanded_state = expand_act_on_state(merge_job, [l / 50.0 for l in self.executor_levels])
 
             job_hid_0 = tl.fully_connected(expanded_state, 32, activation_fn=act_fn)
             job_hid_1 = tl.fully_connected(job_hid_0, 16, activation_fn=act_fn)
@@ -246,12 +257,11 @@ class ActorAgent(Agent):
             # apply mask
             job_outputs = job_outputs + job_valid_mask
 
-            # reshape output dimension for softmaxing the executor limits
+            # reshape output dimension for softmax the executor limits
             # (batch_size, num_jobs, num_exec_limits)
-            job_outputs = tf.reshape(
-                job_outputs, [batch_size, -1, len(self.executor_levels)])
+            job_outputs = tf.reshape(job_outputs, [batch_size, -1, len(self.executor_levels)])
 
-            # do masked softmax over jobs
+            # do mask softmax over jobs
             job_outputs = tf.nn.softmax(job_outputs, dim=-1)
 
             return node_outputs, job_outputs
@@ -296,16 +306,16 @@ class ActorAgent(Agent):
         return self.sess.run([self.act_gradients,
                               [self.adv_loss, self.entropy_loss]],
                              feed_dict={i: d for i, d in zip(
-                                 [self.node_inputs] + [self.job_inputs] + \
-                                 [self.node_valid_mask] + [self.job_valid_mask] + \
-                                 self.gcn.adj_mats + self.gcn.masks + self.gsn.summ_mats + \
-                                 [self.dag_summ_backward_map] + [self.node_act_vec] + \
-                                 [self.job_act_vec] + [self.adv] + [self.entropy_weight], \
-                                 [node_inputs] + [job_inputs] + \
-                                 [node_valid_mask] + [job_valid_mask] + \
-                                 gcn_mats + gcn_masks + \
-                                 [summ_mats, running_dags_mat] + \
-                                 [dag_summ_backward_map] + [node_act_vec] + \
+                                 [self.node_inputs] + [self.job_inputs] +
+                                 [self.node_valid_mask] + [self.job_valid_mask] +
+                                 self.gcn.adj_mats + self.gcn.masks + self.gsn.summ_mats +
+                                 [self.dag_summ_backward_map] + [self.node_act_vec] +
+                                 [self.job_act_vec] + [self.adv] + [self.entropy_weight],
+                                 [node_inputs] + [job_inputs] +
+                                 [node_valid_mask] + [job_valid_mask] +
+                                 gcn_mats + gcn_masks +
+                                 [summ_mats, running_dags_mat] +
+                                 [dag_summ_backward_map] + [node_act_vec] +
                                  [job_act_vec] + [adv] + [entropy_weight])
                                         })
 
@@ -314,16 +324,16 @@ class ActorAgent(Agent):
                 gcn_mats, gcn_masks, summ_mats,
                 running_dags_mat, dag_summ_backward_map):
         return self.sess.run([self.node_act_probs, self.job_act_probs,
-                              self.node_acts, self.job_acts], \
+                              self.node_acts, self.job_acts],
                              feed_dict={i: d for i, d in zip(
-                                 [self.node_inputs] + [self.job_inputs] + \
-                                 [self.node_valid_mask] + [self.job_valid_mask] + \
-                                 self.gcn.adj_mats + self.gcn.masks + self.gsn.summ_mats + \
-                                 [self.dag_summ_backward_map], \
-                                 [node_inputs] + [job_inputs] + \
-                                 [node_valid_mask] + [job_valid_mask] + \
-                                 gcn_mats + gcn_masks + \
-                                 [summ_mats, running_dags_mat] + \
+                                 [self.node_inputs] + [self.job_inputs] +
+                                 [self.node_valid_mask] + [self.job_valid_mask] +
+                                 self.gcn.adj_mats + self.gcn.masks + self.gsn.summ_mats +
+                                 [self.dag_summ_backward_map],
+                                 [node_inputs] + [job_inputs] +
+                                 [node_valid_mask] + [job_valid_mask] +
+                                 gcn_mats + gcn_masks +
+                                 [summ_mats, running_dags_mat] +
                                  [dag_summ_backward_map])
                                         })
 
@@ -393,13 +403,10 @@ class ActorAgent(Agent):
                 node_inputs[node_idx, :3] = job_inputs[job_idx, :3]
 
                 # work on the node
-                node_inputs[node_idx, 3] = \
-                    (node.num_tasks - node.next_task_idx) * \
-                    node.tasks[-1].duration / 100000.0
+                node_inputs[node_idx, 3] = (node.num_tasks - node.next_task_idx) * node.tasks[-1].duration / 100000.0
 
                 # number of tasks left
-                node_inputs[node_idx, 4] = \
-                    (node.num_tasks - node.next_task_idx) / 200.0
+                node_inputs[node_idx, 4] = (node.num_tasks - node.next_task_idx) / 200.0
 
                 node_idx += 1
 
@@ -411,11 +418,9 @@ class ActorAgent(Agent):
             exec_commit, moving_executors, \
             exec_map, action_map
 
-    def get_valid_masks(self, job_dags, frontier_nodes,
-                        source_job, num_source_exec, exec_map, action_map):
+    def get_valid_masks(self, job_dags, frontier_nodes, source_job, num_source_exec, exec_map, action_map):
 
-        job_valid_mask = np.zeros([1, \
-                                   len(job_dags) * len(self.executor_levels)])
+        job_valid_mask = np.zeros([1, len(job_dags) * len(self.executor_levels)])
 
         job_valid = {}  # if job is saturated, don't assign node
 
@@ -423,8 +428,7 @@ class ActorAgent(Agent):
         for job_dag in job_dags:
             # new executor level depends on the source of executor
             if job_dag is source_job:
-                least_exec_amount = \
-                    exec_map[job_dag] - num_source_exec + 1
+                least_exec_amount = exec_map[job_dag] - num_source_exec + 1
                 # +1 because we want at least one executor
                 # for this job
             else:
@@ -461,61 +465,46 @@ class ActorAgent(Agent):
         return node_valid_mask, job_valid_mask
 
     def invoke_model(self, obs):
-        # implement this module here for training
-        # (to pick up state and action to record)
-        node_inputs, job_inputs, \
-            job_dags, source_job, num_source_exec, \
-            frontier_nodes, executor_limits, \
-            exec_commit, moving_executors, \
-            exec_map, action_map = self.translate_state(obs)
+        # implement this module here for training (to pick up state and action to record)
+        node_inputs, job_inputs, job_dags, source_job, num_source_exec, frontier_nodes, \
+            executor_limits, exec_commit, moving_executors, exec_map, action_map \
+            = self.translate_state(obs)
 
         # get message passing path (with cache)
-        gcn_mats, gcn_masks, dag_summ_backward_map, \
-            running_dags_mat, job_dags_changed = \
-            self.postman.get_msg_path(job_dags)
+        gcn_mats, gcn_masks, dag_summ_backward_map, running_dags_mat, job_dags_changed \
+            = self.postman.get_msg_path(job_dags)
 
         # get node and job valid masks
-        node_valid_mask, job_valid_mask = \
-            self.get_valid_masks(job_dags, frontier_nodes,
-                                 source_job, num_source_exec, exec_map, action_map)
+        node_valid_mask, job_valid_mask \
+            = self.get_valid_masks(job_dags, frontier_nodes, source_job, num_source_exec, exec_map, action_map)
 
         # get summarization path that ignores finished nodes
         summ_mats = get_unfinished_nodes_summ_mat(job_dags)
 
         # invoke learning model
-        node_act_probs, job_act_probs, node_acts, job_acts = \
-            self.predict(node_inputs, job_inputs,
-                         node_valid_mask, job_valid_mask, \
-                         gcn_mats, gcn_masks, summ_mats, \
-                         running_dags_mat, dag_summ_backward_map)
+        node_act_probs, job_act_probs, node_acts, job_acts \
+            = self.predict(node_inputs, job_inputs, node_valid_mask, job_valid_mask,
+                           gcn_mats, gcn_masks, summ_mats, running_dags_mat, dag_summ_backward_map)
 
-        return node_acts, job_acts, \
-            node_act_probs, job_act_probs, \
-            node_inputs, job_inputs, \
-            node_valid_mask, job_valid_mask, \
-            gcn_mats, gcn_masks, summ_mats, \
-            running_dags_mat, dag_summ_backward_map, \
-            exec_map, job_dags_changed
+        return node_acts, job_acts, node_act_probs, job_act_probs, node_inputs, job_inputs, \
+            node_valid_mask, job_valid_mask, gcn_mats, gcn_masks, summ_mats, running_dags_mat, \
+            dag_summ_backward_map, exec_map, job_dags_changed
 
     def get_action(self, obs):
 
         # parse observation
-        job_dags, source_job, num_source_exec, \
-            frontier_nodes, executor_limits, \
-            exec_commit, moving_executors, action_map = obs
+        job_dags, source_job, num_source_exec, frontier_nodes, executor_limits, exec_commit, moving_executors, action_map \
+            = obs
 
         if len(frontier_nodes) == 0:
             # no action to take
             return None, num_source_exec
 
         # invoking the learning model
-        node_act, job_act, \
-            node_act_probs, job_act_probs, \
-            node_inputs, job_inputs, \
-            node_valid_mask, job_valid_mask, \
-            gcn_mats, gcn_masks, summ_mats, \
-            running_dags_mat, dag_summ_backward_map, \
-            exec_map, job_dags_changed = self.invoke_model(obs)
+        # 根据观察到的输入 obs，将其转化为 feature (共 16 维)
+        node_act, job_act, node_act_probs, job_act_probs, node_inputs, job_inputs, node_valid_mask, job_valid_mask, \
+            gcn_mats, gcn_masks, summ_mats, running_dags_mat, dag_summ_backward_map, exec_map, job_dags_changed \
+            = self.invoke_model(obs)
 
         if sum(node_valid_mask[0, :]) == 0:
             # no node is valid to assign
@@ -531,24 +520,17 @@ class ActorAgent(Agent):
         job_idx = job_dags.index(node.job_dag)
 
         # job_act should be valid
-        assert job_valid_mask[0, job_act[0, job_idx] + \
-                                 len(self.executor_levels) * job_idx] == 1
+        assert job_valid_mask[0, job_act[0, job_idx] + len(self.executor_levels) * job_idx] == 1
 
         # find out the executor limit decision
         if node.job_dag is source_job:
-            agent_exec_act = self.executor_levels[
-                                 job_act[0, job_idx]] - \
-                             exec_map[node.job_dag] + \
-                             num_source_exec
+            agent_exec_act = self.executor_levels[job_act[0, job_idx]] - exec_map[node.job_dag] + num_source_exec
         else:
-            agent_exec_act = self.executor_levels[
-                                 job_act[0, job_idx]] - exec_map[node.job_dag]
+            agent_exec_act = self.executor_levels[job_act[0, job_idx]] - exec_map[node.job_dag]
 
         # parse job limit action
         use_exec = min(
-            node.num_tasks - node.next_task_idx - \
-            exec_commit.node_commit[node] - \
-            moving_executors.count(node),
+            node.num_tasks - node.next_task_idx - exec_commit.node_commit[node] - moving_executors.count(node),
             agent_exec_act, num_source_exec)
 
         return node, use_exec

@@ -12,8 +12,19 @@ from tf_op import glorot, zeros
 
 class GraphSNN(object):
     def __init__(self, inputs, input_dim, hid_dims, output_dim, act_fn, scope='gsn'):
+        """
+        聚合网络，综合各个步骤采集到的信息
+
+        :param inputs: 一部分是 DAG 的嵌入信息，另一部分是 node 的嵌入信息
+        :param input_dim: GCN 输出的维度 + node_input_dim
+        :param hid_dims: 还是使用全局的 hid_dims
+        :param output_dim: 还是使用全局的 output_dim
+        :param act_fn: 还是使用全局的 act_fn
+        :param scope: 还是使用全局的 scope
+        """
+
         # on each transformation, input_dim -> (multiple) hid_dims -> output_dim
-        # the global level summarization will use output from DAG level summarizaiton
+        # the global level summarization will use output from DAG level summarization
 
         self.inputs = inputs
 
@@ -28,15 +39,12 @@ class GraphSNN(object):
         self.summ_levels = 2
 
         # graph summarization, hierarchical structure
-        self.summ_mats = [tf.sparse_placeholder(
-            tf.float32, [None, None]) for _ in range(self.summ_levels)]
+        self.summ_mats = [tf.sparse_placeholder(tf.float32, [None, None]) for _ in range(self.summ_levels)]
 
         # initialize summarization parameters for each hierarchy
-        self.dag_weights, self.dag_bias = \
-            self.init(self.input_dim, self.hid_dims, self.output_dim)
+        self.dag_weights, self.dag_bias = self.init(self.input_dim, self.hid_dims, self.output_dim)
 
-        self.global_weights, self.global_bias = \
-            self.init(self.output_dim, self.hid_dims, self.output_dim)
+        self.global_weights, self.global_bias = self.init(self.output_dim, self.hid_dims, self.output_dim)
 
         # graph summarization operation
         self.summaries = self.summarize()
@@ -53,10 +61,8 @@ class GraphSNN(object):
 
         # hidden layers
         for hid_dim in hid_dims:
-            weights.append(
-                glorot([curr_in_dim, hid_dim], scope=self.scope))
-            bias.append(
-                zeros([hid_dim], scope=self.scope))
+            weights.append(glorot([curr_in_dim, hid_dim], scope=self.scope))
+            bias.append(zeros([hid_dim], scope=self.scope))
             curr_in_dim = hid_dim
 
         # output layer

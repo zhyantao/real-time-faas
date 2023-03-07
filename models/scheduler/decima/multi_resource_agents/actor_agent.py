@@ -511,8 +511,8 @@ class MultiResActorAgent(Agent):
         # invoke learning model
         node_act_probs, job_act_probs, node_acts, job_acts = \
             self.predict(node_inputs, job_inputs,
-                         node_valid_mask, job_valid_mask, \
-                         gcn_mats, gcn_masks, summ_mats, \
+                         node_valid_mask, job_valid_mask,
+                         gcn_mats, gcn_masks, summ_mats,
                          running_dags_mat, dag_summ_backward_map)
 
         return node_acts, job_acts, \
