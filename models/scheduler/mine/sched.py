@@ -113,7 +113,10 @@ class DeepRMTrainer(nn.Module):
             '__cache__/summary/dqn-{0}'.format(datetime.datetime.now().strftime("%Y%m%d-%H%M%S")))
 
     def _train(self):
-        """Train process."""
+        """
+        训练过程
+        :return:
+        """
         for i in range(self.episodes):
             self.epsilon = max(self.min_epsilon, self.epsilon * self.decay)
             self.total_rewards[i] = self.train_episode()
@@ -122,7 +125,10 @@ class DeepRMTrainer(nn.Module):
             print('Episode {0} Job Slowdown {1}'.format(i, -self.total_rewards[i]))
 
     def train_episode(self):
-        """Train process of single episode."""
+        """
+        每个 train episode 需要做的事情
+        :return:
+        """
         rewards = 0
         step = 0
         self.environment, _ = load(load_scheduler=False)
@@ -165,7 +171,11 @@ class DeepRMTrainer(nn.Module):
         return rewards
 
     def _explain(self, action_index):
-        """Explain action."""
+        """
+        解释动作
+        :param action_index:
+        :return:
+        """
         task_limit = self.environment.queue_size
         node_limit = len(self.environment.nodes)
         if action_index == task_limit * node_limit:

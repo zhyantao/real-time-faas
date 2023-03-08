@@ -2,6 +2,7 @@ import os
 
 import numpy as np
 import torch
+import torch.nn.functional as F
 from torch import nn, optim
 
 
@@ -57,6 +58,28 @@ class CNNModel(nn.Module):
             os.makedirs('__cache__/model')
 
         torch.save(self.state_dict(), '__cache__/model/dqn_core.pth')
+
+
+class LeNet(nn.Module):
+    def __init__(self):
+        super(LeNet, self).__init__()
+        self.conv1 = nn.Conv2d(1, 6, 5, bias=False)
+        self.conv2 = nn.Conv2d(6, 16, 5)
+        self.fc1 = nn.Linear(16 * 5 * 5, 120)
+        self.fc2 = nn.Linear(120, 84)
+        self.fc3 = nn.Linear(84, 10)
+
+    def forward(self, x):
+        out = self.conv1(x)
+        out = F.relu(out)
+        out = F.max_pool2d(out, 2)
+        out = F.relu(self.conv2(out))
+        out = F.max_pool2d(out, 2)
+        out = out.view(out.size(0), -1)
+        out = F.relu(self.fc1(out))
+        out = F.relu(self.fc2(out))
+        out = self.fc3(out)
+        return out
 
 
 class DQN(nn.Module):
@@ -155,3 +178,10 @@ class DQN(nn.Module):
     def save_weights(self):
         """保存模型"""
         torch.save(self.model.state_dict(), 'dqn_model.pth')
+
+
+if __name__ == '__main__':
+    model = LeNet()
+    x = torch.randn(1, 1, 32, 32)
+    out = model(x)
+    print(out)
