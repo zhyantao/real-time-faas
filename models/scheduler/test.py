@@ -14,7 +14,7 @@ import torch.nn.functional as F
 import torch.optim as optim
 from torch.autograd import Variable
 
-from models.scheduler.gcn import load_data_from_job, GCN, accuracy
+from models.scheduler.mine.gcn import load_data_from_job, GCN, accuracy
 from models.utils.dataset import get_one_job, para
 
 if __name__ == '__main__':
