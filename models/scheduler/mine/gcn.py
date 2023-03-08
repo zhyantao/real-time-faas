@@ -1,4 +1,6 @@
 from __future__ import division
+from __future__ import division
+from __future__ import print_function
 from __future__ import print_function
 
 import glob
@@ -7,6 +9,7 @@ import os
 import time
 
 import numpy as np
+import pandas as pd
 import scipy.sparse as sp
 import torch
 import torch.nn as nn
@@ -15,6 +18,8 @@ import torch.optim as optim
 from torch.autograd import Variable
 from torch.nn.modules.module import Module
 from torch.nn.parameter import Parameter
+
+from models.utils.dataset import get_one_job, para
 
 
 class GraphConvolution(Module):
@@ -73,50 +78,16 @@ def encode_onehot(labels):
     return labels_onehot
 
 
-def load_data(path="../../dataset/cora/", dataset="cora"):
-    """Load citation network dataset (cora only for now)"""
-    print('Loading {} dataset...'.format(dataset))
-
-    idx_features_labels = np.genfromtxt("{}{}.content".format(path, dataset), dtype=np.dtype(str))
-
-    features = sp.csr_matrix(idx_features_labels[:, 1:-1], dtype=np.float32)
-    labels = encode_onehot(idx_features_labels[:, -1])
-
-    # build graph
-    idx = np.array(idx_features_labels[:, 0], dtype=np.int32)
-    idx_map = {j: i for i, j in enumerate(idx)}
-    edges_unordered = np.genfromtxt("{}{}.cites".format(path, dataset), dtype=np.int32)
-    edges = np.array(list(map(idx_map.get, edges_unordered.flatten())), dtype=np.int32).reshape(edges_unordered.shape)
-    adj = sp.coo_matrix((np.ones(edges.shape[0]), (edges[:, 0], edges[:, 1])), shape=(labels.shape[0], labels.shape[0]),
-                        dtype=np.float32)
-
-    # build symmetric adjacency matrix
-    adj = adj + adj.T.multiply(adj.T > adj) - adj.multiply(adj.T > adj)
-
-    features = normalize_features(features)
-    adj = normalize_adj(adj + sp.eye(adj.shape[0]))
-    print(features.shape)
-
-    print(adj.shape)
-    print(labels.shape)
-
-    idx_train = range(140)
-    idx_val = range(200, 500)
-    idx_test = range(500, 1500)
-
-    adj = torch.FloatTensor(np.array(adj.todense()))
-    features = torch.FloatTensor(np.array(features.todense()))
-    print(features)
-    labels = torch.LongTensor(np.where(labels)[1])
-
-    idx_train = torch.LongTensor(idx_train)
-    idx_val = torch.LongTensor(idx_val)
-    idx_test = torch.LongTensor(idx_test)
-
-    return adj, features, labels, idx_train, idx_val, idx_test
-
-
 def load_data_from_job(job):
+    """
+    模仿 cora 数据集的加载方式：
+    index, feature0, feature1, feature2, ..., class_type
+    0,     0,        1,        0,      , ..., Theory
+    1,     1,        1,        0,      , ..., Reinforcement_Learning
+    ...
+    :param job:
+    :return:
+    """
     print(job)
     ntasks = job.shape[0]
 
@@ -194,100 +165,107 @@ def accuracy(output, labels):
 
 
 if __name__ == '__main__':
-    ############################################
-    # 加载数据集
-    ############################################
-    adj, features, labels, idx_train, idx_val, idx_test = load_data()
+    df = pd.read_csv(para.get("selected_batch_task_path"))
 
-    ############################################
-    # 构建网络，指定优化器
-    ############################################
-    model = GCN(nfeat=features.shape[1],  # 列数
-                nhid=8,  # 隐藏层的个数
-                nclass=int(labels.max()) + 1,  # 类别数
-                dropout=0.6)  # 随机丢失，防止过拟合
+    rows = df.shape[0]  # CSV 文件的行数
+    idx = 0
+    while idx < rows:
+        job, idx = get_one_job(df, idx)
+        print(job)
 
-    optimizer = optim.Adam(model.parameters(),
-                           lr=0.005,
-                           weight_decay=5e-4)
+        adj, features, labels, idx_train, idx_val, idx_test = load_data_from_job(job)
 
-    features, adj, labels = Variable(features), Variable(adj), Variable(labels)
+        ############################################
+        # 构建网络，指定优化器
+        ############################################
+        model = GCN(nfeat=features.shape[1],  # 列数
+                    nhid=8,  # 隐藏层的个数
+                    nclass=int(labels.max()) + 1,  # 类别数
+                    dropout=0.6)  # 随机丢失，防止过拟合
 
+        optimizer = optim.Adam(model.parameters(),
+                               lr=0.005,
+                               weight_decay=5e-4)
 
-    ############################################
-    # 训练网络
-    ############################################
-    def train(epoch):
-        t = time.time()
-        model.train()
-        optimizer.zero_grad()
-        output = model(features, adj)
-        loss_train = F.nll_loss(output[idx_train], labels[idx_train])
-        acc_train = accuracy(output[idx_train], labels[idx_train])
-        loss_train.backward()
-        optimizer.step()
-
-        model.eval()  # 每次训练都会评估效果
-        output = model(features, adj)
-
-        loss_val = F.nll_loss(output[idx_val], labels[idx_val])
-        acc_val = accuracy(output[idx_val], labels[idx_val])
-
-        print('Epoch: {:04d}'.format(epoch + 1),
-              'loss_train: {:.4f}'.format(loss_train.data.item()),
-              'acc_train: {:.4f}'.format(acc_train.data.item()),
-              'loss_val: {:.4f}'.format(loss_val.data.item()),
-              'acc_val: {:.4f}'.format(acc_val.data.item()),
-              'time: {:.4f}s'.format(time.time() - t))
-
-        return loss_val.data.item()
+        features, adj, labels = Variable(features), Variable(adj), Variable(labels)
 
 
-    t_total = time.time()
-    loss_values = []
-    bad_counter = 0
-    best = 1000 + 1  # epochs + 1
-    best_epoch = 0
-    for epoch in range(1000):
-        loss_values.append(train(epoch))
+        ############################################
+        # 训练网络
+        ############################################
+        def train(epoch):
+            t = time.time()
+            model.train()
+            optimizer.zero_grad()
+            output = model(features, adj)
+            loss_train = F.nll_loss(output[idx_train], labels[idx_train])
+            acc_train = accuracy(output[idx_train], labels[idx_train])
+            loss_train.backward()
+            optimizer.step()
 
-        torch.save(model.state_dict(), '{}.pkl'.format(epoch))
-        if loss_values[-1] < best:
-            best = loss_values[-1]
-            best_epoch = epoch
-            bad_counter = 0
-        else:
-            bad_counter += 1
+            model.eval()  # 每次训练都会评估效果
+            output = model(features, adj)
 
-        if bad_counter == 100:  # 早停策略
-            break
+            loss_val = F.nll_loss(output[idx_val], labels[idx_val])
+            acc_val = accuracy(output[idx_val], labels[idx_val])
+
+            print('Epoch: {:04d}'.format(epoch + 1),
+                  'loss_train: {:.4f}'.format(loss_train.data.item()),
+                  'acc_train: {:.4f}'.format(acc_train.data.item()),
+                  'loss_val: {:.4f}'.format(loss_val.data.item()),
+                  'acc_val: {:.4f}'.format(acc_val.data.item()),
+                  'time: {:.4f}s'.format(time.time() - t))
+
+            return loss_val.data.item()
+
+
+        t_total = time.time()
+        loss_values = []
+        bad_counter = 0
+        best = 1000 + 1  # epochs + 1
+        best_epoch = 0
+        for epoch in range(1000):
+            loss_values.append(train(epoch))
+
+            torch.save(model.state_dict(), '__cache__/{}.pkl'.format(epoch))
+            if loss_values[-1] < best:
+                best = loss_values[-1]
+                best_epoch = epoch
+                bad_counter = 0
+            else:
+                bad_counter += 1
+
+            if bad_counter == 100:  # 早停策略
+                break
+
+            files = glob.glob('*.pkl')
+            for file in files:
+                epoch_nb = int(file.split('.')[0])
+                if epoch_nb < best_epoch:
+                    os.remove(file)
 
         files = glob.glob('*.pkl')
         for file in files:
             epoch_nb = int(file.split('.')[0])
-            if epoch_nb < best_epoch:
+            if epoch_nb > best_epoch:
                 os.remove(file)
 
-    files = glob.glob('*.pkl')
-    for file in files:
-        epoch_nb = int(file.split('.')[0])
-        if epoch_nb > best_epoch:
-            os.remove(file)
+        print("Optimization Finished!")
+        print("Total time elapsed: {:.4f}s".format(time.time() - t_total))
 
-    print("Optimization Finished!")
-    print("Total time elapsed: {:.4f}s".format(time.time() - t_total))
+        # Restore best model
+        print('Loading {}th epoch'.format(best_epoch))
+        model.load_state_dict(torch.load('__cache__/{}.pkl'.format(best_epoch)))
 
-    # Restore best model
-    print('Loading {}th epoch'.format(best_epoch))
-    model.load_state_dict(torch.load('{}.pkl'.format(best_epoch)))
+        ############################################
+        # 测试网络的预测效果
+        ############################################
+        model.eval()
+        output = model(features, adj)
+        loss_test = F.nll_loss(output[idx_test], labels[idx_test])
+        acc_test = accuracy(output[idx_test], labels[idx_test])
+        print("Test set results:",
+              "loss= {:.4f}".format(loss_test.data.item()),
+              "accuracy= {:.4f}".format(acc_test.data.item()))
 
-    ############################################
-    # 测试网络的预测效果
-    ############################################
-    model.eval()
-    output = model(features, adj)
-    loss_test = F.nll_loss(output[idx_test], labels[idx_test])
-    acc_test = accuracy(output[idx_test], labels[idx_test])
-    print("Test set results:",
-          "loss= {:.4f}".format(loss_test.data.item()),
-          "accuracy= {:.4f}".format(acc_test.data.item()))
+        break

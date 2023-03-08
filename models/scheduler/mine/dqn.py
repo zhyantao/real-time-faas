@@ -170,7 +170,7 @@ class DQN(nn.Module):
 
     def save_weights(self):
         """保存模型"""
-        torch.save(self.model.state_dict(), 'dqn_model.pth')
+        torch.save(self.model.state_dict(), '__cache__/dqn_model.pth')
 
 
 if __name__ == '__main__':
