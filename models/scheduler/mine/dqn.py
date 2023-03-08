@@ -1,5 +1,6 @@
 import numpy as np
 import torch
+import torch.nn.functional as F
 from torch import nn, optim
 
 
@@ -51,7 +52,7 @@ class DQN(nn.Module):
     def __init__(self, input_shape, output_shape):
         super(DQN, self).__init__()
         self.lr = 0.01
-        self.gamma = 0.99
+        self.gamma = 1
         self.batch_size = 32
         self.min_experiences = 100
         self.max_experiences = 10000
@@ -82,11 +83,12 @@ class DQN(nn.Module):
         # print('dqn.py --> input_data end')
         return self.model(
             torch.tensor(
-                input_data.astype('float32').reshape(
-                    1,
-                    input_data.shape[0],
-                    input_data.shape[1],
-                    input_data.shape[2])
+                input_data.float().reshape(
+                    input_data.shape[0],  # batch_size
+                    1,  # channels
+                    input_data.shape[1],  # height
+                    input_data.shape[2]  # width
+                )
             )
         )
 
@@ -100,20 +102,30 @@ class DQN(nn.Module):
             return
 
         # samples
-        ids = np.random.randint(low=0, high=len(self.experience['s']), size=self.batch_size)
-        states = np.asarray([self.experience['s'][i] for i in ids])
-        actions = np.asarray([self.experience['a'][i] for i in ids])
-        rewards = np.asarray([self.experience['r'][i] for i in ids])
-        states_next = np.asarray([self.experience['s2'][i] for i in ids])
-        dones = np.asarray([self.experience['done'][i] for i in ids])
+        ids = torch.randint(low=0, high=len(self.experience['s']), size=(self.batch_size,))
+        states = torch.tensor([self.experience['s'][i] for i in ids])
+        actions = torch.tensor([self.experience['a'][i] for i in ids])
+        rewards = torch.tensor([self.experience['r'][i] for i in ids])
+        states_next = torch.tensor([self.experience['s2'][i] for i in ids])
+        dones = torch.tensor([self.experience['done'][i] for i in ids])
+
+        # print('dqn.py --> state_next: ')
+        # print(states_next)  # [batch_size, height, width] = [32, 10, 100]
+        # print('dqn.py --> state_next end')
 
         # 使用目标网络计算真实的值
-        values_next = np.max(dqn_target.predict(states_next), axis=1)
-        actual_values = np.where(dones, rewards, rewards + self.gamma * values_next)
+        # print('dqn.py --> dqn_target.predict(states_next): ')
+        # print(dqn_target.predict(states_next))
+        # print('dqn.py --> dqn_target.predict(states_next) end')
+        values_next = torch.max(dqn_target.predict(states_next), dim=1)[0]
+        # print('dqn.py --> values_next: ')
+        # print(values_next)
+        # print('dqn.py --> values_next end')
+        actual_values = torch.where(dones, rewards, rewards + self.gamma * values_next)
 
         # 使用训练的模型，预测新值和计算损失
         predicted_values = torch.sum(
-            self.predict(states) * torch.nn.functional.one_hot(torch.tensor(actions), self.num_actions), dim=1)
+            self.predict(states) * F.one_hot(actions, self.num_actions), dim=1)
         loss = torch.sum(torch.square(actual_values - predicted_values))
 
         # 应用梯度下降更新模型
@@ -131,7 +143,7 @@ class DQN(nn.Module):
         if np.random.random() < epsilon:
             return np.random.choice(self.num_actions)
         else:
-            return torch.argmax(self.predict(np.array([states]))[0])
+            return torch.argmax(self.predict(torch.tensor([states]))[0])
 
     def add_experience(self, exp):
         """

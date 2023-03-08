@@ -41,7 +41,7 @@ class DeepRMScheduler(Scheduler):
 
     def __init__(self, environment, train=True):
         if train:
-            DeepRMTrainer(environment).train()
+            DeepRMTrainer(environment)._train()
         # print('sched.py --> environment.summary(): ')
         # print(environment.summary())
         # print('sched.py --> environment.summary() end')
