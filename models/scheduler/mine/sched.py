@@ -42,11 +42,14 @@ class DeepRMScheduler(Scheduler):
     def __init__(self, environment, train=True):
         if train:
             DeepRMTrainer(environment).train()
-        input_shape = (environment.summary().shape[0], environment.summary().shape[1], 1)
-        output_shape = environment.queue_size * len(environment.nodes) + 1
-        print('sched.py --> input_shape, output_shape: ')
-        print(input_shape, output_shape)
-        print('sched.py --> input_shape, output_shape end')
+        # print('sched.py --> environment.summary(): ')
+        # print(environment.summary())
+        # print('sched.py --> environment.summary() end')
+        input_shape = environment.summary().shape  # 输入形状 (H, W)
+        output_shape = environment.queue_size * len(environment.nodes) + 1  # 输出是队列中每个元素分配到 node 上
+        # print('sched.py --> input_shape, output_shape: ')
+        # print(input_shape, output_shape)
+        # print('sched.py --> input_shape, output_shape end')
         self.dqn_train = DQN(input_shape, output_shape)
         self.environment = environment
 
@@ -101,7 +104,7 @@ class DeepRMTrainer(nn.Module):
         self.epsilon = 0.99
         self.decay = 0.99
         self.min_epsilon = 0.1
-        input_shape = (environment.summary().shape[0], environment.summary().shape[1], 1)
+        input_shape = environment.summary().shape  # (H, W)
         output_shape = environment.queue_size * len(environment.nodes) + 1
         self.dqn_train = DQN(input_shape, output_shape)
         self.dqn_target = DQN(input_shape, output_shape)

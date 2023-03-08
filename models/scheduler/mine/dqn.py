@@ -13,7 +13,7 @@ class ConvNet(nn.Module):
         :param output_shape:
         """
         super(ConvNet, self).__init__()
-        self.conv1 = nn.Conv2d(in_channels=input_shape[2], out_channels=16, kernel_size=3, padding=1)
+        self.conv1 = nn.Conv2d(in_channels=1, out_channels=16, kernel_size=3, padding=1)
         self.relu1 = nn.ReLU()
         self.pool1 = nn.MaxPool2d(kernel_size=2)  # 手动计算池化层的大小
         self.drop1 = nn.Dropout2d(p=0.2)
@@ -28,9 +28,9 @@ class ConvNet(nn.Module):
         :param x:
         :return:
         """
-        print('dqn.py --> x.shape (input): ')
-        print(x.shape)
-        print('dqn.py --> x.shape (input) end')
+        # print('dqn.py --> x.shape (input): ')
+        # print(x.shape)
+        # print('dqn.py --> x.shape (input) end')
         x = self.conv1(x)
         x = self.relu1(x)
         x = self.pool1(x)
@@ -39,9 +39,9 @@ class ConvNet(nn.Module):
         x = self.linear1(x)
         x = self.relu2(x)
         x = self.linear2(x)
-        print('dqn.py --> x.shape (output): ')
-        print(x.shape)
-        print('dqn.py --> x.shape (output) end')
+        # print('dqn.py --> x.shape (output): ')
+        # print(x.shape)
+        # print('dqn.py --> x.shape (output) end')
         return x
 
 
@@ -56,7 +56,7 @@ class DQN(nn.Module):
         self.min_experiences = 100
         self.max_experiences = 10000
         self.num_actions = output_shape
-        self.model = ConvNet(input_shape, output_shape)
+        self.model = ConvNet(input_shape, output_shape)  # 核心还是 CNN 模型
         self.optimizer = optim.Adam(self.model.parameters(), lr=self.lr)
         self.experience = {'s': [], 'a': [], 'r': [], 's2': [], 'done': []}
 
@@ -66,9 +66,27 @@ class DQN(nn.Module):
         :param input_data:
         :return:
         """
+        # print('dqn.py --> input_data.shape: ')
+        # print(input_data.shape)
+        # print('dqn.py --> input_data.shape end')
+        # torch.Size([1, 10, 400, 1]) 表示 4 维张量：
+        # - 第一维大小是 1
+        # - 第二维大小是 10
+        # - 第三维大小是 100
+        # - 第四维大小是 1
+        # 可以理解为一个 1 个样本，10 个通道，每个通道的特征有 400 个维度，每个维度的值为 1。
+        # 这个形状的张量常用于表示一个 batch 大小为 1 的卷积神经网络的输入或输出，其中第一维度表示 batch 的大小，
+        # 第二维度表示通道数，第三维度和第四维度分别表示每个通道的特征图的高度和宽度。
+        # print('dqn.py --> input_data: ')
+        # print(input_data)
+        # print('dqn.py --> input_data end')
         return self.model(
             torch.tensor(
-                input_data.astype('float32').reshape(input_data.shape[0], input_data.shape[1], input_data.shape[2], 1)
+                input_data.astype('float32').reshape(
+                    1,
+                    input_data.shape[0],
+                    input_data.shape[1],
+                    input_data.shape[2])
             )
         )
 
@@ -113,7 +131,7 @@ class DQN(nn.Module):
         if np.random.random() < epsilon:
             return np.random.choice(self.num_actions)
         else:
-            return np.argmax(self.predict(np.array([states]))[0])
+            return torch.argmax(self.predict(np.array([states]))[0])
 
     def add_experience(self, exp):
         """
