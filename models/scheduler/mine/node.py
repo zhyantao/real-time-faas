@@ -1,3 +1,5 @@
+import collections
+
 import numpy as np
 
 
@@ -94,12 +96,11 @@ class Node(object):
         :return:
         """
         # print('node.py --> state_matrices: ')
-        # print(self.state_matrices)
+        # for matrix in self.state_matrices:
+        #     print(matrix)
         # print('node.py --> state_matrices end')
-
-        # return sum([collections.Counter(matrix.flatten()).get(0, 0)
-        #             for matrix in self.state_matrices]) / sum(self.resources) / sum(self.duration)
-        return 0
+        return sum([collections.Counter(matrix.flatten()).get(0, 0)
+                    for matrix in self.state_matrices]) / sum(self.resources) / self.duration
 
     def _satisfy(self, capacity_matrix, required_resources, required_duration):
         """
