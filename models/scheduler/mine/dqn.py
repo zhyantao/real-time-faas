@@ -1,13 +1,10 @@
-import os
-
 import numpy as np
 import torch
-import torch.nn.functional as F
 from torch import nn, optim
 
 
-class CNNModel(nn.Module):
-    """CNN 模型"""
+class ConvNet(nn.Module):
+    """ConvNet 模型"""
 
     def __init__(self, input_shape, output_shape):
         """
@@ -15,7 +12,7 @@ class CNNModel(nn.Module):
         :param input_shape:
         :param output_shape:
         """
-        super(CNNModel, self).__init__()
+        super(ConvNet, self).__init__()
         self.conv1 = nn.Conv2d(in_channels=input_shape[2], out_channels=16, kernel_size=3, padding=1)
         self.relu1 = nn.ReLU()
         self.pool1 = nn.MaxPool2d(kernel_size=2)  # 手动计算池化层的大小
@@ -31,9 +28,9 @@ class CNNModel(nn.Module):
         :param x:
         :return:
         """
-        print('dqn.py --> x.shape: ')
+        print('dqn.py --> x.shape (input): ')
         print(x.shape)
-        print('dqn.py --> x.shape end')
+        print('dqn.py --> x.shape (input) end')
         x = self.conv1(x)
         x = self.relu1(x)
         x = self.pool1(x)
@@ -42,44 +39,10 @@ class CNNModel(nn.Module):
         x = self.linear1(x)
         x = self.relu2(x)
         x = self.linear2(x)
+        print('dqn.py --> x.shape (output): ')
+        print(x.shape)
+        print('dqn.py --> x.shape (output) end')
         return x
-
-    def call(self, input_data):
-        """
-        调用已经定义的模型
-        :param input_data:
-        :return:
-        """
-        return self.forward(input_data)
-
-    def save(self):
-        """保存模型"""
-        if not os.path.exists('__cache__/model'):
-            os.makedirs('__cache__/model')
-
-        torch.save(self.state_dict(), '__cache__/model/dqn_core.pth')
-
-
-class LeNet(nn.Module):
-    def __init__(self):
-        super(LeNet, self).__init__()
-        self.conv1 = nn.Conv2d(1, 6, 5, bias=False)
-        self.conv2 = nn.Conv2d(6, 16, 5)
-        self.fc1 = nn.Linear(16 * 5 * 5, 120)
-        self.fc2 = nn.Linear(120, 84)
-        self.fc3 = nn.Linear(84, 10)
-
-    def forward(self, x):
-        out = self.conv1(x)
-        out = F.relu(out)
-        out = F.max_pool2d(out, 2)
-        out = F.relu(self.conv2(out))
-        out = F.max_pool2d(out, 2)
-        out = out.view(out.size(0), -1)
-        out = F.relu(self.fc1(out))
-        out = F.relu(self.fc2(out))
-        out = self.fc3(out)
-        return out
 
 
 class DQN(nn.Module):
@@ -93,7 +56,7 @@ class DQN(nn.Module):
         self.min_experiences = 100
         self.max_experiences = 10000
         self.num_actions = output_shape
-        self.model = CNNModel(input_shape, output_shape)
+        self.model = ConvNet(input_shape, output_shape)
         self.optimizer = optim.Adam(self.model.parameters(), lr=self.lr)
         self.experience = {'s': [], 'a': [], 'r': [], 's2': [], 'done': []}
 
@@ -181,7 +144,7 @@ class DQN(nn.Module):
 
 
 if __name__ == '__main__':
-    model = LeNet()
-    x = torch.randn(1, 1, 32, 32)
-    out = model(x)
-    print(out)
+    model = ConvNet(input_shape=(10, 400, 1), output_shape=31)
+    x = torch.randn(31, 1, 10, 400)  # Conv2d 要求的输入形状为 [batch_size, channels, height, width]
+    y = model(x)
+    print(y)

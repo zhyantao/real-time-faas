@@ -18,7 +18,7 @@ parser.add_argument('--job_folder', type=str, default='./spark_env/tpch/',
 parser.add_argument('--result_folder', type=str, default='./results/',
                     help='Result folder path (default: ./results)')
 parser.add_argument('--model_folder', type=str, default='./decima_models/',
-                    help='Model folder path (default: ./decima_models)')
+                    help='ConvNet folder path (default: ./decima_models)')
 
 # -- Environment --
 parser.add_argument('--exec_cap', type=int, default=100,
