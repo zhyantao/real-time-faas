@@ -31,17 +31,17 @@ class SparseMat(object):
 
 def absorb_sp_mats(in_mats, depth):
     """
-    Merge multiple sparse matrices to 
+    Merge multiple sparse matrices to
     a giant one on its diagonal
 
-    e.g., 
-    
+    e.g.,
+
     [0, 1, 0]    [0, 1, 0]    [0, 0, 1]
     [1, 0, 0]    [0, 0, 1]    [0, 1, 0]
     [0, 0, 1]    [1, 0, 0]    [0, 1, 0]
-    
-    to 
-    
+
+    to
+
     [0, 1, 0]
     [1, 0, 0]   ..  ..    ..  ..
     [0, 0, 1]
@@ -55,7 +55,7 @@ def absorb_sp_mats(in_mats, depth):
     where ".." are all zeros
 
     depth is on the 3rd dimension,
-    which is orthogonal to the planar 
+    which is orthogonal to the planar
     operations above
 
     output SparseTensorValue from tensorflow
@@ -88,7 +88,7 @@ def absorb_sp_mats(in_mats, depth):
 
 def expand_sp_mat(sp, exp_step):
     """
-    Make a stack of same sparse matrix to 
+    Make a stack of same sparse matrix to
     a giant one on its diagonal
 
     The input is tf.SparseTensorValue
@@ -104,11 +104,11 @@ def expand_sp_mat(sp, exp_step):
                                    [0, 1, 0]
                   ..  ..   ..  ..  [1, 0, 0]
                                    [0, 0, 1]
-    
+
     where ".." are all zeros
 
     depth is on the 3rd dimension,
-    which is orthogonal to the planar 
+    which is orthogonal to the planar
     operations above
 
     output SparseTensorValue from tensorflow

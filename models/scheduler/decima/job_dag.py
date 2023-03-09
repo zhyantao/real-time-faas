@@ -1,9 +1,9 @@
 import networkx as nx
 import numpy as np
 
-from param import *
-from spark_env.node import NodeDuration
-from utils import OrderedSet
+from node import NodeDuration
+from ordered_set import OrderedSet
+from param import args
 
 
 class JobDAG(object):
@@ -144,8 +144,7 @@ def merge_job_dags(job_dags):
             nodes.append(n)
 
         # update the adj matrix
-        adj_mat[base: base + num_nodes, \
-        base: base + num_nodes] = job_dag.adj_mat
+        adj_mat[base: base + num_nodes, base: base + num_nodes] = job_dag.adj_mat
 
         # fundamental assumption of spark --
         # every job ends with a single final stage
@@ -178,7 +177,7 @@ def merge_job_dags(job_dags):
 
     assert len(nodes) == adj_mat.shape[0]
 
-    merged_job_dag = JobDAG(nodes, adj_mat)
+    merged_job_dag = JobDAG(nodes, adj_mat, 'merged_job_dag')
 
     return merged_job_dag
 
@@ -189,22 +188,18 @@ class JobDAGDuration(object):
     def __init__(self, job_dag):
         self.job_dag = job_dag
 
-        self.node_durations = \
-            {node: NodeDuration(node) for node in self.job_dag.nodes}
+        self.node_durations = {node: NodeDuration(node) for node in self.job_dag.nodes}
 
         for node in self.job_dag.nodes:
             # initialize descendant nodes duration
-            self.node_durations[node].descendant_work = \
-                np.sum([self.node_durations[n].duration \
-                        for n in node.descendant_nodes])
+            self.node_durations[node].descendant_work = np.sum([self.node_durations[n].duration
+                                                                for n in node.descendant_nodes])
             # initialize descendant nodes task duration
-            self.node_durations[node].descendant_cp = \
-                np.sum([n.tasks[0].duration \
-                        for n in node.descendant_nodes])
+            self.node_durations[node].descendant_cp = np.sum([n.tasks[0].duration
+                                                              for n in node.descendant_nodes])
 
-        self.job_dag_duration = \
-            np.sum([self.node_durations[node].duration \
-                    for node in self.job_dag.nodes])
+        self.job_dag_duration = np.sum([self.node_durations[node].duration
+                                        for node in self.job_dag.nodes])
 
         self.nodes_done = {}
 

@@ -1,5 +1,7 @@
+import numpy as np
+
 from sparse_op import expand_sp_mat, merge_and_extend_sp_mat
-from utils import *
+from utils import truncate_experiences, aggregate_gradients
 
 
 def compute_actor_gradients(actor_agent, exp, batch_adv, entropy_weight):

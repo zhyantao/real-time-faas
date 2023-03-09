@@ -1,45 +1,58 @@
-from multi_resource_env.executor import MultiResExecutor as Executor
-from multi_resource_env.executor_commit import MultiResExecutorCommit as ExecutorCommit
-from multi_resource_env.group_executors import group_executors
-from multi_resource_env.job_generator import generate_jobs
-from multi_resource_env.node_selected import NodeSelected
-from multi_resource_env.task import MultiResTask as Task
-from param import *
-from spark_env.action_map import compute_act_map
-from spark_env.env import Environment as SparkEnvironment
-from spark_env.free_executors import FreeExecutors
-from spark_env.job_dag import JobDAG
-from utils import *
+import numpy as np
+
+from action_map import compute_act_map
+from executor import Executor
+from executor_commit import ExecutorCommit
+from free_executors import FreeExecutors
+from job_dag import JobDAG
+from job_generator import generate_jobs
+from moving_executors import MovingExecutors
+from ordered_set import OrderedSet
+from param import args
+from reward_calculator import RewardCalculator
+from task import Task
+from timeline import Timeline
+from wall_time import WallTime
 
 
-class MultiResEnvironment(SparkEnvironment):
+class Environment(object):
+
     def __init__(self):
-        SparkEnvironment.__init__(self)
+        # isolated random number generator
+        self.np_random = np.random.RandomState()
 
-        # overwrite executors
-        assert len(args.exec_group_num) == len(args.exec_cpus)
-        assert len(args.exec_group_num) == len(args.exec_mems)
+        # global timer
+        self.wall_time = WallTime()
+
+        # uses priority queue
+        self.timeline = Timeline()
+
+        # executors
         self.executors = OrderedSet()
-        exec_id = 0
-        for i in range(len(args.exec_group_num)):
-            exec_num = args.exec_group_num[i]
-            exec_cpu = args.exec_cpus[i]
-            exec_mem = args.exec_mems[i]
-            for _ in range(exec_num):
-                self.executors.add(Executor(exec_id, i, exec_cpu, exec_mem))
-                exec_id += 1
+        for exec_id in range(args.exec_cap):
+            self.executors.add(Executor(exec_id))
 
-        # overwrite free executors
+        # free executors
         self.free_executors = FreeExecutors(self.executors)
 
-        # overwrite executor commit
+        # moving executors
+        self.moving_executors = MovingExecutors()
+
+        # executor commit
         self.exec_commit = ExecutorCommit()
 
-        # overwrite node selected
-        self.node_selected = NodeSelected(len(args.exec_group_num))
+        # prevent agent keeps selecting the same node
+        self.node_selected = set()
+
+        # for computing reward at each step
+        self.reward_calculator = RewardCalculator()
+
+    def add_job(self, job_dag):
+        self.moving_executors.add_job(job_dag)
+        self.free_executors.add_job(job_dag)
+        self.exec_commit.add_job(job_dag)
 
     def assign_executor(self, executor, frontier_changed):
-        # overwrite how we represent available executors
         if executor.node is not None and not executor.node.no_more_tasks:
             # keep working on the previous node
             task = executor.node.schedule(executor)
@@ -50,8 +63,7 @@ class MultiResEnvironment(SparkEnvironment):
                 # frontier changed, need to consult all free executors
                 # note: executor.job_dag might change after self.schedule()
                 source_job = executor.job_dag
-                if self.exec_commit.get_len(
-                        executor.type, executor.node) > 0:
+                if len(self.exec_commit[executor.node]) > 0:
                     # directly fulfill the commitment
                     self.exec_to_schedule = {executor}
                     self.schedule()
@@ -59,18 +71,14 @@ class MultiResEnvironment(SparkEnvironment):
                     # free up the executor
                     self.free_executors.add(source_job, executor)
                 # then consult all free executors
-                self.exec_to_schedule = OrderedSet(
-                    self.free_executors[source_job])
+                self.exec_to_schedule = OrderedSet(self.free_executors[source_job])
                 self.source_job = source_job
-                self.num_source_exec = group_executors(
-                    self.free_executors[source_job],
-                    len(args.exec_group_num))
+                self.num_source_exec = len(self.free_executors[source_job])
             else:
                 # just need to schedule one current executor
                 self.exec_to_schedule = {executor}
                 # only care about executors on the node
-                if self.exec_commit.get_len(
-                        executor.type, executor.node) > 0:
+                if len(self.exec_commit[executor.node]) > 0:
                     # directly fulfill the commitment
                     self.schedule()
                 else:
@@ -80,18 +88,20 @@ class MultiResEnvironment(SparkEnvironment):
                     #       so len(self.exec_to_schedule) !=
                     #       self.num_source_exec can happen
                     self.source_job = executor.job_dag
-                    self.num_source_exec = \
-                        group_executors(executor.node.executors,
-                                        len(args.exec_group_num))
+                    self.num_source_exec = len(executor.node.executors)
 
     def backup_schedule(self, executor):
+        # This function is triggered very rarely. A random policy
+        # or the learned polici in early iterations might decide
+        # to schedule no executors to any job. This function makes
+        # sure the cluster is work conservative. Since the backup
+        # policy is not strong, the learning agent should learn to
+        # not rely on it.
         backup_scheduled = False
         if executor.job_dag is not None:
             # first try to schedule on current job
             for node in executor.job_dag.frontier_nodes:
-                if not self.saturated(node) and \
-                        executor.cpu >= node.cpu and \
-                        executor.mem >= node.mem:
+                if not self.saturated(node):
                     # greedily schedule a frontier node
                     task = node.schedule(executor)
                     self.timeline.push(task.finish_time, task)
@@ -99,11 +109,7 @@ class MultiResEnvironment(SparkEnvironment):
                     break
         # then try to schedule on any available node
         if not backup_scheduled:
-            num_source_exec = [0 for _ in range(len(args.exec_group_num))]
-            num_source_exec[executor.type] = 1
-            # only care about the specific executor type
-            schedulable_nodes = \
-                self.get_frontier_nodes(num_source_exec)[executor.type]
+            schedulable_nodes = self.get_frontier_nodes()
             if len(schedulable_nodes) > 0:
                 node = next(iter(schedulable_nodes))
                 self.timeline.push(
@@ -115,50 +121,64 @@ class MultiResEnvironment(SparkEnvironment):
         if not backup_scheduled:
             self.free_executors.add(executor.job_dag, executor)
 
-    def get_frontier_nodes(self, num_source_execs):
-        # overwrite how frontier nodes are computed
-        # with executor types
-        # Note: the frontier node is with respect to 
-        # different kinds of executors
-        assert len(num_source_execs) == len(args.exec_group_num)
-        frontier_nodes = {i: OrderedSet() \
-                          for i in range(len(num_source_execs))}
-
+    def get_frontier_nodes(self):
+        # frontier nodes := unsaturated nodes with all parent nodes saturated
+        frontier_nodes = OrderedSet()
         for job_dag in self.job_dags:
             for node in job_dag.nodes:
-                # check different executor types
-                for i in range(len(num_source_execs)):
-                    if not node in self.node_selected[i] \
-                            and not self.saturated(node):
-                        parents_saturated = True
-                        for parent_node in node.parent_nodes:
-                            if not self.saturated(parent_node):
-                                parents_saturated = False
-                                break
-                        if parents_saturated:
-                            # check if node fits this executors type
-                            if num_source_execs[i] > 0 and \
-                                    node.cpu <= args.exec_cpus[i] and \
-                                    node.mem <= args.exec_mems[i]:
-                                frontier_nodes[i].add(node)
+                if not node in self.node_selected and not self.saturated(node):
+                    parents_saturated = True
+                    for parent_node in node.parent_nodes:
+                        if not self.saturated(parent_node):
+                            parents_saturated = False
+                            break
+                    if parents_saturated:
+                        frontier_nodes.add(node)
 
         return frontier_nodes
 
+    def get_executor_limits(self):
+        # "minimum executor limit" for each job
+        # executor limit := {job_dag -> int}
+        executor_limit = {}
+
+        for job_dag in self.job_dags:
+
+            if self.source_job == job_dag:
+                curr_exec = self.num_source_exec
+            else:
+                curr_exec = 0
+
+            # note: this does not count in the commit and moving executors
+            executor_limit[job_dag] = len(job_dag.executors) - curr_exec
+
+        return executor_limit
+
     def observe(self):
         return self.job_dags, self.source_job, self.num_source_exec, \
-            self.get_frontier_nodes(self.num_source_exec), \
+            self.get_frontier_nodes(), self.get_executor_limits(), \
             self.exec_commit, self.moving_executors, self.action_map
+
+    def saturated(self, node):
+        # frontier nodes := unsaturated nodes with all parent nodes saturated
+        anticipated_task_idx = node.next_task_idx + \
+                               self.exec_commit.node_commit[node] + \
+                               self.moving_executors.count(node)
+        # note: anticipated_task_idx can be larger than node.num_tasks
+        # when the tasks finish very fast before commitments are fulfilled
+        return anticipated_task_idx >= node.num_tasks
 
     def schedule(self):
         executor = next(iter(self.exec_to_schedule))
         source = executor.job_dag if executor.node is None else executor.node
 
         # schedule executors from the source until the commitment is fulfilled
-        while len(self.exec_to_schedule) > 0:
+        while len(self.exec_commit[source]) > 0 and \
+                len(self.exec_to_schedule) > 0:
 
             # keep fulfilling the commitment using free executors
+            node = self.exec_commit.pop(source)
             executor = self.exec_to_schedule.pop()
-            node = self.exec_commit.pop(executor.type, source)
 
             # mark executor as in use if it was free executor previously
             if self.free_executors.contain_executor(executor.job_dag, executor):
@@ -199,11 +219,11 @@ class MultiResEnvironment(SparkEnvironment):
                 # node is already saturated, use backup logic
                 self.backup_schedule(executor)
 
-    def step(self, next_node, exec_type, limit):
+    def step(self, next_node, limit):
 
         # mark the node as selected
-        assert next_node not in self.node_selected[exec_type]
-        self.node_selected[exec_type].add(next_node)
+        assert next_node not in self.node_selected
+        self.node_selected.add(next_node)
         # commit the source executor
         executor = next(iter(self.exec_to_schedule))
         source = executor.job_dag if executor.node is None else executor.node
@@ -217,19 +237,19 @@ class MultiResEnvironment(SparkEnvironment):
             use_exec = limit
         assert use_exec > 0
 
-        self.exec_commit.add(source, next_node, exec_type, use_exec)
+        self.exec_commit.add(source, next_node, use_exec)
         # deduct the executors that know the destination
-        self.num_source_exec[exec_type] -= use_exec
-        assert self.num_source_exec[exec_type] >= 0
+        self.num_source_exec -= use_exec
+        assert self.num_source_exec >= 0
 
-        if sum(self.num_source_exec) == 0:
+        if self.num_source_exec == 0:
             # now a new scheduling round, clean up node selection
             self.node_selected.clear()
             # all commitments are made, now schedule free executors
             self.schedule()
 
         # Now run to the next event in the virtual timeline
-        while len(self.timeline) > 0 and sum(self.num_source_exec) == 0:
+        while len(self.timeline) > 0 and self.num_source_exec == 0:
             # consult agent by putting executors in source_exec
 
             new_time, obj = self.timeline.pop()
@@ -279,9 +299,7 @@ class MultiResEnvironment(SparkEnvironment):
                         OrderedSet(self.free_executors[None])
                     self.source_job = None
                     self.num_source_exec = \
-                        group_executors(
-                            self.free_executors[None],
-                            len(args.exec_group_num))
+                        len(self.free_executors[None])
 
             elif isinstance(obj, Executor):  # executor arrival event
                 executor = obj
@@ -317,15 +335,23 @@ class MultiResEnvironment(SparkEnvironment):
             self.job_dags, self.wall_time.curr_time)
 
         # no more decision to make, jobs all done or time is up
-        done = (sum(self.num_source_exec) == 0) and \
-               ((len(self.timeline) == 0) or \
-                (self.wall_time.curr_time >= self.max_time))
+        done = (self.num_source_exec == 0) and (
+                    (len(self.timeline) == 0) or (self.wall_time.curr_time >= self.max_time))
 
         if done:
-            assert self.wall_time.curr_time >= self.max_time or \
-                   len(self.job_dags) == 0
+            assert self.wall_time.curr_time >= self.max_time or len(self.job_dags) == 0
 
         return self.observe(), reward, done
+
+    def remove_job(self, job_dag):
+        for executor in list(job_dag.executors):
+            executor.detach_job()
+        self.exec_commit.remove_job(job_dag)
+        self.free_executors.remove_job(job_dag)
+        self.moving_executors.remove_job(job_dag)
+        self.job_dags.remove(job_dag)
+        self.finished_job_dags.add(job_dag)
+        self.action_map = compute_act_map(self.job_dags)
 
     def reset(self, max_time=np.inf):
         self.max_time = max_time
@@ -339,9 +365,8 @@ class MultiResEnvironment(SparkEnvironment):
         for executor in self.executors:
             executor.reset()
         self.free_executors.reset(self.executors)
-        # overwrite the generation a set of new jobs
-        self.job_dags = generate_jobs(
-            self.np_random, self.timeline, self.wall_time)
+        # generate a set of new jobs
+        self.job_dags = generate_jobs(self.np_random, self.timeline, self.wall_time)
         # map action to dag_idx and node_idx
         self.action_map = compute_act_map(self.job_dags)
         # add initial set of jobs in the system
@@ -349,6 +374,8 @@ class MultiResEnvironment(SparkEnvironment):
             self.add_job(job_dag)
         # put all executors as source executors initially
         self.source_job = None
-        self.num_source_exec = group_executors(
-            self.executors, len(args.exec_group_num))
+        self.num_source_exec = len(self.executors)
         self.exec_to_schedule = OrderedSet(self.executors)
+
+    def seed(self, seed):
+        self.np_random.seed(seed)

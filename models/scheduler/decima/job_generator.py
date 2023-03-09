@@ -1,16 +1,18 @@
-from spark_env.job_dag import *
-from spark_env.node import *
-from spark_env.task import *
-from utils import *
+import numpy as np
+
+from job_dag import JobDAG
+from node import Node
+from ordered_set import OrderedSet
+from param import args
+from set_with_count import SetWithCount
+from task import Task
 
 
 def load_job(file_path, query_size, query_idx, wall_time, np_random):
     query_path = file_path + query_size + '/'
 
-    adj_mat = np.load(
-        query_path + 'adj_mat_' + str(query_idx) + '.npy', allow_pickle=True)
-    task_durations = np.load(
-        query_path + 'task_duration_' + str(query_idx) + '.npy', allow_pickle=True).item()
+    adj_mat = np.load(query_path + 'adj_mat_' + str(query_idx) + '.npy', allow_pickle=True)
+    task_durations = np.load(query_path + 'task_duration_' + str(query_idx) + '.npy', allow_pickle=True).item()
 
     assert adj_mat.shape[0] == adj_mat.shape[1]
     assert adj_mat.shape[0] == len(task_durations)
@@ -21,15 +23,14 @@ def load_job(file_path, query_size, query_idx, wall_time, np_random):
         task_duration = task_durations[n]
         e = next(iter(task_duration['first_wave']))
 
-        num_tasks = len(task_duration['first_wave'][e]) + \
-                    len(task_duration['rest_wave'][e])
+        num_tasks = len(task_duration['first_wave'][e]) + len(task_duration['rest_wave'][e])
 
         # remove fresh duration from first wave duration
         # drag nearest neighbor first wave duration to empty spots
         pre_process_task_duration(task_duration)
         rough_duration = np.mean(
-            [i for l in task_duration['first_wave'].values() for i in l] + \
-            [i for l in task_duration['rest_wave'].values() for i in l] + \
+            [i for l in task_duration['first_wave'].values() for i in l] +
+            [i for l in task_duration['rest_wave'].values() for i in l] +
             [i for l in task_duration['fresh_durations'].values() for i in l])
 
         # generate tasks in a node

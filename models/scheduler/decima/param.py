@@ -13,12 +13,12 @@ parser.add_argument('--num_exp', type=int, default=10,
                     help='number of experiments (default: 10)')
 parser.add_argument('--query_type', type=str, default='tpch',
                     help='query type (default: tpch)')
-parser.add_argument('--job_folder', type=str, default='./spark_env/tpch/',
-                    help='job folder path (default: ./spark_env/tpch/)')
+parser.add_argument('--job_folder', type=str, default='./dataset/',
+                    help='job folder path (default: ./dataset/)')
 parser.add_argument('--result_folder', type=str, default='./results/',
                     help='Result folder path (default: ./results)')
-parser.add_argument('--model_folder', type=str, default='./decima_models/',
-                    help='ConvNet folder path (default: ./decima_models)')
+parser.add_argument('--model_folder', type=str, default='./best_model/',
+                    help='ConvNet folder path (default: ./best_model)')
 
 # -- Environment --
 parser.add_argument('--exec_cap', type=int, default=100,
@@ -125,8 +125,8 @@ parser.add_argument('--reset_prob_decay', type=float, default=0,
                     help='Decay rate of reset probability (default: 0)')
 parser.add_argument('--reset_prob_min', type=float, default=0,
                     help='Minimum of decay probability (default: 0)')
-parser.add_argument('--num_agents', type=int, default=16,
-                    help='Number of parallel agents (default: 16)')
+parser.add_argument('--num_agents', type=int, default=1,
+                    help='Number of parallel agents (default: 1)')
 parser.add_argument('--num_ep', type=int, default=10000000,
                     help='Number of training epochs (default: 10000000)')
 parser.add_argument('--learn_obj', type=str, default='mean',

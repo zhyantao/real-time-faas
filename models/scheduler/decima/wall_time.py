@@ -1,6 +1,6 @@
 class WallTime(object):
     """
-    A global time object distributed to all 
+    A global time object distributed to all
     tasks, nodes and workers in the environment
     """
 

@@ -21,16 +21,14 @@ class RewardCalculator(object):
                     job_dag.completion_time,
                     curr_time) - max(
                     job_dag.start_time,
-                    self.prev_time)) / \
-                          args.reward_scale
+                    self.prev_time)) / args.reward_scale
 
                 # if the job is done, remove it from the list
                 if job_dag.completed:
                     self.job_dags.remove(job_dag)
 
         elif args.learn_obj == 'makespan':
-            reward -= (curr_time - self.prev_time) / \
-                      args.reward_scale
+            reward -= (curr_time - self.prev_time) / args.reward_scale
 
         else:
             print('Unkown learning objective')

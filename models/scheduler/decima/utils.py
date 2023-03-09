@@ -1,9 +1,22 @@
 import itertools
 import os
 import sys
-from collections import OrderedDict
 
 import numpy as np
+
+
+def progress_bar(count, total, status='', pattern='|', back='-'):
+    bar_len = 60
+    filled_len = int(round(bar_len * count / float(total)))
+
+    percents = round(100.0 * count / float(total), 1)
+    bar = pattern * filled_len + back * (bar_len - filled_len)
+
+    sys.stdout.write('[%s] %s%s  %s\r' % (bar, percents, '%', status))
+    sys.stdout.flush()
+
+    if count == total:
+        print('')
 
 
 def aggregate_gradients(gradients):
@@ -152,89 +165,6 @@ def min_nonzero(x):
 
 def moving_average(x, N):
     return np.convolve(x, np.ones((N,)) / N, mode='valid')
-
-
-class OrderedSet(object):
-    def __init__(self, contents=()):
-        self.set = OrderedDict((c, None) for c in contents)
-
-    def __contains__(self, item):
-        return item in self.set
-
-    def __iter__(self):
-        return iter(self.set.keys())
-
-    def __len__(self):
-        return len(self.set)
-
-    def add(self, item):
-        self.set[item] = None
-
-    def clear(self):
-        self.set.clear()
-
-    def index(self, item):
-        idx = 0
-        for i in self.set.keys():
-            if item == i:
-                break
-            idx += 1
-        return idx
-
-    def pop(self):
-        item = next(iter(self.set))
-        del self.set[item]
-        return item
-
-    def remove(self, item):
-        del self.set[item]
-
-    def to_list(self):
-        return [k for k in self.set]
-
-    def update(self, contents):
-        for c in contents:
-            self.add(c)
-
-
-def progress_bar(count, total, status='', pattern='|', back='-'):
-    bar_len = 60
-    filled_len = int(round(bar_len * count / float(total)))
-
-    percents = round(100.0 * count / float(total), 1)
-    bar = pattern * filled_len + back * (bar_len - filled_len)
-
-    sys.stdout.write('[%s] %s%s  %s\r' % (bar, percents, '%', status))
-    sys.stdout.flush()
-
-    if count == total:
-        print('')
-
-
-class SetWithCount(object):
-    """
-    allow duplication in set
-    """
-
-    def __init__(self):
-        self.set = {}
-
-    def __contains__(self, item):
-        return item in self.set
-
-    def add(self, item):
-        if item in self.set:
-            self.set[item] += 1
-        else:
-            self.set[item] = 1
-
-    def clear(self):
-        self.set.clear()
-
-    def remove(self, item):
-        self.set[item] -= 1
-        if self.set[item] == 0:
-            del self.set[item]
 
 
 def truncate_experiences(lst):

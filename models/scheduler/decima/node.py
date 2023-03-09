@@ -1,7 +1,7 @@
 import numpy as np
 
-from param import *
-from utils import OrderedSet
+from ordered_set import OrderedSet
+from param import args
 
 
 class Node(object):

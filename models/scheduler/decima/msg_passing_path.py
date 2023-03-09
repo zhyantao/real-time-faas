@@ -4,10 +4,11 @@ represent the path with sparse adjacency matrices (parent-child
 pairs at each iteration) and frontier masks (aggregation
 node points at each iteration)
 """
-
-from param import *
+import numpy as np
 from sparse_op import *
-from utils import OrderedSet
+
+from ordered_set import OrderedSet
+from param import args
 
 
 class Postman(object):

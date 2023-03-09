@@ -1,3 +1,0 @@
-model_checkpoint_path: "model_ep_2000"
-all_model_checkpoint_paths: "model_ep_1000"
-all_model_checkpoint_paths: "model_ep_2000"

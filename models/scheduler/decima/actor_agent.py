@@ -5,9 +5,9 @@ import tensorflow.contrib.layers as tl
 from agent import Agent
 from gcn import GraphCNN
 from gsn import GraphSNN
+from job_dag import JobDAG
 from msg_passing_path import *
-from spark_env.job_dag import JobDAG
-from spark_env.node import Node
+from node import Node
 from tf_op import *
 
 
@@ -194,20 +194,20 @@ class ActorAgent(Agent):
         # (2) reshape job inputs to batch format
         job_inputs_reshape = tf.reshape(job_inputs, [batch_size, -1, self.job_input_dim])
 
-        # (4) reshape gcn_outputs to batch format
+        # (3) reshape gcn_outputs to batch format
         gcn_outputs_reshape = tf.reshape(gcn_outputs, [batch_size, -1, self.output_dim])
 
-        # (5) reshape gsn_dag_summary to batch format
+        # (4) reshape gsn_dag_summary to batch format
         gsn_dag_summ_reshape = tf.reshape(gsn_dag_summary, [batch_size, -1, self.output_dim])
         gsn_summ_backward_map_extend = tf.tile(tf.expand_dims(gsn_summ_backward_map, axis=0), [batch_size, 1, 1])
         gsn_dag_summ_extend = tf.matmul(gsn_summ_backward_map_extend, gsn_dag_summ_reshape)
 
-        # (6) reshape gsn_global_summary to batch format
+        # (5) reshape gsn_global_summary to batch format
         gsn_global_summ_reshape = tf.reshape(gsn_global_summary, [batch_size, -1, self.output_dim])
         gsn_global_summ_extend_job = tf.tile(gsn_global_summ_reshape, [1, tf.shape(gsn_dag_summ_reshape)[1], 1])
         gsn_global_summ_extend_node = tf.tile(gsn_global_summ_reshape, [1, tf.shape(gsn_dag_summ_extend)[1], 1])
 
-        # (4) actor neural network
+        # (6) actor neural network
         with tf.variable_scope(self.scope):
             # -- part A, the distribution over nodes --
             merge_node = tf.concat([
@@ -254,7 +254,7 @@ class ActorAgent(Agent):
             # valid mask on job
             job_valid_mask = (job_valid_mask - 1) * 10000.0
 
-            # apply mask
+            # apply mask  # valid mask 是什么东西？
             job_outputs = job_outputs + job_valid_mask
 
             # reshape output dimension for softmax the executor limits
@@ -267,11 +267,12 @@ class ActorAgent(Agent):
             return node_outputs, job_outputs
 
     def apply_gradients(self, gradients, lr_rate):
-        self.sess.run(self.apply_grads, feed_dict={
-            i: d for i, d in zip(
-                self.act_gradients + [self.lr_rate],
-                gradients + [lr_rate])
-        })
+        self.sess.run(
+            self.apply_grads, feed_dict={
+                i: d for i, d in zip(
+                    self.act_gradients + [self.lr_rate],
+                    gradients + [lr_rate])
+            })
 
     def define_params_op(self):
         # define operations for setting network parameters
@@ -346,9 +347,8 @@ class ActorAgent(Agent):
         """
         Translate the observation to matrix form
         """
-        job_dags, source_job, num_source_exec, \
-            frontier_nodes, executor_limits, \
-            exec_commit, moving_executors, action_map = obs
+        job_dags, source_job, num_source_exec, frontier_nodes, executor_limits, exec_commit, moving_executors, action_map \
+            = obs
 
         # compute total number of nodes
         total_num_nodes = int(np.sum(job_dag.num_nodes for job_dag in job_dags))
@@ -419,10 +419,22 @@ class ActorAgent(Agent):
             exec_map, action_map
 
     def get_valid_masks(self, job_dags, frontier_nodes, source_job, num_source_exec, exec_map, action_map):
+        """
+        如何保证任务是有效的呢？
 
+        :param job_dags:
+        :param frontier_nodes:
+        :param source_job:
+        :param num_source_exec:
+        :param exec_map:
+        :param action_map:
+        :return:
+        """
+
+        # executor level 可以对应原文的 “并行度”
         job_valid_mask = np.zeros([1, len(job_dags) * len(self.executor_levels)])
 
-        job_valid = {}  # if job is saturated, don't assign node
+        job_valid = {}  # 如果分配给一个 job 的 executor 已经达到了上限，就不分配 executor 了
 
         base = 0
         for job_dag in job_dags:
@@ -452,8 +464,7 @@ class ActorAgent(Agent):
 
             base += self.executor_levels[-1]
 
-        total_num_nodes = int(np.sum(
-            job_dag.num_nodes for job_dag in job_dags))
+        total_num_nodes = int(np.sum(job_dag.num_nodes for job_dag in job_dags))
 
         node_valid_mask = np.zeros([1, total_num_nodes])
 
@@ -462,6 +473,12 @@ class ActorAgent(Agent):
                 act = action_map.inverse_map[node]
                 node_valid_mask[0, act] = 1
 
+        print('actor_agent.py --> node_valid_mask: ')
+        print(node_valid_mask)
+        print('actor_agent.py --> node_valid_mask end')
+        print('actor_agent.py --> job_valid_mask: ')
+        print(job_valid_mask)
+        print('actor_agent.py --> job_valid_mask end')
         return node_valid_mask, job_valid_mask
 
     def invoke_model(self, obs):

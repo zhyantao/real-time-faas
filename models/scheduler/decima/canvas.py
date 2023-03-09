@@ -1,17 +1,15 @@
 import matplotlib.pyplot as plt
 import numpy as np
 
-from param import *
-from utils import *
+from param import args
+from utils import moving_average
 
 
 def visualize_executor_usage(job_dags, file_path):
     exp_completion_time = int(np.ceil(np.max([
         j.completion_time for j in job_dags])))
 
-    job_durations = \
-        [job_dag.completion_time - \
-         job_dag.start_time for job_dag in job_dags]
+    job_durations = [job_dag.completion_time - job_dag.start_time for job_dag in job_dags]
 
     executor_occupation = np.zeros(exp_completion_time)
     executor_limit = np.ones(exp_completion_time) * args.exec_cap
@@ -21,15 +19,10 @@ def visualize_executor_usage(job_dags, file_path):
     for job_dag in job_dags:
         for node in job_dag.nodes:
             for task in node.tasks:
-                executor_occupation[
-                int(task.start_time): \
-                int(task.finish_time)] += 1
-        num_jobs_in_system[
-        int(job_dag.start_time): \
-        int(job_dag.completion_time)] += 1
+                executor_occupation[int(task.start_time):int(task.finish_time)] += 1
+        num_jobs_in_system[int(job_dag.start_time):int(job_dag.completion_time)] += 1
 
-    executor_usage = \
-        np.sum(executor_occupation) / np.sum(executor_limit)
+    executor_usage = np.sum(executor_occupation) / np.sum(executor_limit)
 
     fig = plt.figure()
 
@@ -40,9 +33,7 @@ def visualize_executor_usage(job_dags, file_path):
     plt.plot(moving_average(executor_occupation, 10000))
 
     plt.ylabel('Number of busy executors')
-    plt.title('Executor usage: ' + str(executor_usage) + \
-              '\n average completion time: ' + \
-              str(np.mean(job_durations)))
+    plt.title('Executor usage: ' + str(executor_usage) + '\n average completion time: ' + str(np.mean(job_durations)))
 
     plt.subplot(2, 1, 2)
     plt.plot(num_jobs_in_system)

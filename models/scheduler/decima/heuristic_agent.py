@@ -1,9 +1,9 @@
 import numpy as np
 
 from agent import Agent
-from param import *
-from spark_env.job_dag import JobDAG
-from spark_env.node import Node
+from job_dag import JobDAG
+from node import Node
+from param import args
 
 
 class DynamicPartitionAgent(Agent):
