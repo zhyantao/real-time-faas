@@ -42,3 +42,7 @@ class OrderedSet(object):
     def update(self, contents):
         for c in contents:
             self.add(c)
+
+    def show(self):
+        for key, value in self.set.items():
+            print(key, value)

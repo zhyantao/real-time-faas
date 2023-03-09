@@ -14,14 +14,26 @@ def load_job(file_path, query_size, query_idx, wall_time, np_random):
     adj_mat = np.load(query_path + 'adj_mat_' + str(query_idx) + '.npy', allow_pickle=True)
     task_durations = np.load(query_path + 'task_duration_' + str(query_idx) + '.npy', allow_pickle=True).item()
 
+    # print('job_generator.py --> adj_mat: ')
+    # print(adj_mat)  # 包含了作业之间的依赖关系
+    # print('job_generator.py --> adj_mat end')
+    # print('job_generator.py --> task_durations: ')
+    # print(task_durations)  # 包含了作业的持续时间
+    # print('job_generator.py --> task_durations end')
+    # exit(0)
+
     assert adj_mat.shape[0] == adj_mat.shape[1]
     assert adj_mat.shape[0] == len(task_durations)
 
     num_nodes = adj_mat.shape[0]
     nodes = []
     for n in range(num_nodes):
-        task_duration = task_durations[n]
+        task_duration = task_durations[n]  # 第 n 号作业的 task_duration
         e = next(iter(task_duration['first_wave']))
+        # print('job_generator.py --> task_duration: ')
+        # print(task_duration)  # 包含了作业的持续时间
+        # print(e)
+        # print('job_generator.py --> task_duration end')
 
         num_tasks = len(task_duration['first_wave'][e]) + len(task_duration['rest_wave'][e])
 
@@ -39,26 +51,31 @@ def load_job(file_path, query_size, query_idx, wall_time, np_random):
             task = Task(j, rough_duration, wall_time)
             tasks.append(task)
 
-        # generate a node
+        # generate a node  # node 中包含了
         node = Node(n, tasks, task_duration, wall_time, np_random)
         nodes.append(node)
 
-    # parent and child node info
+    # exit(0)
+
+    # parent and child node info  # 根据 adj_mat 建立 nodes 间的父子关系
     for i in range(num_nodes):
         for j in range(num_nodes):
             if adj_mat[i, j] == 1:
                 nodes[i].child_nodes.append(nodes[j])
                 nodes[j].parent_nodes.append(nodes[i])
 
-    # initialize descendant nodes
+    # initialize descendant nodes # 初始化根节点
     for node in nodes:
         if len(node.parent_nodes) == 0:  # root
             node.descendant_nodes = recursive_find_descendant(node)
 
     # generate DAG
-    job_dag = JobDAG(nodes, adj_mat,
-                     args.query_type + '-' + query_size + '-' + str(query_idx))
+    job_dag = JobDAG(nodes, adj_mat, args.query_type + '-' + query_size + '-' + str(query_idx))
 
+    # print('job_generator.py --> job_dag: ')
+    # print(job_dag)
+    # print('job_generator.py --> job_dag end')
+    # exit(0)
     return job_dag
 
 
@@ -78,7 +95,7 @@ def pre_process_task_duration(task_duration):
                 # prevent duplicated fresh duration blocking first wave
                 fresh_durations.remove(d)
 
-    # fill in nearest neighour first wave
+    # fill in nearest neighbour first wave
     last_first_wave = []
     for e in sorted(clean_first_wave.keys()):
         if len(clean_first_wave[e]) == 0:
@@ -115,8 +132,7 @@ def generate_tpch_jobs(np_random, timeline, wall_time):
         query_idx = str(np_random.randint(args.tpch_num) + 1)
         query_size = args.tpch_size[np_random.randint(len(args.tpch_size))]
         # generate job
-        job_dag = load_job(
-            args.job_folder, query_size, query_idx, wall_time, np_random)
+        job_dag = load_job(args.job_folder, query_size, query_idx, wall_time, np_random)
         # job already arrived, put in job_dags
         job_dag.start_time = t
         job_dag.arrived = True
@@ -129,8 +145,7 @@ def generate_tpch_jobs(np_random, timeline, wall_time):
         query_size = args.tpch_size[np_random.randint(len(args.tpch_size))]
         query_idx = str(np_random.randint(args.tpch_num) + 1)
         # generate job
-        job_dag = load_job(
-            args.job_folder, query_size, query_idx, wall_time, np_random)
+        job_dag = load_job(args.job_folder, query_size, query_idx, wall_time, np_random)
         # push into timeline
         job_dag.start_time = t
         timeline.push(t, job_dag)
@@ -140,13 +155,23 @@ def generate_tpch_jobs(np_random, timeline, wall_time):
 
 def generate_jobs(np_random, timeline, wall_time):
     if args.query_type == 'tpch':
+        # print('job_generator.py --> np_random, timeline, wall_time: ')
+        # print(np_random, timeline, wall_time)
+        # print('job_generator.py --> np_random, timeline, wall_time end')
+        # exit(0)
         job_dags = generate_tpch_jobs(np_random, timeline, wall_time)
 
-    elif args.query_type == 'alibaba':
+    elif args.query_type == 'alibaba':  # 还没有实现
         job_dags = generate_alibaba_jobs(np_random, timeline, wall_time)
 
     else:
         print('Invalid query type ' + args.query_type)
         exit(1)
+
+    # print('job_generator.py --> job_dags: ')
+    # print(job_dags)  # OrderedDict
+    # job_dags.show()
+    # print('job_generator.py --> job_dags end')
+    # exit(0)
 
     return job_dags

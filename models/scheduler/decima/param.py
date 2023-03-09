@@ -13,8 +13,8 @@ parser.add_argument('--num_exp', type=int, default=10,
                     help='number of experiments (default: 10)')
 parser.add_argument('--query_type', type=str, default='tpch',
                     help='query type (default: tpch)')
-parser.add_argument('--job_folder', type=str, default='./dataset/',
-                    help='job folder path (default: ./dataset/)')
+parser.add_argument('--job_folder', type=str, default='../../../dataset/tpch/',
+                    help='job folder path (default: ../../../dataset/tpch/)')
 parser.add_argument('--result_folder', type=str, default='./results/',
                     help='Result folder path (default: ./results)')
 parser.add_argument('--model_folder', type=str, default='./best_model/',

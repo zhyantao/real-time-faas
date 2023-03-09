@@ -10,8 +10,8 @@ class JobDAG(object):
     def __init__(self, nodes, adj_mat, name):
         # nodes: list of N nodes
         # adj_mat: N by N 0-1 adjacency matrix, e_ij = 1 -> edge from i to j
-        assert len(nodes) == adj_mat.shape[0]
-        assert adj_mat.shape[0] == adj_mat.shape[1]
+        assert len(nodes) == adj_mat.shape[0]  # 确保 节点数量和 matrix 相匹配
+        assert adj_mat.shape[0] == adj_mat.shape[1]  # 确保是方阵
 
         self.name = name
 
@@ -27,7 +27,7 @@ class JobDAG(object):
         # the computation graph needs to be a DAG
         assert is_dag(self.num_nodes, self.adj_mat)
 
-        # get the set of schedule nodes
+        # get the set of schedule nodes  # 入度为 0 的节点
         self.frontier_nodes = OrderedSet()
         for node in self.nodes:
             if node.is_schedulable():
@@ -49,8 +49,7 @@ class JobDAG(object):
         self.completion_time = np.inf
 
         # map a executor number to an interval
-        self.executor_interval_map = \
-            self.get_executor_interval_map()
+        self.executor_interval_map = self.get_executor_interval_map()
 
     def assign_job_dag_to_node(self):
         for node in self.nodes:
@@ -60,32 +59,22 @@ class JobDAG(object):
         executor_interval_map = {}
         entry_pt = 0
 
-        # get the left most map
+        # get the left most map  # 拿到最左侧的 map
         for e in range(args.executor_data_point[0] + 1):
-            executor_interval_map[e] = \
-                (args.executor_data_point[0],
-                 args.executor_data_point[0])
+            executor_interval_map[e] = (args.executor_data_point[0], args.executor_data_point[0])
 
         # get the center map
         for i in range(len(args.executor_data_point) - 1):
-            for e in range(args.executor_data_point[i] + 1,
-                           args.executor_data_point[i + 1]):
-                executor_interval_map[e] = \
-                    (args.executor_data_point[i],
-                     args.executor_data_point[i + 1])
+            for e in range(args.executor_data_point[i] + 1, args.executor_data_point[i + 1]):
+                executor_interval_map[e] = (args.executor_data_point[i], args.executor_data_point[i + 1])
             # at the data point
             e = args.executor_data_point[i + 1]
-            executor_interval_map[e] = \
-                (args.executor_data_point[i + 1],
-                 args.executor_data_point[i + 1])
+            executor_interval_map[e] = (args.executor_data_point[i + 1], args.executor_data_point[i + 1])
 
-        # get the residual map
+        # get the residual map # 如果 executor 的总量大于列举出来的总量，那么继续填充
         if args.exec_cap > args.executor_data_point[-1]:
-            for e in range(args.executor_data_point[-1] + 1,
-                           args.exec_cap + 1):
-                executor_interval_map[e] = \
-                    (args.executor_data_point[-1],
-                     args.executor_data_point[-1])
+            for e in range(args.executor_data_point[-1] + 1, args.exec_cap + 1):
+                executor_interval_map[e] = (args.executor_data_point[-1], args.executor_data_point[-1])
 
         return executor_interval_map
 
@@ -212,7 +201,7 @@ class JobDAGDuration(object):
         self.job_dag_duration -= work_done
 
 
-def is_dag(num_nodes, adj_mat):
+def is_dag(num_nodes, adj_mat):  # 用 DiGraph 库判断是否为 DAG
     G = nx.DiGraph()
     G.add_nodes_from(range(num_nodes))
     for i in range(num_nodes):

@@ -473,12 +473,12 @@ class ActorAgent(Agent):
                 act = action_map.inverse_map[node]
                 node_valid_mask[0, act] = 1
 
-        print('actor_agent.py --> node_valid_mask: ')
-        print(node_valid_mask)
-        print('actor_agent.py --> node_valid_mask end')
-        print('actor_agent.py --> job_valid_mask: ')
-        print(job_valid_mask)
-        print('actor_agent.py --> job_valid_mask end')
+        # print('actor_agent.py --> node_valid_mask: ')
+        # print(node_valid_mask)
+        # print('actor_agent.py --> node_valid_mask end')
+        # print('actor_agent.py --> job_valid_mask: ')
+        # print(job_valid_mask)
+        # print('actor_agent.py --> job_valid_mask end')
         return node_valid_mask, job_valid_mask
 
     def invoke_model(self, obs):
