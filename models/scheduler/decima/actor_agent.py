@@ -320,23 +320,38 @@ class ActorAgent(Agent):
                                  [job_act_vec] + [adv] + [entropy_weight])
                                         })
 
-    def predict(self, node_inputs, job_inputs,
-                node_valid_mask, job_valid_mask,
-                gcn_mats, gcn_masks, summ_mats,
-                running_dags_mat, dag_summ_backward_map):
-        return self.sess.run([self.node_act_probs, self.job_act_probs,
-                              self.node_acts, self.job_acts],
-                             feed_dict={i: d for i, d in zip(
-                                 [self.node_inputs] + [self.job_inputs] +
-                                 [self.node_valid_mask] + [self.job_valid_mask] +
-                                 self.gcn.adj_mats + self.gcn.masks + self.gsn.summ_mats +
-                                 [self.dag_summ_backward_map],
-                                 [node_inputs] + [job_inputs] +
-                                 [node_valid_mask] + [job_valid_mask] +
-                                 gcn_mats + gcn_masks +
-                                 [summ_mats, running_dags_mat] +
-                                 [dag_summ_backward_map])
-                                        })
+    def predict(self, node_inputs, job_inputs, node_valid_mask, job_valid_mask, gcn_mats, gcn_masks,
+                summ_mats, running_dags_mat, dag_summ_backward_map):
+        return self.sess.run(
+            [  # 第一个参数用于保存计算结果，在本例中，将计算结果保存到 self.node_act_probs 等四个参数上
+                self.node_act_probs,
+                self.job_act_probs,
+                self.node_acts,
+                self.job_acts
+            ],
+            feed_dict={  # feed_dict 用作占位符，每次神经网络训练时使用的数据
+                i: d for i, d in zip(
+                    # key:
+                    [self.node_inputs]  # (1)
+                    + [self.job_inputs]  # (2)
+                    + [self.node_valid_mask]  # (3)
+                    + [self.job_valid_mask]  # (4)
+                    + self.gcn.adj_mats  # (5)
+                    + self.gcn.masks  # (6)
+                    + self.gsn.summ_mats  # (7)
+                    + [self.dag_summ_backward_map],  # (8)
+                    # value:
+                    [node_inputs]
+                    + [job_inputs]
+                    + [node_valid_mask]
+                    + [job_valid_mask]
+                    + gcn_mats
+                    + gcn_masks
+                    + [summ_mats, running_dags_mat]
+                    + [dag_summ_backward_map]
+                )
+            }
+        )
 
     def set_params(self, input_params):
         self.sess.run(self.set_params_op, feed_dict={
@@ -366,12 +381,12 @@ class ActorAgent(Agent):
             exec_map[node.job_dag] += 1
         # count in executor commit
         for s in exec_commit.commit:
-            if isinstance(s, JobDAG):
+            if isinstance(s, JobDAG):  # 观察是不是 DAG
                 j = s
-            elif isinstance(s, Node):
+            elif isinstance(s, Node):  # 观察提交的是不是 Node
                 j = s.job_dag
             elif s is None:
-                j = None
+                j = None  # 这里的 j 没什么用
             else:
                 print('source', s, 'unknown')
                 exit(1)

@@ -1,7 +1,7 @@
-class two_way_unordered_map(object):
+class two_way_unordered_map(object):  # two way 说的是它存储了两个 map, 这两个 map 是相反的关系
     def __init__(self):
         self.map = {}
-        self.inverse_map = {}
+        self.inverse_map = {}  # 这是 map 的反转 value 当作 key，key 当作 value
 
     def __setitem__(self, key, value):
         self.map[key] = value

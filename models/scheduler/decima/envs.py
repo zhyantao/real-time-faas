@@ -230,14 +230,14 @@ class Environment(object):
 
         # compute number of valid executors to assign
         if next_node is not None:
-            use_exec = min(next_node.num_tasks - next_node.next_task_idx - \
-                           self.exec_commit.node_commit[next_node] - \
+            use_exec = min(next_node.num_tasks - next_node.next_task_idx -
+                           self.exec_commit.node_commit[next_node] -
                            self.moving_executors.count(next_node), limit)
         else:
             use_exec = limit
         assert use_exec > 0
 
-        self.exec_commit.add(source, next_node, use_exec)
+        self.exec_commit.add(source, next_node, use_exec)  # 提交 executor 标记已经被使用
         # deduct the executors that know the destination
         self.num_source_exec -= use_exec
         assert self.num_source_exec >= 0
@@ -264,7 +264,7 @@ class Environment(object):
                 node = finished_task.node
                 node.num_finished_tasks += 1
 
-                # bookkeepings for node completion
+                # bookkeeping for node completion
                 frontier_changed = False
                 if node.num_finished_tasks == node.num_tasks:
                     assert not node.tasks_all_done  # only complete once
@@ -336,7 +336,7 @@ class Environment(object):
 
         # no more decision to make, jobs all done or time is up
         done = (self.num_source_exec == 0) and (
-                    (len(self.timeline) == 0) or (self.wall_time.curr_time >= self.max_time))
+                (len(self.timeline) == 0) or (self.wall_time.curr_time >= self.max_time))
 
         if done:
             assert self.wall_time.curr_time >= self.max_time or len(self.job_dags) == 0
@@ -368,7 +368,7 @@ class Environment(object):
         # generate a set of new jobs
         self.job_dags = generate_jobs(self.np_random, self.timeline, self.wall_time)
         # map action to dag_idx and node_idx
-        self.action_map = compute_act_map(self.job_dags)
+        self.action_map = compute_act_map(self.job_dags)  # map 中 key = dag 编号， value = node 编号（内存中的）
         # add initial set of jobs in the system
         for job_dag in self.job_dags:
             self.add_job(job_dag)

@@ -18,7 +18,7 @@ class ExecutorCommit(object):
         # node: executors continuously free up
         # job: free executors
 
-        # add foward connection
+        # add forward connection
         if node not in self.commit[source]:
             self.commit[source][node] = 0
         # add node commit
@@ -57,7 +57,7 @@ class ExecutorCommit(object):
             self.backward_map[node] = set()
 
     def remove_job(self, job_dag):
-        # when removing jobs, the commiment should be all satisfied
+        # when removing jobs, the commitment should be all satisfied
         assert len(self.commit[job_dag]) == 0
         del self.commit[job_dag]
 

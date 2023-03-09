@@ -64,7 +64,7 @@ def get_msg_path(job_dags):
     return msg_mats, msg_masks
 
 
-def get_init_frontier(job_dag, depth):
+def get_init_frontier(job_dag, depth):  # 这里的 depth 有什么作用呢？
     """
     Get the initial set of frontier nodes, based on the depth
     """
@@ -76,7 +76,7 @@ def get_init_frontier(job_dag, depth):
             if len(n.child_nodes) == 0:
                 new_sources.add(n)
             else:
-                new_sources.update(n.child_nodes)
+                new_sources.update(n.child_nodes)  # 向 set 中添加元素
         sources = new_sources
 
     frontier = sources
@@ -95,7 +95,7 @@ def get_bottom_up_paths(job_dag):
 
     # get set of frontier nodes in the beginning
     # this is constrained by the message passing depth
-    frontier = get_init_frontier(job_dag, args.max_depth)
+    frontier = get_init_frontier(job_dag, args.max_depth)  # 获取入度为 0 的节点的集合
     msg_level = {}
 
     # initial nodes are all message passed

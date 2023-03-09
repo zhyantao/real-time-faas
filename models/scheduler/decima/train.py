@@ -38,7 +38,7 @@ def train_agent(agent_id, param_queue, reward_queue, adv_queue, gradient_queue):
 
         # reset environment
         env.seed(seed)  # 环境重置
-        env.reset(max_time=max_time)
+        env.reset(max_time=max_time)  # 环境准备好了
 
         # set up storage for experience
         exp = {
@@ -46,7 +46,7 @@ def train_agent(agent_id, param_queue, reward_queue, adv_queue, gradient_queue):
             'summ_mats': [], 'running_dag_mat': [], 'dag_summ_back_mat': [],
             'node_act_vec': [], 'job_act_vec': [], 'node_valid_mask': [], 'job_valid_mask': [],
             'reward': [], 'wall_time': [], 'job_state_change': []
-        }  # 用于存储强化学习过程中的经验
+        }  # 用于存储强化学习过程中的经验  【这些是在训练过程中需要学习的参数】
 
         try:
             # The masking functions (node_valid_mask and job_valid_mask in actor_agent.py) has some
@@ -117,7 +117,7 @@ def invoke_model(actor_agent, obs, exp):
     job_dags, source_job, num_source_exec, frontier_nodes, executor_limits, exec_commit, moving_executors, action_map \
         = obs
 
-    if len(frontier_nodes) == 0:
+    if len(frontier_nodes) == 0:  # 没有入度为 0 的节点，不需要调用
         # no action to take
         return None, num_source_exec
 
@@ -131,16 +131,16 @@ def invoke_model(actor_agent, obs, exp):
         return None, num_source_exec
 
     # node_act should be valid
-    assert node_valid_mask[0, node_act[0]] == 1
+    assert node_valid_mask[0, node_act[0]] == 1  # 保证当前的分配方案是有效的
 
     # parse node action
-    node = action_map[node_act[0]]
+    node = action_map[node_act[0]]  # 在 action_map 中找到这个 node
 
     # find job index based on node
-    job_idx = job_dags.index(node.job_dag)
+    job_idx = job_dags.index(node.job_dag)  # 在 job_dag 中找到这个 node 对应的 job id
 
     # job_act should be valid
-    assert job_valid_mask[0, job_act[0, job_idx] + len(actor_agent.executor_levels) * job_idx] == 1
+    assert job_valid_mask[0, job_act[0, job_idx] + len(actor_agent.executor_levels) * job_idx] == 1  # 确定该 job 有效
 
     # find out the executor limit decision
     if node.job_dag is source_job:
