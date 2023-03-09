@@ -1,20 +1,46 @@
-import bisect
-
+import tensorflow as tf
 import tensorflow.contrib.layers as tl
+from tensorflow.python.framework import ops
+from tensorflow.python.ops import math_ops
 
-from agent import Agent
 from gcn import GraphCNN
 from gsn import GraphSNN
-from job_dag import JobDAG
-from msg_passing_path import *
-from node import Node
-from tf_op import *
+from param import args
+from tf_op import expand_act_on_state
+
+
+def leaky_relu(features, alpha=0.2, name=None):
+    """Compute the Leaky ReLU activation function.
+    "Rectifier Nonlinearities Improve Neural Network Acoustic Models"
+    AL Maas, AY Hannun, AY Ng - Proc. ICML, 2013
+    http://web.stanford.edu/~awni/papers/relu_hybrid_icml2013_final.pdf
+    Args:
+      features: A `Tensor` representing preactivation values.
+      alpha: Slope of the activation function at x < 0.
+      name: A name for the operation (optional).
+    Returns:
+      The activation value.
+    """
+    with ops.name_scope(name, "LeakyRelu", [features, alpha]):
+        features = ops.convert_to_tensor(features, name="features")
+        alpha = ops.convert_to_tensor(alpha, name="alpha")
+        return math_ops.maximum(alpha * features, features)
+
+
+class Agent(object):
+    # super class of scheduling agent
+
+    def __init__(self):
+        pass
+
+    def get_action(self, obs):
+        print('get_action not implemented')
+        exit(1)
 
 
 class ActorAgent(Agent):
-    def __init__(self, sess, node_input_dim, job_input_dim, hid_dims, output_dim,
-                 max_depth, executor_levels, eps=1e-6, act_fn=leaky_relu,
-                 optimizer=tf.train.AdamOptimizer, scope='actor_agent'):
+    def __init__(self, sess, node_input_dim, job_input_dim, hid_dims, output_dim, max_depth, executor_levels,
+                 eps=1e-6, act_fn=leaky_relu, optimizer=tf.train.AdamOptimizer, scope='actor_agent'):
         """
 
         :param sess:
@@ -43,9 +69,6 @@ class ActorAgent(Agent):
         self.act_fn = act_fn
         self.optimizer = optimizer
         self.scope = scope
-
-        # for computing and storing message passing path
-        self.postman = Postman()
 
         # node input dimension: [total_num_nodes, num_features]
         # total_num_nodes 任意，但是 features 是固定的
@@ -183,7 +206,6 @@ class ActorAgent(Agent):
 
     def actor_network(self, node_inputs, gcn_outputs, job_inputs, gsn_dag_summary, gsn_global_summary,
                       node_valid_mask, job_valid_mask, gsn_summ_backward_map, act_fn):
-
         # takes output from graph embedding and raw_input from environment
 
         batch_size = tf.shape(node_valid_mask)[0]
@@ -266,14 +288,6 @@ class ActorAgent(Agent):
 
             return node_outputs, job_outputs
 
-    def apply_gradients(self, gradients, lr_rate):
-        self.sess.run(
-            self.apply_grads, feed_dict={
-                i: d for i, d in zip(
-                    self.act_gradients + [self.lr_rate],
-                    gradients + [lr_rate])
-            })
-
     def define_params_op(self):
         # define operations for setting network parameters
         input_params = []
@@ -284,41 +298,6 @@ class ActorAgent(Agent):
         for idx, param in enumerate(input_params):
             set_params_op.append(self.params[idx].assign(param))
         return input_params, set_params_op
-
-    def gcn_forward(self, node_inputs, summ_mats):
-        return self.sess.run([self.gsn.summaries],
-                             feed_dict={i: d for i, d in zip(
-                                 [self.node_inputs] + self.gsn.summ_mats,
-                                 [node_inputs] + summ_mats)
-                                        })
-
-    def get_params(self):
-        return self.sess.run(self.params)
-
-    def save_model(self, file_path):
-        self.saver.save(self.sess, file_path)
-
-    def get_gradients(self, node_inputs, job_inputs,
-                      node_valid_mask, job_valid_mask,
-                      gcn_mats, gcn_masks, summ_mats,
-                      running_dags_mat, dag_summ_backward_map,
-                      node_act_vec, job_act_vec, adv, entropy_weight):
-
-        return self.sess.run([self.act_gradients,
-                              [self.adv_loss, self.entropy_loss]],
-                             feed_dict={i: d for i, d in zip(
-                                 [self.node_inputs] + [self.job_inputs] +
-                                 [self.node_valid_mask] + [self.job_valid_mask] +
-                                 self.gcn.adj_mats + self.gcn.masks + self.gsn.summ_mats +
-                                 [self.dag_summ_backward_map] + [self.node_act_vec] +
-                                 [self.job_act_vec] + [self.adv] + [self.entropy_weight],
-                                 [node_inputs] + [job_inputs] +
-                                 [node_valid_mask] + [job_valid_mask] +
-                                 gcn_mats + gcn_masks +
-                                 [summ_mats, running_dags_mat] +
-                                 [dag_summ_backward_map] + [node_act_vec] +
-                                 [job_act_vec] + [adv] + [entropy_weight])
-                                        })
 
     def predict(self, node_inputs, job_inputs, node_valid_mask, job_valid_mask, gcn_mats, gcn_masks,
                 summ_mats, running_dags_mat, dag_summ_backward_map):
@@ -352,217 +331,3 @@ class ActorAgent(Agent):
                 )
             }
         )
-
-    def set_params(self, input_params):
-        self.sess.run(self.set_params_op, feed_dict={
-            i: d for i, d in zip(self.input_params, input_params)
-        })
-
-    def translate_state(self, obs):
-        """
-        Translate the observation to matrix form
-        """
-        job_dags, source_job, num_source_exec, frontier_nodes, executor_limits, exec_commit, moving_executors, action_map \
-            = obs
-
-        # compute total number of nodes
-        total_num_nodes = int(np.sum(job_dag.num_nodes for job_dag in job_dags))
-
-        # job and node inputs to feed
-        node_inputs = np.zeros([total_num_nodes, self.node_input_dim])
-        job_inputs = np.zeros([len(job_dags), self.job_input_dim])
-
-        # sort out the exec_map
-        exec_map = {}
-        for job_dag in job_dags:
-            exec_map[job_dag] = len(job_dag.executors)
-        # count in moving executors
-        for node in moving_executors.moving_executors.values():
-            exec_map[node.job_dag] += 1
-        # count in executor commit
-        for s in exec_commit.commit:
-            if isinstance(s, JobDAG):  # 观察是不是 DAG
-                j = s
-            elif isinstance(s, Node):  # 观察提交的是不是 Node
-                j = s.job_dag
-            elif s is None:
-                j = None  # 这里的 j 没什么用
-            else:
-                print('source', s, 'unknown')
-                exit(1)
-            for n in exec_commit.commit[s]:
-                if n is not None and n.job_dag != j:
-                    exec_map[n.job_dag] += exec_commit.commit[s][n]
-
-        # gather job level inputs
-        job_idx = 0
-        for job_dag in job_dags:
-            # number of executors in the job
-            job_inputs[job_idx, 0] = exec_map[job_dag] / 20.0
-            # the current executor belongs to this job or not
-            if job_dag is source_job:
-                job_inputs[job_idx, 1] = 2
-            else:
-                job_inputs[job_idx, 1] = -2
-            # number of source executors
-            job_inputs[job_idx, 2] = num_source_exec / 20.0
-
-            job_idx += 1
-
-        # gather node level inputs
-        node_idx = 0
-        job_idx = 0
-        for job_dag in job_dags:
-            for node in job_dag.nodes:
-                # copy the feature from job_input first
-                node_inputs[node_idx, :3] = job_inputs[job_idx, :3]
-
-                # work on the node
-                node_inputs[node_idx, 3] = (node.num_tasks - node.next_task_idx) * node.tasks[-1].duration / 100000.0
-
-                # number of tasks left
-                node_inputs[node_idx, 4] = (node.num_tasks - node.next_task_idx) / 200.0
-
-                node_idx += 1
-
-            job_idx += 1
-
-        return node_inputs, job_inputs, \
-            job_dags, source_job, num_source_exec, \
-            frontier_nodes, executor_limits, \
-            exec_commit, moving_executors, \
-            exec_map, action_map
-
-    def get_valid_masks(self, job_dags, frontier_nodes, source_job, num_source_exec, exec_map, action_map):
-        """
-        如何保证任务是有效的呢？
-
-        :param job_dags:
-        :param frontier_nodes:
-        :param source_job:
-        :param num_source_exec:
-        :param exec_map:
-        :param action_map:
-        :return:
-        """
-
-        # executor level 可以对应原文的 “并行度”
-        job_valid_mask = np.zeros([1, len(job_dags) * len(self.executor_levels)])
-
-        job_valid = {}  # 如果分配给一个 job 的 executor 已经达到了上限，就不分配 executor 了
-
-        base = 0
-        for job_dag in job_dags:
-            # new executor level depends on the source of executor
-            if job_dag is source_job:
-                least_exec_amount = exec_map[job_dag] - num_source_exec + 1
-                # +1 because we want at least one executor
-                # for this job
-            else:
-                least_exec_amount = exec_map[job_dag] + 1
-                # +1 because of the same reason above
-
-            assert least_exec_amount > 0
-            assert least_exec_amount <= self.executor_levels[-1] + 1
-
-            # find the index for first valid executor limit
-            exec_level_idx = bisect.bisect_left(
-                self.executor_levels, least_exec_amount)
-
-            if exec_level_idx >= len(self.executor_levels):
-                job_valid[job_dag] = False
-            else:
-                job_valid[job_dag] = True
-
-            for l in range(exec_level_idx, len(self.executor_levels)):
-                job_valid_mask[0, base + l] = 1
-
-            base += self.executor_levels[-1]
-
-        total_num_nodes = int(np.sum(job_dag.num_nodes for job_dag in job_dags))
-
-        node_valid_mask = np.zeros([1, total_num_nodes])
-
-        for node in frontier_nodes:
-            if job_valid[node.job_dag]:
-                act = action_map.inverse_map[node]
-                node_valid_mask[0, act] = 1
-
-        # print('actor_agent.py --> node_valid_mask: ')
-        # print(node_valid_mask)
-        # print('actor_agent.py --> node_valid_mask end')
-        # print('actor_agent.py --> job_valid_mask: ')
-        # print(job_valid_mask)
-        # print('actor_agent.py --> job_valid_mask end')
-        return node_valid_mask, job_valid_mask
-
-    def invoke_model(self, obs):
-        # implement this module here for training (to pick up state and action to record)
-        node_inputs, job_inputs, job_dags, source_job, num_source_exec, frontier_nodes, \
-            executor_limits, exec_commit, moving_executors, exec_map, action_map \
-            = self.translate_state(obs)
-
-        # get message passing path (with cache)
-        gcn_mats, gcn_masks, dag_summ_backward_map, running_dags_mat, job_dags_changed \
-            = self.postman.get_msg_path(job_dags)
-
-        # get node and job valid masks
-        node_valid_mask, job_valid_mask \
-            = self.get_valid_masks(job_dags, frontier_nodes, source_job, num_source_exec, exec_map, action_map)
-
-        # get summarization path that ignores finished nodes
-        summ_mats = get_unfinished_nodes_summ_mat(job_dags)
-
-        # invoke learning model
-        node_act_probs, job_act_probs, node_acts, job_acts \
-            = self.predict(node_inputs, job_inputs, node_valid_mask, job_valid_mask,
-                           gcn_mats, gcn_masks, summ_mats, running_dags_mat, dag_summ_backward_map)
-
-        return node_acts, job_acts, node_act_probs, job_act_probs, node_inputs, job_inputs, \
-            node_valid_mask, job_valid_mask, gcn_mats, gcn_masks, summ_mats, running_dags_mat, \
-            dag_summ_backward_map, exec_map, job_dags_changed
-
-    def get_action(self, obs):
-
-        # parse observation
-        job_dags, source_job, num_source_exec, frontier_nodes, executor_limits, exec_commit, moving_executors, action_map \
-            = obs
-
-        if len(frontier_nodes) == 0:
-            # no action to take
-            return None, num_source_exec
-
-        # invoking the learning model
-        # 根据观察到的输入 obs，将其转化为 feature (共 16 维)
-        node_act, job_act, node_act_probs, job_act_probs, node_inputs, job_inputs, node_valid_mask, job_valid_mask, \
-            gcn_mats, gcn_masks, summ_mats, running_dags_mat, dag_summ_backward_map, exec_map, job_dags_changed \
-            = self.invoke_model(obs)
-
-        if sum(node_valid_mask[0, :]) == 0:
-            # no node is valid to assign
-            return None, num_source_exec
-
-        # node_act should be valid
-        assert node_valid_mask[0, node_act[0]] == 1
-
-        # parse node action
-        node = action_map[node_act[0]]
-
-        # find job index based on node
-        job_idx = job_dags.index(node.job_dag)
-
-        # job_act should be valid
-        assert job_valid_mask[0, job_act[0, job_idx] + len(self.executor_levels) * job_idx] == 1
-
-        # find out the executor limit decision
-        if node.job_dag is source_job:
-            agent_exec_act = self.executor_levels[job_act[0, job_idx]] - exec_map[node.job_dag] + num_source_exec
-        else:
-            agent_exec_act = self.executor_levels[job_act[0, job_idx]] - exec_map[node.job_dag]
-
-        # parse job limit action
-        use_exec = min(
-            node.num_tasks - node.next_task_idx - exec_commit.node_commit[node] - moving_executors.count(node),
-            agent_exec_act, num_source_exec)
-
-        return node, use_exec
