@@ -201,3 +201,9 @@ if __name__ == '__main__':
         break
 
     sess.close()
+
+    # 终止 multiprocessing 进程
+    for i in range(args.num_agents):  # 启动进程（每个进程都是一个智能体）
+        if agents[i].is_alive():
+            agents[i].terminate()
+            agents[i].join()
