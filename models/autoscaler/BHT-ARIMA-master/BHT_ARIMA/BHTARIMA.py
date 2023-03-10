@@ -26,7 +26,7 @@ class BHTARIMA(object):
 
     Paramters
     ---------
-        ts : np.ndarray, shape (I1, I2, ..., IT)
+        X : np.ndarray, shape (I1, I2, ..., IT)
             Training data, a tensor time series(tensor-mode) with shape of I1*I2*...*IN*T
         
         p : int
@@ -465,7 +465,7 @@ class BHTARIMA(object):
         mdt_result = Xs[-1]
 
         # Step 4: Inverse MDT
-        # get orignial shape
+        # get original shape
         fore_shape = list(self._ts_ori_shape)
         merged = []
         for i in range(trans_data.shape[-1]):
