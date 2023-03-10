@@ -1,38 +1,323 @@
-# -*- coding: utf-8 -*-
-
-# Copyright (C) 2020. Huawei Technologies Co., Ltd. All rights reserved.
-# This program is free software; you can redistribute it and/or modify
-# it under the terms of the MIT License.
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-# MIT License for more details.
-
 import copy
+import warnings
 
 import numpy as np
+import scipy
 import scipy as sp
 import tensorly as tl
+from scipy import linalg
+from scipy.linalg import hankel
+from tensorly.base import unfold
 
-from .util.MDT import MDTWrapper
-from .util.functions import fit_ar_ma, svd_init
+
+def compute_rmse(dataA, dataB):
+    """ RMSE """
+    t1 = np.sum((dataA - dataB) ** 2) / np.size(dataB)
+    return np.sqrt(t1)
+
+
+def get_acc(y_pred, y_true):
+    acc_list = []
+    y_p = y_pred.reshape(-1)
+    y_t = y_true.reshape(-1)
+    for a, b in zip(y_p, y_t):
+        if a < 0:
+            acc_list.append(0)
+        elif max(a, b) == 0:
+            pass
+        else:
+            acc_list.append(min(a, b) / max(a, b))
+    return sum(acc_list) / len(acc_list)
+
+
+def nd(y_pred, y_true):
+    """ Normalized deviation"""
+    t1 = np.sum(abs(y_pred - y_true)) / np.size(y_true)
+    t2 = np.sum(abs(y_true)) / np.size(y_true)
+    return t1 / t2
+
+
+def SMAPE(y_pred, y_true):
+    s = 0
+    y_p = y_pred.reshape(-1)
+    y_t = y_true.reshape(-1)
+    for a, b in zip(y_p, y_t):
+        if abs(a) + abs(b) == 0:
+            s += 0
+        else:
+            s += 2 * abs(a - b) / (abs(a) + abs(b))
+    return s / np.size(y_true)
+
+
+def nrmse(y_pred, y_true):
+    """ Normalized RMSE"""
+    t1 = np.linalg.norm(y_pred - y_true) ** 2 / np.size(y_true)
+    t2 = np.sum(abs(y_true)) / np.size(y_true)
+    return np.sqrt(t1) / t2
+
+
+def get_index(y_pred, y_true):
+    index_d = {}
+    index_d['acc'] = get_acc(y_pred, y_true)
+    index_d['rmse'] = compute_rmse(y_pred, y_true)
+    index_d['nrmse'] = nrmse(y_pred, y_true)
+    index_d['nd'] = nd(y_pred, y_true)
+    index_d['smape'] = SMAPE(y_pred, y_true)
+    return index_d
+
+
+def unfold(tensor, n):
+    size = np.array(tensor.shape)
+    N = size.shape[0]
+    I = int(size[n])
+    J = int(int(np.prod(size)) / int(I))
+    pmt = np.array(range(n, n + 1))
+    pmt = np.append(pmt, range(0, n))
+    pmt = np.append(pmt, range(n + 1, N)).astype(np.int)
+    return np.reshape(np.transpose(tensor, pmt), [I, J])
+
+
+def fold(matrix, n, size_t_ori):
+    N = np.array(size_t_ori).shape[0]
+    size_t_pmt = np.concatenate([size_t_ori[n:(n + 1)], size_t_ori[0:n], size_t_ori[(n + 1):N]], axis=0)
+    pmt = np.array(range(1, n + 1))
+    pmt = np.append(pmt, range(0, 1))
+    pmt = np.append(pmt, range(n + 1, N)).astype(np.int)
+    return np.transpose(np.reshape(matrix, size_t_pmt), pmt)
+
+
+def make_duplication_matrix(T, tau):
+    H = hankel(range(tau), range(tau - 1, T))
+    T2 = np.prod(H.shape)
+    h = np.reshape(H, [1, T2])
+    h2 = np.array([range(T2)])
+    index = np.concatenate([h, h2], axis=0)
+    S = np.zeros([T, T2], dtype='uint64')
+    S[tuple(index)] = 1
+    return S.T
+
+
+def tmult(tensor, matrix, n):
+    size = np.array(tensor.shape)
+    size[n] = matrix.shape[0]
+    return fold(np.matmul(matrix, unfold(tensor, n)), n, size)
+
+
+def hankel_tensor(x, TAU):
+    N = len(TAU)
+    N2 = N * 2
+    T2 = np.zeros([N, 2], dtype='uint64')
+    S = list()
+    Hx = x
+    for n in range(N):
+        tau = TAU[n]
+        T = x.shape[n]
+        T2[n, :] = [tau, T - tau + 1]
+        S.append(make_duplication_matrix(x.shape[n], TAU[n]))
+        Hx = tmult(Hx, S[n], n)
+    size_h_tensor = np.reshape(T2, [N2, ])
+    Hx = np.reshape(Hx, size_h_tensor)
+    return Hx, S
+
+
+def hankel_tensor_adjoint(Hx, S):
+    N = len(S)
+    size_h_tensor = np.zeros([N, ], dtype='uint64')
+    for n in range(N):
+        size_h_tensor[n] = S[n].shape[0]
+    Hx = np.reshape(Hx, size_h_tensor)
+    for n in range(N):
+        Hx = tmult(Hx, S[n].T, n)
+    return Hx
+
+
+class MDTWrapper(object):
+
+    def __init__(self, data, tau=None):
+        self._data = data.astype(np.float32)
+        self._ori_data = data.astype(np.float32)
+        self.set_tau(tau)
+        is_transformed = False
+        self._ori_shape = data.shape
+        pass
+
+    def set_tau(self, tau):
+        if isinstance(tau, np.ndarray):
+            self._tau = tau
+        elif isinstance(tau, list):
+            self._tau = np.array(tau)
+        else:
+            raise TypeError(" 'tau' need to be a list or numpy.ndarray")
+
+    def get_tau(self):
+        return self._tau
+
+    def shape(self):
+        return self._data.shape
+
+    def get_data(self):
+        return self._data
+
+    def transform(self, tau=None):
+        _tau = tau if tau is not None else self._tau
+        result, S = hankel_tensor(self._data, _tau)
+        self.is_transformed = True
+        # print("before squeeze: ", result.shape)
+        axis_dim = tuple(i for i, dim in enumerate(result.shape) if dim == 1 and i != 0)
+        result = np.squeeze(result, axis=axis_dim)
+        # print("after squeeze: ", result.shape)
+        self._data = result
+        return result
+
+    def inverse(self, data=None, tau=None, ori_shape=None):
+        _tau = tau if tau is not None else self._tau
+        _ori_shape = ori_shape if ori_shape is not None else self._ori_shape
+        _data = data if data is not None else self._data
+        O = np.ones(_ori_shape, dtype='uint8')
+        Ho, S = hankel_tensor(O.astype(np.float32), _tau)
+        D = hankel_tensor_adjoint(Ho, S)
+
+        result = np.divide(hankel_tensor_adjoint(_data, S), D)
+        self.is_transformed = False
+        self._data = result
+        return result
+
+
+def svd_init(tensor, modes, ranks):
+    factors = []
+    for index, mode in enumerate(modes):
+        eigenvecs, _, _ = svd_fun(unfold(tensor, mode), n_eigenvecs=ranks[index])
+        factors.append(eigenvecs)
+        # print("factor mode: ", index)
+    return factors
+
+
+def svd_fun(matrix, n_eigenvecs=None):
+    """Computes a fast partial SVD on `matrix`
+    If `n_eigenvecs` is specified, sparse eigen decomposition is used on
+    either matrix.dot(matrix.T) or matrix.T.dot(matrix).
+    Parameters
+    ----------
+    matrix : tensor
+        A 2D tensor.
+    n_eigenvecs : int, optional, default is None
+        If specified, number of eigen[vectors-values] to return.
+    Returns
+    -------
+    U : 2-D tensor, shape (matrix.shape[0], n_eigenvecs)
+        Contains the right singular vectors
+    S : 1-D tensor, shape (n_eigenvecs, )
+        Contains the singular values of `matrix`
+    V : 2-D tensor, shape (n_eigenvecs, matrix.shape[1])
+        Contains the left singular vectors
+    """
+
+    # Choose what to do depending on the params
+    dim_1, dim_2 = matrix.shape
+    if dim_1 <= dim_2:
+        min_dim = dim_1
+        max_dim = dim_2
+    else:
+        min_dim = dim_2
+        max_dim = dim_1
+
+    if n_eigenvecs >= min_dim:
+        if n_eigenvecs > max_dim:
+            warnings.warn(('Trying to compute SVD with n_eigenvecs={0}, which '
+                           'is larger than max(matrix.shape)={1}. Setting '
+                           'n_eigenvecs to {1}').format(n_eigenvecs, max_dim))
+            n_eigenvecs = max_dim
+
+        if n_eigenvecs is None or n_eigenvecs > min_dim:
+            full_matrices = True
+        else:
+            full_matrices = False
+
+        # Default on standard SVD
+        U, S, V = scipy.linalg.svd(matrix, full_matrices=full_matrices)
+        U, S, V = U[:, :n_eigenvecs], S[:n_eigenvecs], V[:n_eigenvecs, :]
+    else:
+        # We can perform a partial SVD
+        # First choose whether to use X * X.T or X.T *X
+        if dim_1 < dim_2:
+            S, U = scipy.sparse.linalg.eigsh(
+                np.dot(matrix, matrix.T.conj()), k=n_eigenvecs, which='LM'
+            )
+            S = np.sqrt(S)
+            V = np.dot(matrix.T.conj(), U * 1 / S[None, :])
+        else:
+            S, V = scipy.sparse.linalg.eigsh(
+                np.dot(matrix.T.conj(), matrix), k=n_eigenvecs, which='LM'
+            )
+            S = np.sqrt(S)
+            U = np.dot(matrix, V) * 1 / S[None, :]
+
+        # WARNING: here, V is still the transpose of what it should be
+        U, S, V = U[:, ::-1], S[::-1], V[:, ::-1]
+        V = V.T.conj()
+    return U, S, V
+
+
+def autocorr(Y, lag=10):
+    """
+    计算<Y(t), Y(t-0)>, ..., <Y(t), Y(t-lag)>
+    :param Y: list [tensor1, tensor2, ..., tensorT]
+    :param lag: int
+    :return: array(k+1)
+    """
+    T = len(Y)
+    r = []
+    #     print("Y")
+    #     print(Y)
+    for l in range(lag + 1):
+        product = 0
+        for t in range(T):
+            tl = l - t if t < l else t - l
+            product += np.sum(Y[t] * Y[tl])
+        r.append(product)
+    return r
+
+
+def fit_ar(Y, p=10):
+    r = autocorr(Y, p)
+    # print("auto-corr:",r)
+    R = linalg.toeplitz(r[:p])
+    r = r[1:]
+    A = linalg.pinv(R).dot(r)
+    return A
+
+
+def fit_ar_ma(Y, p=10, q=1):
+    # print("fit_ar_ma")
+    N = len(Y)
+
+    A = fit_ar(Y, p)
+    B = [0.]
+    if q > 0:
+        Res = []
+        for i in range(p, N):
+            res = Y[i] - np.sum([a * Y[i - j] for a, j in zip(A, range(1, p + 1))], axis=0)
+            Res.append(res)
+        # Res = np.array(Res)
+        B = fit_ar(Res, q)
+    return A, B
 
 
 class BHTARIMA(object):
     """BHT-ARIMA, a tensor-base ARIMA algorithm
 
-    This algorithm can forecast multiple series at the same time based on  capturing the 
+    This algorithm can forecast multiple series at the same time based on  capturing the
     intrinsic correlations
 
     Paramters
     ---------
         X : np.ndarray, shape (I1, I2, ..., IT)
             Training data, a tensor time series(tensor-mode) with shape of I1*I2*...*IN*T
-        
+
         p : int
             The order of AR algorithm
-        
-        d : int 
+
+        d : int
             The order of difference
 
         q : int
@@ -40,32 +325,32 @@ class BHTARIMA(object):
 
         taus : list[int]
             Ranks of MDT tensorization, recommand the first element is the num of series
-        
+
         Rs : list[int]
             Ranks of Tucker decomposition
-        
+
         K : int
             Iterations of training
-        
+
         tol : float
             Convergence threshold, it should be samller than 1.0
-        
+
         seed : int, default None
             The random number seed
-        
+
         Us_mode : int, default 4
             The mode of orthogonality
                 - 2 : releaxed-orthogonality
                 - 4 : full-orthogonality
-        
+
         verbose : int, default 0
             The level of displaying intermediate info
                 - 0 : not display
                 - 1 : display info of each iteration
-        
+
         convergence_loss : boolean, default False
             Whether return the convergence loss of each iteration
-    
+
     """
 
     def __init__(self, ts, p, d, q, taus, Rs, K, tol, seed=None, Us_mode=4, \
@@ -215,7 +500,7 @@ class BHTARIMA(object):
                 b = np.sum(Bs, axis=0)
                 temp = np.dot(a, b)
                 Us[n] = temp / np.linalg.norm(temp)
-        # no orth      
+        # no orth
         elif self._Us_mode == 3:
             As = []
             Bs = []
@@ -309,15 +594,15 @@ class BHTARIMA(object):
     def _tensor_difference(self, d, tensors, axis):
         """
         get d-order difference series
-        
+
         Arg:
             d: int, order
             tensors: list of ndarray, tensor to be difference
-        
+
         Return:
             begin_tensors: list, the first d elements, used for recovering original tensors
             d_tensors: ndarray, tensors after difference
-        
+
         """
         d_tensors = tensors
         begin_tensors = []
@@ -331,15 +616,15 @@ class BHTARIMA(object):
     def _tensor_reverse_diff(self, d, begin, tensors, axis):
         """
         recover original tensors from d-order difference tensors
-        
+
         Arg:
             d: int, order
             begin: list, the first d elements
             tensors: list of ndarray, tensors after difference
-        
+
         Return:
             re_tensors: ndarray, original tensors
-        
+
         """
 
         re_tensors = tensors
@@ -427,7 +712,7 @@ class BHTARIMA(object):
                 cores_shape = cores[0].shape
                 unfold_cores = self._update_cores(n, Us, Xs, es, cores, alpha, beta, lam=1)
                 cores = self._get_fold_tensor(unfold_cores, n, cores_shape)
-                # update Us 
+                # update Us
                 Us = self._update_Us(Us, Xs, unfold_cores, n)
 
                 for i in range(self._q):
@@ -480,7 +765,7 @@ class BHTARIMA(object):
         fore_shape[-1] += 1
         fore_shape = np.array(fore_shape)
 
-        # inverse MDT 
+        # inverse MDT
         result = self._inverse_MDT(mdt, mdt_result, self._taus, fore_shape)
 
         return result, con_loss
