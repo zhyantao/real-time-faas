@@ -334,29 +334,29 @@ class BHTARIMA(object):
         self._T_hat = self.mdt.shape()[-1]
         return trans_data, self.mdt
 
-    def _initilizer(self, T_hat, Js, Rs, Xs):
+    def _initializer(self, T_hat, Js, Rs, Xs):
 
-        # initilize Us
+        # initialize Us
         U = [np.random.random([j, r]) for j, r in zip(list(Js), Rs)]
 
-        # initilize es
+        # initialize es
         begin_idx = self._p + self._q
         es = [[np.random.random(Rs) for _ in range(self._q)] for t in range(begin_idx, T_hat)]
 
         return U, es
 
-    def _test_initilizer(self, trans_data, Rs):
+    def _test_initializer(self, trans_data, Rs):
 
         T_hat = trans_data.shape[-1]
-        # initilize Us
+        # initialize Us
         U = [np.random.random([j, r]) for j, r in zip(list(trans_data.shape)[:-1], Rs)]
 
-        # initilize es
+        # initialize es
         begin_idx = self._p + self._q
         es = [[np.zeros(Rs) for _ in range(self._q)] for t in range(begin_idx, T_hat)]
         return U, es
 
-    def _initilize_U(self, T_hat, Xs, Rs):
+    def _initialize_U(self, T_hat, Xs, Rs):
         factors = None
         haveNan = True
         while haveNan:
@@ -639,7 +639,7 @@ class BHTARIMA(object):
         # Step 2: Hankel Tensor ARMA based on Tucker-decomposition
 
         # initialize Us
-        Us, es = self._initilizer(len(Xs), Xs[0].shape, self._Rs, Xs)
+        Us, es = self._initializer(len(Xs), Xs[0].shape, self._Rs, Xs)
 
         for k in range(self._K):
 
