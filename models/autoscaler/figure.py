@@ -2,6 +2,7 @@ import os.path
 import time
 
 import matplotlib.pyplot as plt
+import numpy as np
 
 from models.utils.params import args
 
@@ -85,70 +86,98 @@ class MetrixFigure(Figure):
         #     nd['ours'].append(item['nd'])
         #     smape['ours'].append(item['smape'])
 
-        plt.figure()  # 创建一个新的图像
-        plt.plot(acc['arima'], label='ARIMA')
-        plt.plot(acc['lstm'], label='LSTM')
-        plt.suptitle('Accuracy')
-        plt.ylabel("Percent (%)")
-        plt.xlabel("Number of jobs")
-        plt.legend()
-        plt.savefig('{}/{}_accuracy.png'.format(self.metrics_saving_path, self.timestamp),
-                    dpi=600, format='png')
-        plt.show()
+        # 创建一个 2 * 3 子图布局
+        rows, cols = 2, 3
+        fig, axs = plt.subplots(rows, cols, figsize=(10, 5))
 
-        plt.figure()  # 创建一个新的图像
-        plt.plot(rmse['arima'], label='ARIMA')
-        plt.plot(rmse['lstm'], label='LSTM')
-        plt.suptitle('RMSE')
-        plt.ylabel("RMSE")
-        plt.xlabel("Number of jobs")
-        plt.legend()
-        plt.savefig('{}/{}_rmse.png'.format(self.metrics_saving_path, self.timestamp),
-                    dpi=600, format='png')
-        plt.show()
+        # 绘制第一个子图
+        axs[0, 0].plot(acc['arima'], label='ARIMA')
+        axs[0, 0].plot(acc['lstm'], label='LSTM')
+        axs[0, 0].set_title('Accuracy', fontsize=11)
+        axs[0, 0].set_ylabel("Percent (%)")
+        axs[0, 0].set_xlabel("Number of jobs")
+        axs[0, 0].legend(fontsize=8)
 
-        plt.figure()  # 创建一个新的图像
-        plt.plot(nrmse['arima'], label='ARIMA')
-        plt.plot(nrmse['lstm'], label='LSTM')
-        plt.suptitle('Normalized RMSE')
-        plt.ylabel("Normalized RMSE")
-        plt.xlabel("Number of jobs")
-        plt.legend()
-        plt.savefig('{}/{}_nrmse.png'.format(self.metrics_saving_path, self.timestamp),
-                    dpi=600, format='png')
-        plt.show()
+        # 绘制第二个子图
+        axs[0, 1].plot(rmse['arima'], label='ARIMA')
+        axs[0, 1].plot(rmse['lstm'], label='LSTM')
+        axs[0, 1].set_title('RMSE', fontsize=11)
+        axs[0, 1].set_ylabel("RMSE")
+        axs[0, 1].set_xlabel("Number of jobs")
+        axs[0, 1].legend(fontsize=8)
 
-        plt.figure()  # 创建一个新的图像
-        plt.plot(nd['arima'], label='ARIMA')
-        plt.plot(nd['lstm'], label='LSTM')
-        plt.suptitle('Normalized Deviation')
-        plt.ylabel("Normalized Deviation")
-        plt.xlabel("Number of jobs")
-        plt.legend()
-        plt.savefig('{}/{}_nd.png'.format(self.metrics_saving_path, self.timestamp),
-                    dpi=600, format='png')
-        plt.show()
+        # 绘制第三个子图
+        axs[0, 2].plot(nrmse['arima'], label='ARIMA')
+        axs[0, 2].plot(nrmse['lstm'], label='LSTM')
+        axs[0, 2].set_title('Normalized RMSE', fontsize=11)
+        axs[0, 2].set_ylabel("Normalized RMSE")
+        axs[0, 2].set_xlabel("Number of jobs")
+        axs[0, 2].legend(fontsize=8)
 
-        plt.figure()  # 创建一个新的图像
-        plt.plot(smape['arima'], label='ARIMA')
-        plt.plot(smape['lstm'], label='LSTM')
-        plt.suptitle('SMAPE')
-        plt.ylabel("SMAPE")
-        plt.xlabel("Number of jobs")
-        plt.legend()
-        plt.savefig('{}/{}_smape.png'.format(self.metrics_saving_path, self.timestamp),
+        # 绘制第四个子图
+        axs[1, 0].plot(nd['arima'], label='ARIMA')
+        axs[1, 0].plot(nd['lstm'], label='LSTM')
+        axs[1, 0].set_title('Normalized Deviation', fontsize=11)
+        axs[1, 0].set_ylabel("Normalized Deviation")
+        axs[1, 0].set_xlabel("Number of jobs")
+        axs[1, 0].legend(fontsize=8)
+
+        # 绘制第五个子图
+        axs[1, 1].plot(smape['arima'], label='ARIMA')
+        axs[1, 1].plot(smape['lstm'], label='LSTM')
+        axs[1, 1].set_title('SMAPE', fontsize=11)
+        axs[1, 1].set_ylabel("SMAPE")
+        axs[1, 1].set_xlabel("Number of jobs")
+        axs[1, 1].legend(fontsize=8)
+
+        # 添加整图标题
+        fig.tight_layout()  # 调整子图布局以避免重叠
+        fig.suptitle('Metrics Compare')
+        plt.subplots_adjust(top=0.88)  # 调整整图标题的位置，以避免和子图重叠
+        plt.savefig('{}/{}_loss.png'.format(self.metrics_saving_path, self.timestamp),
                     dpi=600, format='png')
         plt.show()
 
 
 if __name__ == '__main__':
-    x1 = [0, 1, 2, 3, 4]
-    y1 = [1, 2, 2, 6, 8]
+    # 生成数据
+    x1 = np.random.rand(50)
+    y1 = np.random.rand(50)
+    x2 = np.random.rand(50)
+    y2 = np.random.rand(50)
 
-    x2 = [2, 3, 4, 5, 6]
-    y2 = [3, 4, 2, 6, 4]
-
+    # 绘制折线图
+    plt.figure()
     plt.plot(x1, y1, '-o', label='Line 1')
     plt.plot(x2, y2, '-o', label='Line 2')
     plt.legend()
+    plt.show()
+
+    # 绘制散点图
+    plt.figure()
+    plt.scatter(x1, y1, color='red', marker='o')
+    plt.scatter(x2, y2, color='blue', marker='s')
+    plt.title('Multiple Scatter Plots')
+    plt.xlabel('X Axis')
+    plt.ylabel('Y Axis')
+    plt.show()
+
+    # 标题和副标题
+    x = np.linspace(0, 2 * np.pi, 100)
+    y = np.sin(x)
+    # 创建一个 1x2 的子图布局
+    fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(10, 5))
+    # 绘制第一个子图并添加标题和副标题
+    ax1.plot(x, y)
+    ax1.set_title('Sine Curve')
+    ax1.set_xlabel('x')
+    ax1.set_ylabel('y')
+    ax1.text(0.1, -0.5, 'A simple sine curve', fontsize=10, transform=ax1.transAxes)
+    # 绘制第二个子图并添加标题和副标题
+    ax2.plot(x, np.cos(x))
+    ax2.set_title('Cosine Curve')
+    ax2.set_xlabel('x')
+    ax2.set_ylabel('y')
+    fig.suptitle('Sine and Cosine Curves', fontsize=16)
+    # 显示图形
     plt.show()
