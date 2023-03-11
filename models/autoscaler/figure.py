@@ -7,7 +7,7 @@ import matplotlib.pyplot as plt
 import networkx as nx
 import numpy as np
 import pandas as pd
-from pandas import DataFrame
+from networkx import DiGraph
 
 from models.autoscaler.dag import DAG
 from models.utils.dataset import get_one_job
@@ -168,10 +168,8 @@ class MetrixFigure(Figure):
 
 
 class DAGFigure(Figure):
-    def visual(self, job: DataFrame, job_name=None):
+    def visual(self, G: DiGraph, job_name=None):
         # G: networkx 中的 DiGraph 格式
-        G, job_name = DAG.generate_dag_from_alibaba_trace_data(job, job_name)
-
         plt.title(job_name)  # 配置属性必须在 nx.draw 函数调用之前
 
         pos = nx.nx_agraph.graphviz_layout(G, prog='dot')
@@ -211,8 +209,10 @@ if __name__ == '__main__':
     # 重建 DAG
     df = pd.read_csv(args.selected_batch_task_path)
     job, idx = get_one_job(df)
+    G, job_name = DAG.generate_dag_from_alibaba_trace_data(job)
     dag_figure = DAGFigure()
-    dag_figure.visual(job)
+    dag_figure.visual(G, job_name)
     job, idx = get_one_job(df, idx)
+    G, job_name = DAG.generate_dag_from_alibaba_trace_data(job)
     dag_figure = DAGFigure()
-    dag_figure.visual(job)
+    dag_figure.visual(G, job_name)
