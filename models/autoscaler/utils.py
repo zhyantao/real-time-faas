@@ -14,7 +14,7 @@ class ProgressBar:
             return
         self.last = int(percent)
         pos = int(self.width * (percent / 100.0))
-        sys.stdout.write('\r%d%% [%s]\n\n' % (int(percent), '#' * pos + '.' * (self.width - pos)))
+        sys.stdout.write('\r%d%% [%s]' % (int(percent), '#' * pos + '.' * (self.width - pos)))
         sys.stdout.flush()
         if percent == 100:
             print('')

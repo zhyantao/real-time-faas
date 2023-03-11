@@ -1,4 +1,5 @@
 import os
+import sys
 import time
 
 import numpy as np
@@ -117,8 +118,8 @@ if __name__ == '__main__':
         losses = {'arima': [], 'lstm': [], 'ours': []}  # 统计损失
         timecost = {'arima': [], 'lstm': [], 'ours': []}  # 统计不同算法的执行时间
 
-        n_samples = training_data.shape[0]
         seq_len = 50  # 用过去的 50 个数据预测前面的数据
+        n_samples = training_data.shape[0]
         for i in range(seq_len, n_samples):
             # (2) 准备数据
             X = training_data[i - seq_len:i].T
@@ -155,7 +156,7 @@ if __name__ == '__main__':
             # print('y_hat_ours = {}'.format(y_hat_ours))
             # print("evaluation (Ours): {}\n".format(metrics(y_hat_ours, y)))
 
-            bar.update(percent=(100.0 * (i - seq_len) / (n_samples - seq_len)))
+            bar.update(percent=100.0 * (i - seq_len) / (n_samples - seq_len - 1))
 
         ts_figure = TimeSeriesFigure()
         ts_figure.visual(training_data, predictions)
