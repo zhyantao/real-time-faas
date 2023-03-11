@@ -5,6 +5,7 @@ import pandas as pd
 from sklearn.preprocessing import StandardScaler
 
 from models.autoscaler.arima_v2 import BHTARIMA
+from models.autoscaler.evaluation import eval
 from models.autoscaler.lstm_v2 import LstmParam, LstmNetwork, ToyLossLayer
 from models.utils.dataset import get_one_machine
 from models.utils.params import args
@@ -45,8 +46,10 @@ def run_lstm(X, y):
 
     # (7) 数据后处理：还原 y
     # origin_y = ss.inverse_transform(std_y)
-    y_pred = [ss.inverse_transform(lstm_net.lstm_node_list[i].state.h[0].reshape(1, -1)) for i in range(len(std_y))]
-    y_hat = [item[0][0] for item in y_pred]
+    y_hat = (np.zeros_like(std_y)).reshape(-1)
+    for i in range(len(std_y)):
+        pred = ss.inverse_transform(lstm_net.lstm_node_list[i].state.h[0].reshape(1, -1))
+        y_hat[i] = pred[0]
 
     return y_hat
 
@@ -60,7 +63,7 @@ def run_arima(X, y):
     # parameters setting
     n_samples = X.shape[0]
 
-    print('y = ', y)
+    # print('y = ', y)
     p = 3  # p-order
     d = 2  # d-order
     q = 1  # q-order
@@ -111,18 +114,18 @@ if __name__ == '__main__':
         # 原始数据
         X = training_data[:-1].T  # shape = [n_samples, n_features]
         y = training_data[-1].reshape(-1, 1)  # shape = [n_samples, n_label_features]
-        print('y = \n{}'.format(y))
+        print('y_truth = {}\n'.format(y.reshape(-1)))  # 用 reshape(-1) 拉成一维向量
+
+        # 调用 ARIMA 预测模型
+        y_hat_arima = run_arima(X, y)
+        print('y_hat_ARIMA = {}'.format(y_hat_arima))
+        print("evaluation (ARIMA): {}\n".format(eval(y_hat_arima, y)))
 
         # 调用 LSTM 预测模型
         y_hat_lstm = run_lstm(X, y)
         print('y_hat_lstm = {}'.format(y_hat_lstm))
-        # print("Pure LSTM loss: \n{}".format(get_index(y_hat_lstm, y)))
-
-        # 调用 ARIMA 预测模型
-        y_hat_arima = run_arima(X, y)
-        print('y_hat_arima = {}'.format(y_hat_arima))
-        # print("Pure ARIMA loss: \n{}".format(get_index(y_hat_arima, y)))
+        print("evaluation (LSTM): {}\n".format(eval(y_hat_lstm, y)))
 
         print('-------------- one epoch is end ----------------')
 
-        break
+        # break
