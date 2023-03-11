@@ -208,11 +208,9 @@ if __name__ == '__main__':
 
     # 重建 DAG
     df = pd.read_csv(args.selected_batch_task_path)
-    job, idx = get_one_job(df)
-    G, job_name = DAG.generate_dag_from_alibaba_trace_data(job)
-    dag_figure = DAGFigure()
-    dag_figure.visual(G, job_name)
-    job, idx = get_one_job(df, idx)
-    G, job_name = DAG.generate_dag_from_alibaba_trace_data(job)
-    dag_figure = DAGFigure()
-    dag_figure.visual(G, job_name)
+    idx = 0
+    while idx < df.shape[0]:
+        job, idx = get_one_job(df, idx)
+        G, job_name = DAG.generate_dag_from_alibaba_trace_data(job)
+        dag_figure = DAGFigure()
+        dag_figure.visual(G, job_name)

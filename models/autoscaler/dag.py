@@ -1,8 +1,8 @@
-import random
-
 import networkx as nx
 import pandas as pd
 from pandas import DataFrame
+
+from models.autoscaler.utils import generate_random_numbers
 
 
 class DAG:
@@ -33,11 +33,11 @@ class DAG:
             if len(dependencies) == 1:
                 G.add_node(curr_task)
             else:
-                i = 1
+                i, weight = 1, generate_random_numbers(len(dependencies) - 1)
                 while i < len(dependencies):
                     dependency = dependencies[i]
-                    weight = round(random.random(), 1)
-                    G.add_edge(dependency, curr_task, weight=weight)  # 边的权重统一设置为 1, 后面可以改
+                    # G.add_edge(dependency, curr_task, weight=weight[i - 1])  # 为了与 batch.csv 中编号匹配可解开此注释
+                    G.add_edge(int(dependency) - 1, int(curr_task) - 1, weight=weight[i - 1])  # 为了编程方便
                     i += 1
 
         if job_name is None:
@@ -55,3 +55,7 @@ class DAG:
         :return: job（DataFrame 格式）
         """
         return pd.concat([job1, job2], axis=0)
+
+
+if __name__ == '__main__':
+    print(generate_random_numbers(1))
