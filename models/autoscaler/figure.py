@@ -45,10 +45,14 @@ class TimeSeriesFigure(Figure):
         plt.plot(range(split_line_pos, origin_data.shape[0]), compared_data['lstm'],
                  label=['LSTM pred. CPU util.', 'LSTM pred. Mem util.'])
 
+        # 绘制 Ours 预测的数据（可选）
+        plt.plot(range(split_line_pos, origin_data.shape[0]), compared_data['ours'],
+                 label=['Ours pred. CPU util.', 'Ours pred. Mem util.'])
+
         # 添加图片的辅助信息
         plt.suptitle('CPU and Mem Usage Prediction')
         plt.ylabel("Utilization Rate (%)")
-        plt.xlabel("Relative Time (s)")
+        plt.xlabel("Job Number (#)")
         plt.legend(fontsize=8)
         plt.savefig('{}/{}_timeseries.png'.format(self.metrics_saving_path, self.timestamp),
                     dpi=600, format='png')
@@ -79,12 +83,12 @@ class MetrixFigure(Figure):
             nd['lstm'].append(item['nd'])
             smape['lstm'].append(item['smape'])
 
-        # for item in compared_data['ours']:
-        #     acc['ours'].append(item.acc)
-        #     rmse['ours'].append(item.rmse)
-        #     nrmse['ours'].append(item['nrmse'])
-        #     nd['ours'].append(item['nd'])
-        #     smape['ours'].append(item['smape'])
+        for item in compared_data['ours']:
+            acc['ours'].append(item['acc'])
+            rmse['ours'].append(item['rmse'])
+            nrmse['ours'].append(item['nrmse'])
+            nd['ours'].append(item['nd'])
+            smape['ours'].append(item['smape'])
 
         # 创建一个 2 * 3 子图布局
         rows, cols = 2, 3
@@ -93,6 +97,7 @@ class MetrixFigure(Figure):
         # 绘制第一个子图
         axs[0, 0].plot(acc['arima'], label='ARIMA')
         axs[0, 0].plot(acc['lstm'], label='LSTM')
+        axs[0, 0].plot(acc['ours'], label='Ours')
         axs[0, 0].set_title('Accuracy', fontsize=11)
         axs[0, 0].set_ylabel("Percent (%)")
         axs[0, 0].set_xlabel("Number of jobs")
@@ -101,6 +106,7 @@ class MetrixFigure(Figure):
         # 绘制第二个子图
         axs[0, 1].plot(rmse['arima'], label='ARIMA')
         axs[0, 1].plot(rmse['lstm'], label='LSTM')
+        axs[0, 1].plot(rmse['ours'], label='Ours')
         axs[0, 1].set_title('RMSE', fontsize=11)
         axs[0, 1].set_ylabel("RMSE")
         axs[0, 1].set_xlabel("Number of jobs")
@@ -109,6 +115,7 @@ class MetrixFigure(Figure):
         # 绘制第三个子图
         axs[0, 2].plot(nrmse['arima'], label='ARIMA')
         axs[0, 2].plot(nrmse['lstm'], label='LSTM')
+        axs[0, 2].plot(nrmse['ours'], label='Ours')
         axs[0, 2].set_title('Normalized RMSE', fontsize=11)
         axs[0, 2].set_ylabel("Normalized RMSE")
         axs[0, 2].set_xlabel("Number of jobs")
@@ -117,6 +124,7 @@ class MetrixFigure(Figure):
         # 绘制第四个子图
         axs[1, 0].plot(nd['arima'], label='ARIMA')
         axs[1, 0].plot(nd['lstm'], label='LSTM')
+        axs[1, 0].plot(nd['ours'], label='Ours')
         axs[1, 0].set_title('Normalized Deviation', fontsize=11)
         axs[1, 0].set_ylabel("Normalized Deviation")
         axs[1, 0].set_xlabel("Number of jobs")
@@ -125,6 +133,7 @@ class MetrixFigure(Figure):
         # 绘制第五个子图
         axs[1, 1].plot(smape['arima'], label='ARIMA')
         axs[1, 1].plot(smape['lstm'], label='LSTM')
+        axs[1, 1].plot(smape['ours'], label='Ours')
         axs[1, 1].set_title('SMAPE', fontsize=11)
         axs[1, 1].set_ylabel("SMAPE")
         axs[1, 1].set_xlabel("Number of jobs")

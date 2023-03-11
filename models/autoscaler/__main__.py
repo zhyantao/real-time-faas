@@ -8,6 +8,7 @@ from models.autoscaler.analysis import metrics
 from models.autoscaler.arima_v2 import BHTARIMA
 from models.autoscaler.figure import TimeSeriesFigure, MetrixFigure
 from models.autoscaler.lstm_v2 import LstmParam, LstmNetwork, ToyLossLayer
+from models.autoscaler.ours import Ours
 from models.autoscaler.utils import bar
 from models.utils.dataset import get_one_machine
 from models.utils.params import args
@@ -84,6 +85,12 @@ def run_arima(X, y):
     return y_hat
 
 
+def run_ours(y_hat_arima, y_hat_lstm):
+    model = Ours()
+    y_hat = model.merge(y_hat_arima, y_hat_lstm)
+    return y_hat
+
+
 if __name__ == '__main__':
 
     selected_container_usage_path = args.selected_container_usage_path
@@ -102,13 +109,8 @@ if __name__ == '__main__':
         # training_data_cpu = machine.iloc[:, 3:4].values  # CPU
         # training_data_mem = machine.iloc[:, 4:5].values  # memory
         training_data = machine.iloc[:, 3:5].values  # CPU 和 memory
-
         # plt.plot(training_data, label="cpu_util_percent")
         # plt.show()
-
-        # (2) 准备数据
-        # X = training_data[:-1].T  # shape = [n_samples, n_features]
-        # y = training_data[-1].reshape(-1, 1)  # shape = [n_samples, n_label_features]
 
         predictions = {'arima': [], 'lstm': [], 'ours': []}  # 统计预测值
         losses = {'arima': [], 'lstm': [], 'ours': []}  # 统计损失
@@ -138,6 +140,13 @@ if __name__ == '__main__':
             # print('y_hat_lstm = {}'.format(y_hat_lstm))
             # print("evaluation (LSTM): {}\n".format(metrics(y_hat_lstm, y)))
 
+            # (3) 调用 Ours 预测模型
+            y_hat_ours = run_ours(y_hat_arima, y_hat_lstm)
+            predictions['ours'].append(y_hat_ours)
+            losses['ours'].append(metrics(y_hat_ours, y))
+            # print('y_hat_ours = {}'.format(y_hat_ours))
+            # print("evaluation (Ours): {}\n".format(metrics(y_hat_ours, y)))
+
             bar.update(percent=(100.0 * (i - seq_len) / (n_samples - seq_len)))
 
         ts_figure = TimeSeriesFigure()
@@ -145,5 +154,5 @@ if __name__ == '__main__':
         loss_figure = MetrixFigure()
         loss_figure.visual(None, losses)
 
-        print('\n-------------- epoch {} end ----------------'.format(idx))
+        print('-------------- epoch {} end ----------------'.format(idx))
         break
