@@ -15,7 +15,6 @@ parser.add_argument('--total_machines',
                     type=int,
                     default=100,
                     help='总共的 machine 数量')
-
 parser.add_argument('--total_jobs',
                     type=int,
                     default=100,
@@ -44,6 +43,10 @@ parser.add_argument('--batch_instance_topological_order_path',
                     type=str,
                     default='E:/Workshop/real-time-faas/dataset/batch_instance_topological_order.csv',
                     help='最大值')
+parser.add_argument('--result_saving_path',
+                    type=str,
+                    default='E:/Workshop/real-time-faas/results',
+                    help='保存实验结果的路径')
 
 # job settings
 parser.add_argument('--max_value',

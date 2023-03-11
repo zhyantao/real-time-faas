@@ -1,9 +1,24 @@
+import os.path
+import time
+
 import matplotlib.pyplot as plt
+
+from models.utils.params import args
 
 
 class Figure:
     def __init__(self):
-        pass
+
+        self.result_saving_path = args.result_saving_path
+        self.metrics_saving_path = self.result_saving_path + '/metrics'
+
+        self.timestamp = time.time()  # 用于区分不同时刻产生的结果文件
+
+        # 检查是否存在保存实验结果的路径
+        if not os.path.exists(self.result_saving_path):
+            os.makedirs(self.result_saving_path)
+        if not os.path.exists(self.metrics_saving_path):
+            os.makedirs(self.metrics_saving_path)
 
     def visual(self, origin_data, compared_data):
         print('figure.py --> visual() has not been implemented.')
@@ -34,6 +49,8 @@ class TimeSeriesFigure(Figure):
         plt.ylabel("Utilization Rate (%)")
         plt.xlabel("Relative Time (s)")
         plt.legend()
+        plt.savefig('{}/{}_timeseries.png'.format(self.metrics_saving_path, self.timestamp),
+                    dpi=600, format='png')
         plt.show()
 
 
@@ -75,6 +92,8 @@ class MetrixFigure(Figure):
         plt.ylabel("Percent (%)")
         plt.xlabel("Number of jobs")
         plt.legend()
+        plt.savefig('{}/{}_accuracy.png'.format(self.metrics_saving_path, self.timestamp),
+                    dpi=600, format='png')
         plt.show()
 
         plt.figure()  # 创建一个新的图像
@@ -84,6 +103,8 @@ class MetrixFigure(Figure):
         plt.ylabel("RMSE")
         plt.xlabel("Number of jobs")
         plt.legend()
+        plt.savefig('{}/{}_rmse.png'.format(self.metrics_saving_path, self.timestamp),
+                    dpi=600, format='png')
         plt.show()
 
         plt.figure()  # 创建一个新的图像
@@ -93,6 +114,8 @@ class MetrixFigure(Figure):
         plt.ylabel("Normalized RMSE")
         plt.xlabel("Number of jobs")
         plt.legend()
+        plt.savefig('{}/{}_nrmse.png'.format(self.metrics_saving_path, self.timestamp),
+                    dpi=600, format='png')
         plt.show()
 
         plt.figure()  # 创建一个新的图像
@@ -102,6 +125,8 @@ class MetrixFigure(Figure):
         plt.ylabel("Normalized Deviation")
         plt.xlabel("Number of jobs")
         plt.legend()
+        plt.savefig('{}/{}_nd.png'.format(self.metrics_saving_path, self.timestamp),
+                    dpi=600, format='png')
         plt.show()
 
         plt.figure()  # 创建一个新的图像
@@ -111,6 +136,8 @@ class MetrixFigure(Figure):
         plt.ylabel("SMAPE")
         plt.xlabel("Number of jobs")
         plt.legend()
+        plt.savefig('{}/{}_smape.png'.format(self.metrics_saving_path, self.timestamp),
+                    dpi=600, format='png')
         plt.show()
 
 
