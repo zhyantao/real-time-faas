@@ -1,5 +1,4 @@
 import os
-import sys
 import time
 
 import numpy as np
@@ -11,7 +10,7 @@ from models.autoscaler.arima_v2 import BHTARIMA
 from models.autoscaler.figure import TimeSeriesFigure, MetrixFigure
 from models.autoscaler.lstm_v2 import LstmParam, LstmNetwork, ToyLossLayer
 from models.autoscaler.ours import Ours
-from models.autoscaler.utils import bar
+from models.autoscaler.utils import ProgressBar
 from models.utils.dataset import get_one_machine
 from models.utils.params import args
 
@@ -120,6 +119,7 @@ if __name__ == '__main__':
 
         seq_len = 50  # 用过去的 50 个数据预测前面的数据
         n_samples = training_data.shape[0]
+        bar = ProgressBar()
         for i in range(seq_len, n_samples):
             # (2) 准备数据
             X = training_data[i - seq_len:i].T

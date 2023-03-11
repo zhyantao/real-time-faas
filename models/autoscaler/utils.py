@@ -1,3 +1,5 @@
+"""工具类"""
+
 import sys
 
 
@@ -18,6 +20,3 @@ class ProgressBar:
         sys.stdout.flush()
         if percent == 100:
             print('')
-
-
-bar = ProgressBar()

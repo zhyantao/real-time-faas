@@ -14,7 +14,7 @@ import numpy as np
 import pandas as pd
 import yaml
 
-from models.autoscaler.utils import bar
+from models.autoscaler.utils import ProgressBar
 
 with open("E:/Workshop/real-time-faas/configs/parameter.yaml", 'r') as f:
     para = yaml.load(f, Loader=yaml.FullLoader)
@@ -56,6 +56,7 @@ def sample_jobs(batch_task_path=para.get("batch_task_path"),
     current_chunk_batch_instance = chunk_batch_instance.get_chunk(chunk_size)
 
     i, j, count = 0, 0, 0  # count 是当前已经采集的 job 数量, total 是总共的
+    bar = ProgressBar()
     while (not current_chunk_batch_instance.empty) and (not current_chunk_batch_task.empty):
 
         job_name_batch_task = current_chunk_batch_task.loc[idx_batch_task + i, 2]
@@ -159,6 +160,7 @@ def get_topological_order(selected_batch_task_path=para.get("selected_batch_task
 
     total_jobs = para.get("total_jobs")
     sorted_num = 0
+    bar = ProgressBar()
 
     print('Getting topological order for %d jobs ...' % total_jobs)
     while idx < rows:  # 遍历 CSV 文件的每一行
@@ -300,6 +302,7 @@ def sample_machines(container_usage_path=para.get("container_usage_path"),
     current_chunk_container_usage = chunk_container_usage.get_chunk(chunk_size)
 
     idx, i, count = 0, 0, 0
+    bar = ProgressBar()
     while not current_chunk_container_usage.empty:
         machine_id = current_chunk_container_usage.loc[idx + i, 1]
 

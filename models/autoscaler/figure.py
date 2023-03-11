@@ -1,9 +1,16 @@
+"""论文插图"""
+
 import os.path
 import time
 
 import matplotlib.pyplot as plt
+import networkx as nx
 import numpy as np
+import pandas as pd
+from pandas import DataFrame
 
+from models.autoscaler.dag import DAG
+from models.utils.dataset import get_one_job
 from models.utils.params import args
 
 
@@ -12,6 +19,7 @@ class Figure:
 
         self.result_saving_path = args.result_saving_path
         self.metrics_saving_path = self.result_saving_path + '/metrics'
+        self.dag_saving_path = self.result_saving_path + '/dags'
 
         self.timestamp = time.time()  # 用于区分不同时刻产生的结果文件
 
@@ -20,6 +28,8 @@ class Figure:
             os.makedirs(self.result_saving_path)
         if not os.path.exists(self.metrics_saving_path):
             os.makedirs(self.metrics_saving_path)
+        if not os.path.exists(self.dag_saving_path):
+            os.makedirs(self.dag_saving_path)
 
     def visual(self, origin_data, compared_data):
         print('figure.py --> visual() has not been implemented.')
@@ -157,6 +167,24 @@ class MetrixFigure(Figure):
         plt.show()
 
 
+class DAGFigure(Figure):
+    def visual(self, job: DataFrame, job_name=None):
+        # G: networkx 中的 DiGraph 格式
+        G, job_name = DAG.generate_dag_from_alibaba_trace_data(job, job_name)
+
+        plt.title(job_name)  # 配置属性必须在 nx.draw 函数调用之前
+
+        pos = nx.nx_agraph.graphviz_layout(G, prog='dot')
+        nx.draw(G, pos, font_color='whitesmoke', with_labels=True)
+        edge_labels = nx.get_edge_attributes(G, "weight")
+        nx.draw_networkx_edge_labels(G, pos, edge_labels=edge_labels, font_size=8)
+
+        plt.axis("off")
+        plt.savefig('{}/{}.png'.format(self.dag_saving_path, job_name),
+                    format='png')
+        plt.show()
+
+
 if __name__ == '__main__':
     # 生成数据
     x1 = np.random.rand(50)
@@ -179,3 +207,12 @@ if __name__ == '__main__':
     plt.xlabel('X Axis')
     plt.ylabel('Y Axis')
     plt.show()
+
+    # 重建 DAG
+    df = pd.read_csv(args.selected_batch_task_path)
+    job, idx = get_one_job(df)
+    dag_figure = DAGFigure()
+    dag_figure.visual(job)
+    job, idx = get_one_job(df, idx)
+    dag_figure = DAGFigure()
+    dag_figure.visual(job)
