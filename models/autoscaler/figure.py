@@ -49,7 +49,7 @@ class TimeSeriesFigure(Figure):
         plt.suptitle('CPU and Mem Usage Prediction')
         plt.ylabel("Utilization Rate (%)")
         plt.xlabel("Relative Time (s)")
-        plt.legend()
+        plt.legend(fontsize=8)
         plt.savefig('{}/{}_timeseries.png'.format(self.metrics_saving_path, self.timestamp),
                     dpi=600, format='png')
         plt.show()
@@ -160,24 +160,4 @@ if __name__ == '__main__':
     plt.title('Multiple Scatter Plots')
     plt.xlabel('X Axis')
     plt.ylabel('Y Axis')
-    plt.show()
-
-    # 标题和副标题
-    x = np.linspace(0, 2 * np.pi, 100)
-    y = np.sin(x)
-    # 创建一个 1x2 的子图布局
-    fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(10, 5))
-    # 绘制第一个子图并添加标题和副标题
-    ax1.plot(x, y)
-    ax1.set_title('Sine Curve')
-    ax1.set_xlabel('x')
-    ax1.set_ylabel('y')
-    ax1.text(0.1, -0.5, 'A simple sine curve', fontsize=10, transform=ax1.transAxes)
-    # 绘制第二个子图并添加标题和副标题
-    ax2.plot(x, np.cos(x))
-    ax2.set_title('Cosine Curve')
-    ax2.set_xlabel('x')
-    ax2.set_ylabel('y')
-    fig.suptitle('Sine and Cosine Curves', fontsize=16)
-    # 显示图形
     plt.show()

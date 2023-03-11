@@ -115,7 +115,7 @@ if __name__ == '__main__':
 
         n_samples = training_data.shape[0]
         seq_len = 50  # 用过去的 50 个数据预测前面的数据
-        for i in range(seq_len, seq_len + 3):
+        for i in range(seq_len, n_samples):
             # (2) 准备数据
             X = training_data[i - seq_len:i].T
             y = training_data[i].reshape(-1, 1)
