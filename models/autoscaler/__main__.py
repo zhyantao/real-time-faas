@@ -1,4 +1,5 @@
 import os
+import time
 
 import numpy as np
 import pandas as pd
@@ -114,6 +115,7 @@ if __name__ == '__main__':
 
         predictions = {'arima': [], 'lstm': [], 'ours': []}  # 统计预测值
         losses = {'arima': [], 'lstm': [], 'ours': []}  # 统计损失
+        timecost = {'arima': [], 'lstm': [], 'ours': []}  # 统计不同算法的执行时间
 
         n_samples = training_data.shape[0]
         seq_len = 50  # 用过去的 50 个数据预测前面的数据
@@ -127,21 +129,27 @@ if __name__ == '__main__':
             # print('y_truth = {}\n'.format(y.reshape(-1)))  # 用 reshape(-1) 拉成一维向量
 
             # (3) 调用 ARIMA 预测模型
+            start_time = time.time()
             y_hat_arima = run_arima(X, y)
+            timecost['arima'].append(time.time() - start_time)
             predictions['arima'].append(y_hat_arima)
             losses['arima'].append(metrics(y_hat_arima, y))
             # print('y_hat_ARIMA = {}'.format(y_hat_arima))
             # print("evaluation (ARIMA): {}\n".format(metrics(y_hat_arima, y)))
 
             # (3) 调用 LSTM 预测模型
+            start_time = time.time()
             y_hat_lstm = run_lstm(X, y)
+            timecost['lstm'].append(time.time() - start_time)
             predictions['lstm'].append(y_hat_lstm)
             losses['lstm'].append(metrics(y_hat_lstm, y))
             # print('y_hat_lstm = {}'.format(y_hat_lstm))
             # print("evaluation (LSTM): {}\n".format(metrics(y_hat_lstm, y)))
 
             # (3) 调用 Ours 预测模型
+            start_time = time.time()
             y_hat_ours = run_ours(y_hat_arima, y_hat_lstm)
+            timecost['ours'].append(time.time() - start_time)
             predictions['ours'].append(y_hat_ours)
             losses['ours'].append(metrics(y_hat_ours, y))
             # print('y_hat_ours = {}'.format(y_hat_ours))
@@ -152,7 +160,7 @@ if __name__ == '__main__':
         ts_figure = TimeSeriesFigure()
         ts_figure.visual(training_data, predictions)
         loss_figure = MetrixFigure()
-        loss_figure.visual(None, losses)
+        loss_figure.visual(timecost, losses)
 
         print('-------------- epoch {} end ----------------'.format(idx))
         break

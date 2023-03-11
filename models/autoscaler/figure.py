@@ -60,7 +60,7 @@ class TimeSeriesFigure(Figure):
 
 
 class MetrixFigure(Figure):
-    def visual(self, origin_data, compared_data):
+    def visual(self, timecost, compared_data):
         """可视化各种损失函数"""
 
         acc = {'arima': [], 'lstm': [], 'ours': []}
@@ -100,7 +100,7 @@ class MetrixFigure(Figure):
         axs[0, 0].plot(acc['ours'], label='Ours')
         axs[0, 0].set_title('Accuracy', fontsize=11)
         axs[0, 0].set_ylabel("Percent (%)")
-        axs[0, 0].set_xlabel("Number of jobs")
+        axs[0, 0].set_xlabel("Task Number (#)")
         axs[0, 0].legend(fontsize=8)
 
         # 绘制第二个子图
@@ -109,7 +109,7 @@ class MetrixFigure(Figure):
         axs[0, 1].plot(rmse['ours'], label='Ours')
         axs[0, 1].set_title('RMSE', fontsize=11)
         axs[0, 1].set_ylabel("RMSE")
-        axs[0, 1].set_xlabel("Number of jobs")
+        axs[0, 1].set_xlabel("Task Number (#)")
         axs[0, 1].legend(fontsize=8)
 
         # 绘制第三个子图
@@ -118,7 +118,7 @@ class MetrixFigure(Figure):
         axs[0, 2].plot(nrmse['ours'], label='Ours')
         axs[0, 2].set_title('Normalized RMSE', fontsize=11)
         axs[0, 2].set_ylabel("Normalized RMSE")
-        axs[0, 2].set_xlabel("Number of jobs")
+        axs[0, 2].set_xlabel("Task Number (#)")
         axs[0, 2].legend(fontsize=8)
 
         # 绘制第四个子图
@@ -127,7 +127,7 @@ class MetrixFigure(Figure):
         axs[1, 0].plot(nd['ours'], label='Ours')
         axs[1, 0].set_title('Normalized Deviation', fontsize=11)
         axs[1, 0].set_ylabel("Normalized Deviation")
-        axs[1, 0].set_xlabel("Number of jobs")
+        axs[1, 0].set_xlabel("Task Number (#)")
         axs[1, 0].legend(fontsize=8)
 
         # 绘制第五个子图
@@ -136,12 +136,21 @@ class MetrixFigure(Figure):
         axs[1, 1].plot(smape['ours'], label='Ours')
         axs[1, 1].set_title('SMAPE', fontsize=11)
         axs[1, 1].set_ylabel("SMAPE")
-        axs[1, 1].set_xlabel("Number of jobs")
+        axs[1, 1].set_xlabel("Task Number (#)")
         axs[1, 1].legend(fontsize=8)
+
+        # 绘制第六个子图
+        axs[1, 2].plot(timecost['arima'], label='ARIMA')
+        axs[1, 2].plot(timecost['lstm'], label='LSTM')
+        axs[1, 2].plot(timecost['ours'], label='Ours')
+        axs[1, 2].set_title('Algo. exec. Time Cost', fontsize=11)
+        axs[1, 2].set_ylabel("Time Cost (seconds)")
+        axs[1, 2].set_xlabel("Task Number (#)")
+        axs[1, 2].legend(fontsize=8)
 
         # 添加整图标题
         fig.tight_layout()  # 调整子图布局以避免重叠
-        fig.suptitle('Metrics Compare')
+        fig.suptitle('Metrics Comparison')
         plt.subplots_adjust(top=0.88)  # 调整整图标题的位置，以避免和子图重叠
         plt.savefig('{}/{}_loss.png'.format(self.metrics_saving_path, self.timestamp),
                     dpi=600, format='png')
