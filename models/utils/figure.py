@@ -2,7 +2,6 @@
 可视化工具
 """
 import pprint
-import sys
 from collections import namedtuple
 
 import matplotlib.pyplot as plt
@@ -10,25 +9,6 @@ import yaml
 
 with open("E:/Workshop/real-time-faas/configs/parameter.yaml", 'r') as f:
     para = yaml.load(f, Loader=yaml.FullLoader)
-
-
-class ProgressBar:
-    """进度条"""
-
-    def __init__(self, width=50):
-        self.last = -1
-        self.width = width
-
-    def update(self, current):
-        assert 0 <= current <= 100
-        if self.last == current:
-            return
-        self.last = int(current)
-        pos = int(self.width * (current / 100.0))
-        sys.stdout.write('\r%d%% [%s]' % (int(current), '#' * pos + '.' * (self.width - pos)))
-        sys.stdout.flush()
-        if current == 100:
-            print('')
 
 
 class LineChart:
