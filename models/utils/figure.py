@@ -13,9 +13,7 @@ with open("E:/Workshop/real-time-faas/configs/parameter.yaml", 'r') as f:
 
 
 class ProgressBar:
-    """
-    进度条
-    """
+    """进度条"""
 
     def __init__(self, width=50):
         self.last = -1
@@ -34,9 +32,7 @@ class ProgressBar:
 
 
 class LineChart:
-    """
-    折线图
-    """
+    """折线图"""
 
     def __init__(self, x_data, y_data, title, label, x_label, y_label):
         self.x_data = x_data  # 一维数组

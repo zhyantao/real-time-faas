@@ -5,8 +5,9 @@ import pandas as pd
 from sklearn.preprocessing import StandardScaler
 
 from models.autoscaler.arima_v2 import BHTARIMA
-from models.autoscaler.evaluation import eval
+from models.autoscaler.figure import TimeSeriesFigure
 from models.autoscaler.lstm_v2 import LstmParam, LstmNetwork, ToyLossLayer
+from models.autoscaler.utils import bar
 from models.utils.dataset import get_one_machine
 from models.utils.params import args
 
@@ -17,21 +18,21 @@ def run_lstm(X, y):
     std_X = ss.fit_transform(X)
     std_y = ss.fit_transform(y)
 
-    # (3) 初始化 LSTM 模型
-    lstm_param = LstmParam(mem_cell_ct, X.shape[1])
+    # (1) 初始化 LSTM 模型
+    lstm_param = LstmParam(mem_cell_ct=100, x_dim=X.shape[1])
     lstm_net = LstmNetwork(lstm_param)
 
     # 打印一些有用调试信息
     # print('X.shape = ', X.shape)
     # print('y.shape = ', y.shape)
 
-    # (4) 训练 LSTM 模型
+    # (2) 训练 LSTM 模型
     for epoch in range(5000):
         # print("iter", "%2s" % str(epoch), end=": ")
         for i in range(len(std_y)):
             lstm_net.x_list_add(std_X[i])
 
-        # (5) 预测和计算损失
+        # (3) 预测和计算损失
         # print("y_pred = [" +
         #       ", ".join(["% 2.5f"
         #                  % ss.inverse_transform(lstm_net.lstm_node_list[i].state.h[0].reshape(1, -1))
@@ -40,11 +41,11 @@ def run_lstm(X, y):
         loss = lstm_net.y_list_is(std_y, ToyLossLayer)  # 计算损失
         # print("loss:", "%.3e" % loss)
 
-        # (6) 更新模型
+        # (4) 更新模型
         lstm_param.apply_diff(lr=0.01)
         lstm_net.x_list_clear()  # 清理掉原来的参数
 
-    # (7) 数据后处理：还原 y
+    # (5) 数据后处理：还原 y
     # origin_y = ss.inverse_transform(std_y)
     y_hat = (np.zeros_like(std_y)).reshape(-1)
     for i in range(len(std_y)):
@@ -105,27 +106,44 @@ if __name__ == '__main__':
         # plt.show()
 
         # (2) 准备数据
-        np.random.seed(0)
-        mem_cell_ct = 100
+        # X = training_data[:-1].T  # shape = [n_samples, n_features]
+        # y = training_data[-1].reshape(-1, 1)  # shape = [n_samples, n_label_features]
 
-        # x_dim = 50
-        # y = [-0.5, 0.2, 0.1, -0.5]  # 真实值
-        # X = [np.random.random(x_dim) for _ in y]  # shape = [len(y), len(x_dim)]
-        # 原始数据
-        X = training_data[:-1].T  # shape = [n_samples, n_features]
-        y = training_data[-1].reshape(-1, 1)  # shape = [n_samples, n_label_features]
-        print('y_truth = {}\n'.format(y.reshape(-1)))  # 用 reshape(-1) 拉成一维向量
+        predictions = {'arima': [], 'lstm': [], 'ours': []}
 
-        # 调用 ARIMA 预测模型
-        y_hat_arima = run_arima(X, y)
-        print('y_hat_ARIMA = {}'.format(y_hat_arima))
-        print("evaluation (ARIMA): {}\n".format(eval(y_hat_arima, y)))
+        n_samples = training_data.shape[0]
+        seq_len = 50  # 用过去的 100 个数据预测前面的数据
 
-        # 调用 LSTM 预测模型
-        y_hat_lstm = run_lstm(X, y)
-        print('y_hat_lstm = {}'.format(y_hat_lstm))
-        print("evaluation (LSTM): {}\n".format(eval(y_hat_lstm, y)))
+        # for i in range(seq_len):
+        #     predictions['arima'].append([training_data[i]])
+        #     predictions['lstm'].append(training_data[i])
+        #     predictions['ours'].append(training_data[i])
 
-        print('-------------- one epoch is end ----------------')
+        for i in range(seq_len, n_samples):
+            # (2) 准备数据
+            X = training_data[i - seq_len:i].T
+            y = training_data[i].reshape(-1, 1)
+            # print('X: ', X)
+            # print('y:', y)
 
-        # break
+            # print('y_truth = {}\n'.format(y.reshape(-1)))  # 用 reshape(-1) 拉成一维向量
+
+            # (3) 调用 ARIMA 预测模型
+            y_hat_arima = run_arima(X, y)
+            predictions['arima'].append(y_hat_arima)
+            # print('y_hat_ARIMA = {}'.format(y_hat_arima))
+            # print("evaluation (ARIMA): {}\n".format(eval(y_hat_arima, y)))
+
+            # (3) 调用 LSTM 预测模型
+            y_hat_lstm = run_lstm(X, y)
+            predictions['lstm'].append(y_hat_lstm)
+            # print('y_hat_lstm = {}'.format(y_hat_lstm))
+            # print("evaluation (LSTM): {}\n".format(eval(y_hat_lstm, y)))
+
+            bar.update(percent=(100.0 * (i - seq_len) / (n_samples - seq_len)))
+
+        figure = TimeSeriesFigure()
+        figure.visual(training_data, predictions)
+
+        print('-------------- epoch {} is end ----------------'.format(idx))
+        break
