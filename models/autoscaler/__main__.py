@@ -4,8 +4,9 @@ import numpy as np
 import pandas as pd
 from sklearn.preprocessing import StandardScaler
 
+from models.autoscaler.analysis import metrics
 from models.autoscaler.arima_v2 import BHTARIMA
-from models.autoscaler.figure import TimeSeriesFigure
+from models.autoscaler.figure import TimeSeriesFigure, MetrixFigure
 from models.autoscaler.lstm_v2 import LstmParam, LstmNetwork, ToyLossLayer
 from models.autoscaler.utils import bar
 from models.utils.dataset import get_one_machine
@@ -109,16 +110,11 @@ if __name__ == '__main__':
         # X = training_data[:-1].T  # shape = [n_samples, n_features]
         # y = training_data[-1].reshape(-1, 1)  # shape = [n_samples, n_label_features]
 
-        predictions = {'arima': [], 'lstm': [], 'ours': []}
+        predictions = {'arima': [], 'lstm': [], 'ours': []}  # 统计预测值
+        losses = {'arima': [], 'lstm': [], 'ours': []}  # 统计损失
 
         n_samples = training_data.shape[0]
-        seq_len = 50  # 用过去的 100 个数据预测前面的数据
-
-        # for i in range(seq_len):
-        #     predictions['arima'].append([training_data[i]])
-        #     predictions['lstm'].append(training_data[i])
-        #     predictions['ours'].append(training_data[i])
-
+        seq_len = 50  # 用过去的 50 个数据预测前面的数据
         for i in range(seq_len, n_samples):
             # (2) 准备数据
             X = training_data[i - seq_len:i].T
@@ -131,19 +127,23 @@ if __name__ == '__main__':
             # (3) 调用 ARIMA 预测模型
             y_hat_arima = run_arima(X, y)
             predictions['arima'].append(y_hat_arima)
+            losses['arima'].append(metrics(y_hat_arima, y))
             # print('y_hat_ARIMA = {}'.format(y_hat_arima))
-            # print("evaluation (ARIMA): {}\n".format(eval(y_hat_arima, y)))
+            # print("evaluation (ARIMA): {}\n".format(metrics(y_hat_arima, y)))
 
             # (3) 调用 LSTM 预测模型
             y_hat_lstm = run_lstm(X, y)
             predictions['lstm'].append(y_hat_lstm)
+            losses['lstm'].append(metrics(y_hat_lstm, y))
             # print('y_hat_lstm = {}'.format(y_hat_lstm))
-            # print("evaluation (LSTM): {}\n".format(eval(y_hat_lstm, y)))
+            # print("evaluation (LSTM): {}\n".format(metrics(y_hat_lstm, y)))
 
             bar.update(percent=(100.0 * (i - seq_len) / (n_samples - seq_len)))
 
-        figure = TimeSeriesFigure()
-        figure.visual(training_data, predictions)
+        ts_figure = TimeSeriesFigure()
+        ts_figure.visual(training_data, predictions)
+        loss_figure = MetrixFigure()
+        loss_figure.visual(None, losses)
 
         print('-------------- epoch {} is end ----------------'.format(idx))
         break

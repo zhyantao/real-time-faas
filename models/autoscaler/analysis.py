@@ -2,7 +2,7 @@ import numpy as np
 
 
 def rmse(dataA, dataB):
-    """ RMSE """
+    """RMSE"""
     t1 = np.sum((dataA - dataB) ** 2) / np.size(dataB)
     return np.sqrt(t1)
 
@@ -22,7 +22,7 @@ def accuracy(y_pred, y_true):
 
 
 def nd(y_pred, y_true):
-    """ Normalized deviation"""
+    """Normalized deviation"""
     t1 = np.sum(abs(y_pred - y_true)) / np.size(y_true)
     t2 = np.sum(abs(y_true)) / np.size(y_true)
     return t1 / t2
@@ -41,18 +41,17 @@ def smape(y_pred, y_true):
 
 
 def nrmse(y_pred, y_true):
-    """ Normalized RMSE"""
+    """Normalized RMSE"""
     t1 = np.linalg.norm(y_pred - y_true) ** 2 / np.size(y_true)
     t2 = np.sum(abs(y_true)) / np.size(y_true)
     return np.sqrt(t1) / t2
 
 
-def eval(y_pred, y_true):
-    result = {
+def metrics(y_pred, y_true):
+    return {
         'acc': accuracy(y_pred, y_true),
         'rmse': rmse(y_pred, y_true),
         'nrmse': nrmse(y_pred, y_true),
         'nd': nd(y_pred, y_true),
         'smape': smape(y_pred, y_true)
     }
-    return result

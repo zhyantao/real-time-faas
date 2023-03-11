@@ -37,6 +37,83 @@ class TimeSeriesFigure(Figure):
         plt.show()
 
 
+class MetrixFigure(Figure):
+    def visual(self, origin_data, compared_data):
+        """可视化各种损失函数"""
+
+        acc = {'arima': [], 'lstm': [], 'ours': []}
+        rmse = {'arima': [], 'lstm': [], 'ours': []}
+        nrmse = {'arima': [], 'lstm': [], 'ours': []}
+        nd = {'arima': [], 'lstm': [], 'ours': []}
+        smape = {'arima': [], 'lstm': [], 'ours': []}
+
+        for item in compared_data['arima']:
+            acc['arima'].append(item['acc'])
+            rmse['arima'].append(item['rmse'])
+            nrmse['arima'].append(item['nrmse'])
+            nd['arima'].append(item['nd'])
+            smape['arima'].append(item['smape'])
+
+        for item in compared_data['lstm']:
+            acc['lstm'].append(item['acc'])
+            rmse['lstm'].append(item['rmse'])
+            nrmse['lstm'].append(item['nrmse'])
+            nd['lstm'].append(item['nd'])
+            smape['lstm'].append(item['smape'])
+
+        # for item in compared_data['ours']:
+        #     acc['ours'].append(item.acc)
+        #     rmse['ours'].append(item.rmse)
+        #     nrmse['ours'].append(item['nrmse'])
+        #     nd['ours'].append(item['nd'])
+        #     smape['ours'].append(item['smape'])
+
+        plt.figure()  # 创建一个新的图像
+        plt.plot(acc['arima'], label='ARIMA')
+        plt.plot(acc['lstm'], label='LSTM')
+        plt.suptitle('Accuracy')
+        plt.ylabel("Percent (%)")
+        plt.xlabel("Number of jobs")
+        plt.legend()
+        plt.show()
+
+        plt.figure()  # 创建一个新的图像
+        plt.plot(rmse['arima'], label='ARIMA')
+        plt.plot(rmse['lstm'], label='LSTM')
+        plt.suptitle('RMSE')
+        plt.ylabel("RMSE")
+        plt.xlabel("Number of jobs")
+        plt.legend()
+        plt.show()
+
+        plt.figure()  # 创建一个新的图像
+        plt.plot(nrmse['arima'], label='ARIMA')
+        plt.plot(nrmse['lstm'], label='LSTM')
+        plt.suptitle('Normalized RMSE')
+        plt.ylabel("Normalized RMSE")
+        plt.xlabel("Number of jobs")
+        plt.legend()
+        plt.show()
+
+        plt.figure()  # 创建一个新的图像
+        plt.plot(nd['arima'], label='ARIMA')
+        plt.plot(nd['lstm'], label='LSTM')
+        plt.suptitle('Normalized Deviation')
+        plt.ylabel("Normalized Deviation")
+        plt.xlabel("Number of jobs")
+        plt.legend()
+        plt.show()
+
+        plt.figure()  # 创建一个新的图像
+        plt.plot(smape['arima'], label='ARIMA')
+        plt.plot(smape['lstm'], label='LSTM')
+        plt.suptitle('SMAPE')
+        plt.ylabel("SMAPE")
+        plt.xlabel("Number of jobs")
+        plt.legend()
+        plt.show()
+
+
 if __name__ == '__main__':
     x1 = [0, 1, 2, 3, 4]
     y1 = [1, 2, 2, 6, 8]
