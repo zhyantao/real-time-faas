@@ -10,9 +10,9 @@ import numpy as np
 import pandas as pd
 from matplotlib import font_manager
 from networkx import DiGraph
+from pandas import DataFrame
 
-from models.autoscaler.dag import DAG
-from models.utils.dataset import get_one_job
+from models.utils.dataset import get_one_machine
 from models.utils.params import args
 
 ScheduleEvent = namedtuple('ScheduleEvent', 'task_id start end cpu_id')
@@ -25,6 +25,7 @@ class Figure:
         self.metrics_saving_path = self.result_saving_path + '/metrics'
         self.dag_saving_path = self.result_saving_path + '/dags'
         self.gantt_saving_path = self.result_saving_path + '/gantts'
+        self.workload_saving_path = self.result_saving_path + '/workloads'
 
         self.timestamp = time.time()  # 用于区分不同时刻产生的结果文件
 
@@ -37,6 +38,8 @@ class Figure:
             os.makedirs(self.dag_saving_path)
         if not os.path.exists(self.gantt_saving_path):
             os.makedirs(self.gantt_saving_path)
+        if not os.path.exists(self.workload_saving_path):
+            os.makedirs(self.workload_saving_path)
 
     def visual(self, origin_data, compared_data):
         print('figure.py --> visual() has not been implemented.')
@@ -238,60 +241,113 @@ class GanttFigure(Figure):
         plt.show()
 
 
+class WorkloadFigure(Figure):
+    def visual(self, df: DataFrame, compared_data):
+        # 创建一个 2 * 3 子图布局
+        rows, cols = 3, 3
+        # fig, axs = plt.subplots(rows, cols, figsize=(10, 5))
+
+        df_rows = df.shape[0]
+        idx, row, col = 0, 0, 0
+        while idx < df_rows:
+            machine, idx = get_one_machine(df, idx)
+            machine_name = machine['machine_id'].loc[machine.index[0]]
+
+            # 获取单个容器的 CPU 和内存消耗变化情况
+            resource_usage = machine.iloc[:, 3:5].values
+
+            # 在单张图像中展示
+            plt.figure()
+            plt.plot(resource_usage, label=['CPU Usage', 'Mem Usage'])
+            plt.title(machine_name, fontsize=11)
+            plt.ylabel("Usage (%)")
+            plt.xlabel("Time (s)")
+            plt.legend(fontsize=8)
+            plt.savefig('{}/{}_workload.png'.format(self.workload_saving_path, machine_name),
+                        dpi=600, format='png')
+            plt.close()
+
+            # # 在单张图像中展示多个子图
+            # axs[row, col].plot(resource_usage, label=['CPU Usage', 'Mem Usage'])
+            # axs[row, col].set_title(machine_name, fontsize=11)
+            # axs[row, col].set_ylabel("Usage (%)")
+            # axs[row, col].set_xlabel("Time (s)")
+            # axs[row, col].legend(fontsize=8)
+            #
+            # col += 1
+            # if col == cols:
+            #     col = 0
+            #     row += 1
+            #     if row == rows:
+            #         break
+
+        # # 添加整图标题
+        # fig.tight_layout()  # 调整子图布局以避免重叠
+        # fig.suptitle('Resource Usage')
+        # plt.subplots_adjust(top=0.88)  # 调整整图标题的位置，以避免和子图重叠
+        # plt.savefig('{}/{}_workload.png'.format(self.workload_saving_path, self.timestamp),
+        #             dpi=600, format='png')
+        # plt.show()
+
+
 if __name__ == '__main__':
-    # 生成数据
-    x1 = np.random.rand(50)
-    y1 = np.random.rand(50)
-    x2 = np.random.rand(50)
-    y2 = np.random.rand(50)
+    # # 生成数据
+    # x1 = np.random.rand(50)
+    # y1 = np.random.rand(50)
+    # x2 = np.random.rand(50)
+    # y2 = np.random.rand(50)
+    #
+    # # 绘制折线图
+    # plt.figure()
+    # plt.plot(x1, y1, '-o', label='Line 1')
+    # plt.plot(x2, y2, '-o', label='Line 2')
+    # plt.legend()
+    # plt.show()
+    #
+    # # 绘制散点图
+    # plt.figure()
+    # plt.scatter(x1, y1, color='red', marker='o')
+    # plt.scatter(x2, y2, color='blue', marker='s')
+    # plt.title('Multiple Scatter Plots')
+    # plt.xlabel('X Axis')
+    # plt.ylabel('Y Axis')
+    # plt.show()
+    #
+    # # 重建 DAG
+    # df = pd.read_csv(args.selected_batch_task_path)
+    # idx = 0
+    # while idx < df.shape[0]:
+    #     job, idx = get_one_job(df, idx)
+    #     G, job_name = DAG.generate_dag_from_alibaba_trace_data(job)
+    #     dag_figure = DAGFigure()
+    #     dag_figure.visual(G, job_name)
+    #
+    # mappings = {
+    #     0: [ScheduleEvent(task_id=1000, start=0, end=14.0, cpu_id=0),
+    #         ScheduleEvent(task_id=13, start=14.0, end=27.0, cpu_id=0),
+    #         ScheduleEvent(task_id=1, start=27.0, end=40.0, cpu_id=0),
+    #         ScheduleEvent(task_id=12, start=40.0, end=51.0, cpu_id=0),
+    #         ScheduleEvent(task_id=7, start=57.0, end=62.0, cpu_id=0),
+    #         ScheduleEvent(task_id=15, start=62.0, end=75.0, cpu_id=0),
+    #         ScheduleEvent(task_id=16, start=75.0, end=82.0, cpu_id=0),
+    #         ScheduleEvent(task_id=17, start=86.0, end=91.0, cpu_id=0)],
+    #     1: [ScheduleEvent(task_id=3, start=18.0, end=26.0, cpu_id=1),
+    #         ScheduleEvent(task_id=5, start=26.0, end=42.0, cpu_id=1),
+    #         ScheduleEvent(task_id=14, start=42.0, end=55.0, cpu_id=1),
+    #         ScheduleEvent(task_id=8, start=56.0, end=68.0, cpu_id=1),
+    #         ScheduleEvent(task_id=9, start=73.0, end=80.0, cpu_id=1),
+    #         ScheduleEvent(task_id=19, start=102.0, end=109.0, cpu_id=1)],
+    #     2: [ScheduleEvent(task_id=0, start=0, end=9.0, cpu_id=2),
+    #         ScheduleEvent(task_id=2, start=9.0, end=28.0, cpu_id=2),
+    #         ScheduleEvent(task_id=4, start=28.0, end=38.0, cpu_id=2),
+    #         ScheduleEvent(task_id=6, start=38.0, end=49.0, cpu_id=2),
+    #         ScheduleEvent(task_id=11, start=49.0, end=67.0, cpu_id=2),
+    #         ScheduleEvent(task_id=18, start=68.0, end=88.0, cpu_id=2)]
+    # }
+    #
+    # gantt_figure = GanttFigure()
+    # gantt_figure.visual(mappings, None)
 
-    # 绘制折线图
-    plt.figure()
-    plt.plot(x1, y1, '-o', label='Line 1')
-    plt.plot(x2, y2, '-o', label='Line 2')
-    plt.legend()
-    plt.show()
-
-    # 绘制散点图
-    plt.figure()
-    plt.scatter(x1, y1, color='red', marker='o')
-    plt.scatter(x2, y2, color='blue', marker='s')
-    plt.title('Multiple Scatter Plots')
-    plt.xlabel('X Axis')
-    plt.ylabel('Y Axis')
-    plt.show()
-
-    # 重建 DAG
-    df = pd.read_csv(args.selected_batch_task_path)
-    idx = 0
-    while idx < df.shape[0]:
-        job, idx = get_one_job(df, idx)
-        G, job_name = DAG.generate_dag_from_alibaba_trace_data(job)
-        dag_figure = DAGFigure()
-        dag_figure.visual(G, job_name)
-
-    mappings = {
-        0: [ScheduleEvent(task_id=1000, start=0, end=14.0, cpu_id=0),
-            ScheduleEvent(task_id=13, start=14.0, end=27.0, cpu_id=0),
-            ScheduleEvent(task_id=1, start=27.0, end=40.0, cpu_id=0),
-            ScheduleEvent(task_id=12, start=40.0, end=51.0, cpu_id=0),
-            ScheduleEvent(task_id=7, start=57.0, end=62.0, cpu_id=0),
-            ScheduleEvent(task_id=15, start=62.0, end=75.0, cpu_id=0),
-            ScheduleEvent(task_id=16, start=75.0, end=82.0, cpu_id=0),
-            ScheduleEvent(task_id=17, start=86.0, end=91.0, cpu_id=0)],
-        1: [ScheduleEvent(task_id=3, start=18.0, end=26.0, cpu_id=1),
-            ScheduleEvent(task_id=5, start=26.0, end=42.0, cpu_id=1),
-            ScheduleEvent(task_id=14, start=42.0, end=55.0, cpu_id=1),
-            ScheduleEvent(task_id=8, start=56.0, end=68.0, cpu_id=1),
-            ScheduleEvent(task_id=9, start=73.0, end=80.0, cpu_id=1),
-            ScheduleEvent(task_id=19, start=102.0, end=109.0, cpu_id=1)],
-        2: [ScheduleEvent(task_id=0, start=0, end=9.0, cpu_id=2),
-            ScheduleEvent(task_id=2, start=9.0, end=28.0, cpu_id=2),
-            ScheduleEvent(task_id=4, start=28.0, end=38.0, cpu_id=2),
-            ScheduleEvent(task_id=6, start=38.0, end=49.0, cpu_id=2),
-            ScheduleEvent(task_id=11, start=49.0, end=67.0, cpu_id=2),
-            ScheduleEvent(task_id=18, start=68.0, end=88.0, cpu_id=2)]
-    }
-
-    gantt_figure = GanttFigure()
-    gantt_figure.visual(mappings, None)
+    df = pd.read_csv(args.selected_container_usage_path)
+    workload_figure = WorkloadFigure()
+    workload_figure.visual(df, None)
