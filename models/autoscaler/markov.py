@@ -61,33 +61,21 @@ class MostLikelyPath:
 
 
 if __name__ == '__main__':
-    # df = pd.read_csv(args.selected_batch_task_path)
-    #
-    # # 遍历一个 job
-    # job, idx = get_one_job(df)
-    # G, job_name = DAG.generate_dag_from_alibaba_trace_data(job)
-    # DAGFigure().visual(G)  # 可视化 job
-    # adj = nx.to_numpy_matrix(G)  # 将 DiGraph 转为邻接矩阵
-    # mlp = MostLikelyPath()
-    # path = mlp.markov_predict_path(adj, 3)
-    # print(job_name, '\t', path)
-    #
-    # # 遍历另一个 job
-    # job, idx = get_one_job(df, idx)
-    # G, job_name = DAG.generate_dag_from_alibaba_trace_data(job)
-    # DAGFigure().visual(G)  # 可视化 job
-    # adj = nx.to_numpy_matrix(G)  # 将 DiGraph 转为邻接矩阵
-    # mlp = MostLikelyPath()
-    # path = mlp.markov_predict_path(adj, 3)
-    # print(job_name, ' ', path)
-
     df = pd.read_csv(args.selected_batch_task_path)
+
     idx = 0
     while idx < df.shape[0]:
+        # 获取一个 job
         job, idx = get_one_job(df, idx)
+
+        # 分析和生成 DAG
         G, job_name = DAG.generate_dag_from_alibaba_trace_data(job)
+
+        # 可视化 DAG
         dag_figure = DAGFigure()
         dag_figure.visual(G, job_name)
+
+        # 预测执行路径
         adj = nx.to_numpy_matrix(G)  # 将 DiGraph 转为邻接矩阵
         mlp = MostLikelyPath()
         path = mlp.markov_predict_path(adj, 3)
