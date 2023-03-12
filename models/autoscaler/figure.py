@@ -2,16 +2,20 @@
 
 import os.path
 import time
+from collections import namedtuple
 
 import matplotlib.pyplot as plt
 import networkx as nx
 import numpy as np
 import pandas as pd
+from matplotlib import font_manager
 from networkx import DiGraph
 
 from models.autoscaler.dag import DAG
 from models.utils.dataset import get_one_job
 from models.utils.params import args
+
+ScheduleEvent = namedtuple('ScheduleEvent', 'task_id start end cpu_id')
 
 
 class Figure:
@@ -20,6 +24,7 @@ class Figure:
         self.result_saving_path = args.result_saving_path
         self.metrics_saving_path = self.result_saving_path + '/metrics'
         self.dag_saving_path = self.result_saving_path + '/dags'
+        self.gantt_saving_path = self.result_saving_path + '/gantts'
 
         self.timestamp = time.time()  # 用于区分不同时刻产生的结果文件
 
@@ -30,6 +35,8 @@ class Figure:
             os.makedirs(self.metrics_saving_path)
         if not os.path.exists(self.dag_saving_path):
             os.makedirs(self.dag_saving_path)
+        if not os.path.exists(self.gantt_saving_path):
+            os.makedirs(self.gantt_saving_path)
 
     def visual(self, origin_data, compared_data):
         print('figure.py --> visual() has not been implemented.')
@@ -183,6 +190,54 @@ class DAGFigure(Figure):
         plt.show()
 
 
+class GanttFigure(Figure):
+    def __init__(self):
+        super().__init__()
+
+    def visual(self, schedule_events: dict, compared_data):
+        """
+        给定一个 cpu-task 映射表，使用甘特图将其可视化。比如：
+        {
+            cpu0: [task1(start_time, end_time), task2(start_time, end_time)],
+            cpu1: [task4(start_time, end_time), task5(start_time, end_time), task3(start_time, end_time],
+            ...
+        }
+
+        :param compared_data:
+        :param schedule_events: cpu-task 映射表
+        :return: 无返回值
+        """
+
+        cpus = list(schedule_events.keys())
+        num_cpus = len(cpus)
+
+        fig = plt.figure(figsize=(15, 6))
+        ax = fig.add_subplot(111)
+        # 绘制水平柱状图
+        for idx, cpu in enumerate(cpus):
+            for event in schedule_events[cpu]:
+                ax.barh((idx * 0.5) + 0.5, event.end - event.start, left=event.start, height=0.2,
+                        align='center', edgecolor='black', color='white', alpha=0.8)
+                ax.text(0.5 * (event.start + event.end - len(str(event.task_id))), 0.5 * idx + 0.47, event.task_id,
+                        color='blue', fontweight='normal', fontsize=12, alpha=0.8)
+
+        # 设置图像属性
+        pos = np.arange(0.5, num_cpus * 0.5 + 0.5, 0.5)
+        print(pos)
+        plt.ylabel('CPU Number (#)', fontsize=12)
+        plt.xlabel('Time Cost (s)', fontsize=12)
+        locs, labels = plt.yticks(pos, cpus)  # 重新设置 y 轴步长（locs）和每个步长对应的名称（labels）
+        plt.setp(labels, fontsize=12)  # 设置 y 轴坐标
+        ax.set_ylim(ymin=-0.1, ymax=num_cpus * 0.5 + 0.5)
+        ax.set_xlim(xmin=-5)
+        ax.grid(color='g', linestyle=':', alpha=0.75)
+
+        font_manager.FontProperties(size='small')
+        plt.savefig('{}/{}.png'.format(self.gantt_saving_path, self.timestamp),
+                    format='png')
+        plt.show()
+
+
 if __name__ == '__main__':
     # 生成数据
     x1 = np.random.rand(50)
@@ -214,3 +269,29 @@ if __name__ == '__main__':
         G, job_name = DAG.generate_dag_from_alibaba_trace_data(job)
         dag_figure = DAGFigure()
         dag_figure.visual(G, job_name)
+
+    mappings = {
+        0: [ScheduleEvent(task_id=1000, start=0, end=14.0, cpu_id=0),
+            ScheduleEvent(task_id=13, start=14.0, end=27.0, cpu_id=0),
+            ScheduleEvent(task_id=1, start=27.0, end=40.0, cpu_id=0),
+            ScheduleEvent(task_id=12, start=40.0, end=51.0, cpu_id=0),
+            ScheduleEvent(task_id=7, start=57.0, end=62.0, cpu_id=0),
+            ScheduleEvent(task_id=15, start=62.0, end=75.0, cpu_id=0),
+            ScheduleEvent(task_id=16, start=75.0, end=82.0, cpu_id=0),
+            ScheduleEvent(task_id=17, start=86.0, end=91.0, cpu_id=0)],
+        1: [ScheduleEvent(task_id=3, start=18.0, end=26.0, cpu_id=1),
+            ScheduleEvent(task_id=5, start=26.0, end=42.0, cpu_id=1),
+            ScheduleEvent(task_id=14, start=42.0, end=55.0, cpu_id=1),
+            ScheduleEvent(task_id=8, start=56.0, end=68.0, cpu_id=1),
+            ScheduleEvent(task_id=9, start=73.0, end=80.0, cpu_id=1),
+            ScheduleEvent(task_id=19, start=102.0, end=109.0, cpu_id=1)],
+        2: [ScheduleEvent(task_id=0, start=0, end=9.0, cpu_id=2),
+            ScheduleEvent(task_id=2, start=9.0, end=28.0, cpu_id=2),
+            ScheduleEvent(task_id=4, start=28.0, end=38.0, cpu_id=2),
+            ScheduleEvent(task_id=6, start=38.0, end=49.0, cpu_id=2),
+            ScheduleEvent(task_id=11, start=49.0, end=67.0, cpu_id=2),
+            ScheduleEvent(task_id=18, start=68.0, end=88.0, cpu_id=2)]
+    }
+
+    gantt_figure = GanttFigure()
+    gantt_figure.visual(mappings, None)

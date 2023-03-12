@@ -3,9 +3,9 @@ from collections import deque
 import networkx as nx
 import numpy as np
 import pandas as pd
+from pandas import DataFrame
 
 from models.autoscaler.dag import DAG
-from models.autoscaler.figure import DAGFigure
 from models.utils.dataset import get_one_job
 from models.utils.params import args
 
@@ -28,14 +28,17 @@ class MostLikelyPath:
         initial_state = all_zero_cols.astype(int)
         # print('initial_state: ', initial_state)
 
+        # 将初始状态添加到最可能的执行路径中
+        nonzero_positions = np.nonzero(initial_state[0])
+        for node_index in nonzero_positions[1]:
+            self.put(node_index)
+
         # 预测未来的状态
         for i in range(step):
             predicted_state = initial_state.dot(transition_matrix)
-            # print('predicted_state ', predicted_state)
 
             # 使用 argsort() 函数对数组的索引进行排序
             sorted_indices = np.argsort(predicted_state, axis=1)
-            # print('sorted_indices ', sorted_indices)
 
             n = sorted_indices.shape[1]
             for j in range(n - 1, -1, -1):
@@ -46,15 +49,27 @@ class MostLikelyPath:
 
             initial_state = predicted_state  # 更新为下一个状态
 
-        return np.array(self.path)
+        self.path = np.array(self.path)
 
     def put(self, item):
         if item not in self.visited:
             self.path.append(item)
             self.visited.add(item)
 
-    def get(self):
-        return self.path.popleft()
+    def get(self, job: DataFrame):
+        # 分析和生成 DAG
+        G, job_name = DAG.generate_dag_from_alibaba_trace_data(job)
+
+        # # 可视化 DAG
+        # dag_figure = DAGFigure()
+        # dag_figure.visual(G, job_name)
+
+        # 预测执行路径
+        adj = nx.to_numpy_matrix(G)  # 将 DiGraph 转为邻接矩阵
+        self.markov_predict_path(adj, 3)
+        # print(job_name, '\t', self.path)
+
+        return self.path, job_name
 
     def __len__(self):
         return len(self.path)
@@ -68,15 +83,7 @@ if __name__ == '__main__':
         # 获取一个 job
         job, idx = get_one_job(df, idx)
 
-        # 分析和生成 DAG
-        G, job_name = DAG.generate_dag_from_alibaba_trace_data(job)
-
-        # 可视化 DAG
-        dag_figure = DAGFigure()
-        dag_figure.visual(G, job_name)
-
-        # 预测执行路径
-        adj = nx.to_numpy_matrix(G)  # 将 DiGraph 转为邻接矩阵
+        # 获取 Most Likely Path
         mlp = MostLikelyPath()
-        path = mlp.markov_predict_path(adj, 3)
-        print(job_name, '\t', path)
+        path, job_name = mlp.get(job)
+        print(job_name, ' ', path)
