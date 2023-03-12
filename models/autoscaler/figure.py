@@ -242,52 +242,52 @@ class GanttFigure(Figure):
 
 
 class WorkloadFigure(Figure):
-    def visual(self, df: DataFrame, compared_data):
+    def visual(self, data: DataFrame, compared_data):
         # 创建一个 2 * 3 子图布局
         rows, cols = 3, 3
-        # fig, axs = plt.subplots(rows, cols, figsize=(10, 5))
+        fig, axs = plt.subplots(rows, cols, figsize=(10, 8))
 
-        df_rows = df.shape[0]
+        df_rows = data.shape[0]
         idx, row, col = 0, 0, 0
         while idx < df_rows:
-            machine, idx = get_one_machine(df, idx)
+            machine, idx = get_one_machine(data, idx)
             machine_name = machine['machine_id'].loc[machine.index[0]]
 
             # 获取单个容器的 CPU 和内存消耗变化情况
             resource_usage = machine.iloc[:, 3:5].values
 
-            # 在单张图像中展示
-            plt.figure()
-            plt.plot(resource_usage, label=['CPU Usage', 'Mem Usage'])
-            plt.title(machine_name, fontsize=11)
-            plt.ylabel("Usage (%)")
-            plt.xlabel("Time (s)")
-            plt.legend(fontsize=8)
-            plt.savefig('{}/{}_workload.png'.format(self.workload_saving_path, machine_name),
-                        dpi=600, format='png')
-            plt.close()
+            # # 在单张图像中展示
+            # plt.figure()
+            # plt.plot(resource_usage, label=['CPU Usage', 'Mem Usage'])
+            # plt.title(machine_name, fontsize=11)
+            # plt.ylabel("Usage (%)")
+            # plt.xlabel("Time (s)")
+            # plt.legend(fontsize=8)
+            # plt.savefig('{}/{}_workload.png'.format(self.workload_saving_path, machine_name),
+            #             dpi=600, format='png')
+            # plt.close()
 
-            # # 在单张图像中展示多个子图
-            # axs[row, col].plot(resource_usage, label=['CPU Usage', 'Mem Usage'])
-            # axs[row, col].set_title(machine_name, fontsize=11)
-            # axs[row, col].set_ylabel("Usage (%)")
-            # axs[row, col].set_xlabel("Time (s)")
-            # axs[row, col].legend(fontsize=8)
-            #
-            # col += 1
-            # if col == cols:
-            #     col = 0
-            #     row += 1
-            #     if row == rows:
-            #         break
+            # 在单张图像中展示多个子图
+            axs[row, col].plot(resource_usage, label=['CPU Usage', 'Mem Usage'])
+            axs[row, col].set_title(machine_name, fontsize=11)
+            axs[row, col].set_ylabel("Usage (%)")
+            axs[row, col].set_xlabel("Time (s)")
+            axs[row, col].legend(fontsize=8)
 
-        # # 添加整图标题
-        # fig.tight_layout()  # 调整子图布局以避免重叠
-        # fig.suptitle('Resource Usage')
-        # plt.subplots_adjust(top=0.88)  # 调整整图标题的位置，以避免和子图重叠
-        # plt.savefig('{}/{}_workload.png'.format(self.workload_saving_path, self.timestamp),
-        #             dpi=600, format='png')
-        # plt.show()
+            col += 1
+            if col == cols:
+                col = 0
+                row += 1
+                if row == rows:
+                    break
+
+        # 添加整图标题
+        fig.tight_layout()  # 调整子图布局以避免重叠
+        fig.suptitle('Resource Usage')
+        plt.subplots_adjust(top=0.88)  # 调整整图标题的位置，以避免和子图重叠
+        plt.savefig('{}/{}_workload.png'.format(self.workload_saving_path, self.timestamp),
+                    dpi=600, format='png')
+        plt.show()
 
 
 if __name__ == '__main__':
