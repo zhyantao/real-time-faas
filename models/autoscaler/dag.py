@@ -1,4 +1,5 @@
 import networkx as nx
+import numpy as np
 import pandas as pd
 from pandas import DataFrame
 
@@ -33,12 +34,22 @@ class DAG:
             if len(dependencies) == 1:
                 G.add_node(curr_task)
             else:
-                i, weight = 1, generate_random_numbers(len(dependencies) - 1)
+                i, weights = 1, generate_random_numbers(len(dependencies) - 1)
                 while i < len(dependencies):
                     dependency = dependencies[i]
-                    # G.add_edge(dependency, curr_task, weight=weight[i - 1])  # 为了与 batch.csv 中编号匹配可解开此注释
-                    G.add_edge(int(dependency) - 1, int(curr_task) - 1, weight=weight[i - 1])  # 为了编程方便
+                    G.add_edge(dependency, curr_task, weight=weights[i - 1])
                     i += 1
+
+        # 重新为每条边分配随机权重（出度概率总和为 1）
+        adj = np.asarray(nx.to_numpy_matrix(G))
+        counts = np.count_nonzero(adj, axis=1)
+        for i in range(len(adj)):
+            weights, k = generate_random_numbers(counts[i]), 0
+            for j in range(len(adj)):
+                if adj[i, j] > 0:
+                    adj[i, j] = weights[k]
+                    k += 1
+        G = nx.from_numpy_matrix(adj, create_using=nx.DiGraph)
 
         if job_name is None:
             job_name = job['job_name'].loc[job.index[0]]
