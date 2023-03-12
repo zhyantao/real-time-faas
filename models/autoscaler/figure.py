@@ -272,6 +272,9 @@ class WorkloadFigure(Figure):
             axs[row, col].set_title(machine_name, fontsize=11)
             axs[row, col].set_ylabel("Usage (%)")
             axs[row, col].set_xlabel("Time (s)")
+            axs[row, col].set_xticks([0, 30, 60, 90, 120, 150])
+            axs[row, col].set_ylim(-10, 110)
+            axs[row, col].grid(True, alpha=0.5, linewidth=0.5, linestyle='--')  # 显示水平和垂直辅助线
             axs[row, col].legend(fontsize=8)
 
             col += 1
@@ -284,7 +287,7 @@ class WorkloadFigure(Figure):
         # 添加整图标题
         fig.tight_layout()  # 调整子图布局以避免重叠
         fig.suptitle('Resource Usage')
-        plt.subplots_adjust(top=0.88)  # 调整整图标题的位置，以避免和子图重叠
+        plt.subplots_adjust(top=0.92)  # 调整整图标题的位置，以避免和子图重叠
         plt.savefig('{}/{}_workload.png'.format(self.workload_saving_path, self.timestamp),
                     dpi=600, format='png')
         plt.show()
