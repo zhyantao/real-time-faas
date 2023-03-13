@@ -4,7 +4,7 @@ DPE 算法实现：
 """
 
 from models.utils.dataset import *
-from models.utils.scenario import bar, para
+from models.utils.scenario import para
 
 
 class DPE:
@@ -36,6 +36,8 @@ class DPE:
         total_job_nums = para.get("total_jobs")  # 需要采样的 job 的数量
         calculated_num = 0  # 已经计算的 job，用于监控当前处理进度
         print('\nGetting makespan for %d jobs by DPE algorithm ...' % total_job_nums)
+
+        bar = ProgressBar()
 
         # 遍历所有的 jobs
         while idx < rows:

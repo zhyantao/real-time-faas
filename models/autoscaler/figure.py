@@ -12,7 +12,8 @@ from matplotlib import font_manager
 from networkx import DiGraph
 from pandas import DataFrame
 
-from models.utils.dataset import get_one_machine
+from models.autoscaler.dag import DAG
+from models.utils.dataset import get_one_machine, get_one_job
 from models.utils.params import args
 
 ScheduleEvent = namedtuple('ScheduleEvent', 'task_id start end cpu_id')
@@ -52,28 +53,45 @@ class TimeSeriesFigure(Figure):
 
         # 设置分割线
         split_line_pos = origin_data.shape[0] - len(compared_data['arima'])
-        plt.axvline(x=split_line_pos, c='r', linestyle='--')
 
-        # 绘制真实数据
-        plt.plot(origin_data, label=['Real CPU util.', 'Real Mem util.'])
+        # 创建一个 1 * 3 子图布局
+        rows, cols = 1, 3
+        fig, axs = plt.subplots(rows, cols, figsize=(10, 3))
 
-        # 绘制 ARIMA 预测的数据（可选）
-        plt.plot(range(split_line_pos, origin_data.shape[0]), compared_data['arima'],  # 用 range 指定起点坐标
-                 label=['ARIMA pred. CPU util.', 'ARIMA pred. Mem util.'])
+        # 绘制 ARIMA 预测的数据
+        axs[0].plot(origin_data, label=['Real CPU util.', 'Real Mem util.'])
+        axs[0].plot(range(split_line_pos, origin_data.shape[0]), compared_data['arima'],  # 用 range 指定起点坐标
+                       label=['ARIMA pred. CPU util.', 'ARIMA pred. Mem util.'])
+        axs[0].axvline(x=split_line_pos, c='r', linestyle='--')
+        axs[0].set_title('ARIMA prediction')
+        axs[0].set_ylabel("Utilization Rate (%)")
+        axs[0].set_xlabel("Job Number (#)")
+        axs[0].legend(fontsize=8)
 
-        # 绘制 LSTM 预测的数据（可选）
-        plt.plot(range(split_line_pos, origin_data.shape[0]), compared_data['lstm'],
-                 label=['LSTM pred. CPU util.', 'LSTM pred. Mem util.'])
+        # 绘制 LSTM 预测的数据
+        axs[1].plot(origin_data, label=['Real CPU util.', 'Real Mem util.'])
+        axs[1].plot(range(split_line_pos, origin_data.shape[0]), compared_data['lstm'],
+                       label=['LSTM pred. CPU util.', 'LSTM pred. Mem util.'])
+        axs[1].axvline(x=split_line_pos, c='r', linestyle='--')
+        axs[1].set_title('LSTM prediction')
+        axs[1].set_ylabel("Utilization Rate (%)")
+        axs[1].set_xlabel("Job Number (#)")
+        axs[1].legend(fontsize=8)
 
-        # 绘制 Ours 预测的数据（可选）
-        plt.plot(range(split_line_pos, origin_data.shape[0]), compared_data['ours'],
-                 label=['Ours pred. CPU util.', 'Ours pred. Mem util.'])
+        # 绘制 Ours 预测的数据
+        axs[2].plot(origin_data, label=['Real CPU util.', 'Real Mem util.'])
+        axs[2].plot(range(split_line_pos, origin_data.shape[0]), compared_data['ours'],
+                       label=['Ours pred. CPU util.', 'Ours pred. Mem util.'])
+        axs[2].axvline(x=split_line_pos, c='r', linestyle='--')
+        axs[2].set_title('Ours prediction')
+        axs[2].set_ylabel("Utilization Rate (%)")
+        axs[2].set_xlabel("Job Number (#)")
+        axs[2].legend(fontsize=8)
 
         # 添加图片的辅助信息
-        plt.suptitle('CPU and Mem Usage Prediction')
-        plt.ylabel("Utilization Rate (%)")
-        plt.xlabel("Job Number (#)")
-        plt.legend(fontsize=8)
+        fig.tight_layout()  # 调整子图布局以避免重叠
+        fig.suptitle('CPU and Mem Usage Prediction')
+        plt.subplots_adjust(top=0.81)  # 调整整图标题的位置，以避免和子图重叠
         plt.savefig('{}/{}_timeseries.png'.format(self.metrics_saving_path, self.timestamp),
                     dpi=600, format='png')
         plt.show()
@@ -294,62 +312,62 @@ class WorkloadFigure(Figure):
 
 
 if __name__ == '__main__':
-    # # 生成数据
-    # x1 = np.random.rand(50)
-    # y1 = np.random.rand(50)
-    # x2 = np.random.rand(50)
-    # y2 = np.random.rand(50)
-    #
-    # # 绘制折线图
-    # plt.figure()
-    # plt.plot(x1, y1, '-o', label='Line 1')
-    # plt.plot(x2, y2, '-o', label='Line 2')
-    # plt.legend()
-    # plt.show()
-    #
-    # # 绘制散点图
-    # plt.figure()
-    # plt.scatter(x1, y1, color='red', marker='o')
-    # plt.scatter(x2, y2, color='blue', marker='s')
-    # plt.title('Multiple Scatter Plots')
-    # plt.xlabel('X Axis')
-    # plt.ylabel('Y Axis')
-    # plt.show()
-    #
-    # # 重建 DAG
-    # df = pd.read_csv(args.selected_batch_task_path)
-    # idx = 0
-    # while idx < df.shape[0]:
-    #     job, idx = get_one_job(df, idx)
-    #     G, job_name = DAG.generate_dag_from_alibaba_trace_data(job)
-    #     dag_figure = DAGFigure()
-    #     dag_figure.visual(G, job_name)
-    #
-    # mappings = {
-    #     0: [ScheduleEvent(task_id=1000, start=0, end=14.0, cpu_id=0),
-    #         ScheduleEvent(task_id=13, start=14.0, end=27.0, cpu_id=0),
-    #         ScheduleEvent(task_id=1, start=27.0, end=40.0, cpu_id=0),
-    #         ScheduleEvent(task_id=12, start=40.0, end=51.0, cpu_id=0),
-    #         ScheduleEvent(task_id=7, start=57.0, end=62.0, cpu_id=0),
-    #         ScheduleEvent(task_id=15, start=62.0, end=75.0, cpu_id=0),
-    #         ScheduleEvent(task_id=16, start=75.0, end=82.0, cpu_id=0),
-    #         ScheduleEvent(task_id=17, start=86.0, end=91.0, cpu_id=0)],
-    #     1: [ScheduleEvent(task_id=3, start=18.0, end=26.0, cpu_id=1),
-    #         ScheduleEvent(task_id=5, start=26.0, end=42.0, cpu_id=1),
-    #         ScheduleEvent(task_id=14, start=42.0, end=55.0, cpu_id=1),
-    #         ScheduleEvent(task_id=8, start=56.0, end=68.0, cpu_id=1),
-    #         ScheduleEvent(task_id=9, start=73.0, end=80.0, cpu_id=1),
-    #         ScheduleEvent(task_id=19, start=102.0, end=109.0, cpu_id=1)],
-    #     2: [ScheduleEvent(task_id=0, start=0, end=9.0, cpu_id=2),
-    #         ScheduleEvent(task_id=2, start=9.0, end=28.0, cpu_id=2),
-    #         ScheduleEvent(task_id=4, start=28.0, end=38.0, cpu_id=2),
-    #         ScheduleEvent(task_id=6, start=38.0, end=49.0, cpu_id=2),
-    #         ScheduleEvent(task_id=11, start=49.0, end=67.0, cpu_id=2),
-    #         ScheduleEvent(task_id=18, start=68.0, end=88.0, cpu_id=2)]
-    # }
-    #
-    # gantt_figure = GanttFigure()
-    # gantt_figure.visual(mappings, None)
+    # 生成数据
+    x1 = np.random.rand(50)
+    y1 = np.random.rand(50)
+    x2 = np.random.rand(50)
+    y2 = np.random.rand(50)
+
+    # 绘制折线图
+    plt.figure()
+    plt.plot(x1, y1, '-o', label='Line 1')
+    plt.plot(x2, y2, '-o', label='Line 2')
+    plt.legend()
+    plt.show()
+
+    # 绘制散点图
+    plt.figure()
+    plt.scatter(x1, y1, color='red', marker='o')
+    plt.scatter(x2, y2, color='blue', marker='s')
+    plt.title('Multiple Scatter Plots')
+    plt.xlabel('X Axis')
+    plt.ylabel('Y Axis')
+    plt.show()
+
+    # 重建 DAG
+    df = pd.read_csv(args.selected_batch_task_path)
+    idx = 0
+    while idx < df.shape[0]:
+        job, idx = get_one_job(df, idx)
+        G, job_name = DAG.generate_dag_from_alibaba_trace_data(job)
+        dag_figure = DAGFigure()
+        dag_figure.visual(G, job_name)
+
+    mappings = {
+        0: [ScheduleEvent(task_id=1000, start=0, end=14.0, cpu_id=0),
+            ScheduleEvent(task_id=13, start=14.0, end=27.0, cpu_id=0),
+            ScheduleEvent(task_id=1, start=27.0, end=40.0, cpu_id=0),
+            ScheduleEvent(task_id=12, start=40.0, end=51.0, cpu_id=0),
+            ScheduleEvent(task_id=7, start=57.0, end=62.0, cpu_id=0),
+            ScheduleEvent(task_id=15, start=62.0, end=75.0, cpu_id=0),
+            ScheduleEvent(task_id=16, start=75.0, end=82.0, cpu_id=0),
+            ScheduleEvent(task_id=17, start=86.0, end=91.0, cpu_id=0)],
+        1: [ScheduleEvent(task_id=3, start=18.0, end=26.0, cpu_id=1),
+            ScheduleEvent(task_id=5, start=26.0, end=42.0, cpu_id=1),
+            ScheduleEvent(task_id=14, start=42.0, end=55.0, cpu_id=1),
+            ScheduleEvent(task_id=8, start=56.0, end=68.0, cpu_id=1),
+            ScheduleEvent(task_id=9, start=73.0, end=80.0, cpu_id=1),
+            ScheduleEvent(task_id=19, start=102.0, end=109.0, cpu_id=1)],
+        2: [ScheduleEvent(task_id=0, start=0, end=9.0, cpu_id=2),
+            ScheduleEvent(task_id=2, start=9.0, end=28.0, cpu_id=2),
+            ScheduleEvent(task_id=4, start=28.0, end=38.0, cpu_id=2),
+            ScheduleEvent(task_id=6, start=38.0, end=49.0, cpu_id=2),
+            ScheduleEvent(task_id=11, start=49.0, end=67.0, cpu_id=2),
+            ScheduleEvent(task_id=18, start=68.0, end=88.0, cpu_id=2)]
+    }
+
+    gantt_figure = GanttFigure()
+    gantt_figure.visual(mappings, None)
 
     df = pd.read_csv(args.selected_container_usage_path)
     workload_figure = WorkloadFigure()
