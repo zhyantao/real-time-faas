@@ -15,13 +15,16 @@ comm_cost - function :: job, job, agent, agent -> time to transfer results
 
 (function ---> job, edge server ---> agent)
 """
+import datetime
+import pprint
 import random
 from collections import namedtuple
 from functools import partial
 from itertools import chain
 
 from models.utils.dataset import *
-from models.utils.scenario import bar, para
+from models.utils.scenario import para, get_simple_paths, print_simple_paths, get_ratio, set_funcs, generate_scenario, \
+    print_scenario
 
 
 def get_agents():
@@ -64,6 +67,7 @@ class HEFT:
         task_deployment_all = []
         cpu_task_mapping_list_all = []
 
+        bar = ProgressBar()
         total_job_nums = para.get("total_jobs")
         calculated_num = 0
         print('\nGetting makespan for %d jobs by HEFT algorithm ...' % total_job_nums)
@@ -107,6 +111,11 @@ class HEFT:
                 percent = 100
             bar.update(percent)
             idx += task_nums
+
+        print('----------> cpu task mapping list all: \n')
+        pprint.pprint(cpu_task_mapping_list_all)
+        print('----------> task deployment all: \n')
+        pprint.pprint(task_deployment_all)
 
         print('The overall makespan achieved by HEFT: %f second' % makespan_all)
         print('The average makespan: %f second' % (makespan_all / total_job_nums))
@@ -411,3 +420,29 @@ class HEFT:
             orders['server ' + str(n + 1)] = orders.pop(str(n))
 
         return orders, jobson, HEFT.makespan(orders)
+
+
+if __name__ == '__main__':
+    # 生成数据集
+    sample_machines()
+    sample_jobs()
+    get_topological_order()
+
+    # 根据数据集生成 FaaS 场景
+    G, bw, pp = generate_scenario()  # 根据配置文件指定的 CPU 数量生成场景
+    print_scenario(G, bw, pp)
+
+    # 打印简单路径
+    simple_paths = get_simple_paths(G)  # 简单路径不用变
+    print_simple_paths(simple_paths)
+
+    reciprocals_list, proportions_list = get_ratio(simple_paths, bw)  # 倒数关系不用变
+    pp_required, data_stream = set_funcs()  # 资源需求不用变
+
+    # 进行算法对比 HEFT
+    heft = HEFT(G, bw, pp, simple_paths, reciprocals_list, proportions_list, pp_required, data_stream)
+    start = datetime.datetime.now()
+    cpu_task_mapping_list_all, task_deployment_all, makespan_avg_heft \
+        = heft.get_response_time(sorted_job_path=para.get("batch_task_topological_order_path"))
+    end = datetime.datetime.now()
+    print('Computer\'s running time:', (end - start).microseconds, 'microseconds')

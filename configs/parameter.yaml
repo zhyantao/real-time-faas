@@ -13,11 +13,11 @@ batch_instance_topological_order_path: "E:/Workshop/real-time-faas/dataset/batch
 # Scheduler
 ################
 # edge computing environment settings
-cpu_nums: 4
+cpu_nums: 3  # 100 memory error
 n_pairs: 12
 
 # density is used to adjust the connectivity of the graph
-density: 10
+density: 10  # 100 will get memory error
 
 # bandwidth generation scope
 bw_lower: 30

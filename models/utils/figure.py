@@ -65,8 +65,10 @@ class SchedulingResult:
         schedules = [[] for _ in range(para.get("cpu_nums"))]
         for task_num in cpu_task_mapping_list:
             cpu_selected = int(task_deployment[task_num - 1])
-            pair = {'task_num=' + str(task_num): self.Event(start=task_start_time[task_num - 1],
-                                                            end=cpu_earliest_finish_time[task_num - 1][cpu_selected])}
+            pair = {'task_num=' + str(task_num):
+                        self.Event(start=task_start_time[task_num - 1],
+                                   end=cpu_earliest_finish_time[task_num - 1][cpu_selected])
+                    }
             schedules[cpu_selected].append(pair)
         schedules_dict = {}
         for n in range(para.get("cpu_nums")):

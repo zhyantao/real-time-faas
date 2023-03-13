@@ -147,7 +147,7 @@ def get_topological_order(selected_batch_task_path=para.get("selected_batch_task
     获取每个 job 中 task 的拓扑排序，保存到文件中。
     """
     if os.path.exists(batch_task_topological_order_path):
-        print('Jobs\' topological order has been obtained.')
+        print('Jobs\' topological order (batch_task_topological_order.csv) has been obtained.')
         return
 
     if not os.path.exists(selected_batch_task_path):

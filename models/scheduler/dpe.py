@@ -2,15 +2,18 @@
 DPE 算法实现：
 局限性：该算法的改进在于使用了倒数来分配流量，但是时间复杂度是极高的，只适合在简单功能下使用。
 """
+import datetime
 
 from models.utils.dataset import *
-from models.utils.scenario import para
+from models.utils.figure import SchedulingResult
+from models.utils.scenario import para, generate_scenario, print_scenario, get_simple_paths, print_simple_paths, \
+    get_ratio, set_funcs
 
 
 class DPE:
-    def __init__(self, jobs, bw, pp, simple_paths, reciprocal_list, proportion_list, pp_required, data_stream):
+    def __init__(self, cpus, bw, pp, simple_paths, reciprocal_list, proportion_list, pp_required, data_stream):
         # get the generated edge computing scenario
-        self.jobs, self.bw, self.pp = jobs, bw, pp
+        self.cpus, self.bw, self.pp = cpus, bw, pp
         self.simple_paths, self.reciprocal_list, self.proportion_list = simple_paths, reciprocal_list, proportion_list
         # get the generated functions' requirements
         self.pp_required, self.data_stream = pp_required, data_stream
@@ -35,11 +38,12 @@ class DPE:
 
         total_job_nums = para.get("total_jobs")  # 需要采样的 job 的数量
         calculated_num = 0  # 已经计算的 job，用于监控当前处理进度
-        print('\nGetting makespan for %d jobs by DPE algorithm ...' % total_job_nums)
+        print('\nGetting makespan for %d cpus by DPE algorithm ...' % total_job_nums)
 
         bar = ProgressBar()
+        count = 0
 
-        # 遍历所有的 jobs
+        # 遍历所有的 cpus
         while idx < rows:
 
             task_nums = 0
@@ -131,7 +135,9 @@ class DPE:
                                             cpu_earliest_finish_time[dependent_task_name - 1] = \
                                                 job_pp_required[dependent_task_name - 1] / self.pp + cpu_finish_time
 
-                                        else:  # 虽然 dependent_task_name 的 cpu_earliest_finish_time 已经被设置了，cpu_finish_time 仍有可能被更新
+                                        # 虽然 dependent_task_name 的 cpu_earliest_finish_time 已经被设置了，
+                                        # cpu_finish_time 仍有可能被更新
+                                        else:
                                             cpu_begin_time = np.zeros(para.get("cpu_nums"))
 
                                             for cpu_k in range(para.get("cpu_nums")):
@@ -212,6 +218,7 @@ class DPE:
                 cpu_task_mapping_list_all.append(cpu_task_mapping_list)
                 cpu_earliest_finish_time_all.append(cpu_earliest_finish_time)  # 记录所有 job 的最早完成时间
                 task_start_time_all.append(task_start_time)  # 记录所有所有 job 的最早开始时间
+                count += 1
 
             calculated_num += 1
             percent = calculated_num / float(total_job_nums) * 100
@@ -220,7 +227,53 @@ class DPE:
                 percent = 100
             bar.update(percent)
             idx += task_nums
+
+        for i in range(count):
+            scheduling_result = SchedulingResult(cpu_earliest_finish_time_all,
+                                                 task_deployment_all,
+                                                 cpu_task_mapping_list_all,
+                                                 task_start_time_all,
+                                                 i)
+            scheduling_result.print()
+
         print('The overall makespan achieved by DPE: %f seconds' % makespan_all)
         print('The average makespan: %f seconds' % (makespan_all / total_job_nums))
         makespan_avg = makespan_all / total_job_nums * 1.0
+
         return cpu_earliest_finish_time_all, task_deployment_all, cpu_task_mapping_list_all, task_start_time_all, makespan_avg
+
+
+if __name__ == '__main__':
+    # 生成数据集
+    sample_machines()
+    sample_jobs()
+    get_topological_order()
+
+    # 根据数据集生成 FaaS 场景
+    G, bw, pp = generate_scenario()  # 根据配置文件指定的 CPU 数量生成场景
+    print_scenario(G, bw, pp)
+
+    # 打印简单路径
+    simple_paths = get_simple_paths(G)  # 简单路径不用变
+    print_simple_paths(simple_paths)
+
+    reciprocals_list, proportions_list = get_ratio(simple_paths, bw)  # 倒数关系不用变
+    pp_required, data_stream = set_funcs()  # 资源需求不用变
+
+    # 根据上面的机器之间的连通性、带宽限制、流量分配要求初始化 DPE 需要使用的遍历
+    dpe = DPE(G, bw, pp, simple_paths, reciprocals_list, proportions_list, pp_required, data_stream)
+
+    start = datetime.datetime.now()
+
+    # 调用算法
+    cpu_earliest_finish_time_all_dpe, \
+        task_deployment_all_dpe, \
+        cpu_task_mapping_list_all_dpe, \
+        task_start_time_all_dpe, \
+        makespan_avg_dpe = dpe.get_response_time(sorted_job_path=para.get("batch_task_topological_order_path"))
+
+    # print(task_deployment_all_dpe)
+
+    # 结束计时
+    end = datetime.datetime.now()
+    print('Computer\'s running time:', (end - start).microseconds, 'microseconds')

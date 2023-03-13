@@ -25,53 +25,58 @@ def generate_scenario():
     # initialize 以邻接矩阵的方式表示图
     # G_{ij} = 1 表示 node_i 和 node_j 之间可以通信，否则不能
     # D_{ij} = MAX_VALUE 表示 node_i 和 node_j 无法通信，否则表示最短通信距离
-    G = np.zeros((para.get("cpu_nums"), para.get("cpu_nums")))
-    D = np.ones((para.get("cpu_nums"), para.get("cpu_nums"))) * eval(para.get("max_value"))
 
-    is_connected = False
-    for i in range(para.get("cpu_nums")):
+    n = para.get("cpu_nums")
+
+    G = np.zeros((n, n))
+    D = np.ones((n, n)) * eval(para.get("max_value"))
+
+    for i in range(n):
         G[i, i] = 1
         D[i, i] = 0
 
+    is_connected = False
     while not is_connected:
-        for i in range(para.get("cpu_nums")):
+        for i in range(n):
             # randomly connect i and at most 'DENSITY' other servers
             # 将 node_i 随机连接其他 node，最多连接 DENSITY 个其他 node
-            conn_node_num = random.randint(0, para.get("density"))
+            conn_node_num = random.randint(0, para.get("density"))  # density 控制连接数量
             for j in range(conn_node_num):
-                k = random.randint(0, para.get("cpu_nums") - 1)
+                k = random.randint(0, n - 1)
                 G[i, k], G[k, i] = 1, 1
 
-        for i in range(para.get("cpu_nums")):
-            # 将 jobs 的连通性信息复制到 D
-            for j in range(para.get("cpu_nums")):
+        for i in range(n):
+            # 将 cpus 的连通性信息复制到 D
+            for j in range(n):
                 if G[i, j] == 1:
                     D[i, j], D[j, i] = 1, 1
 
-        for i in range(para.get("cpu_nums")):
-            for j in range(para.get("cpu_nums")):
-                for k in range(para.get("cpu_nums")):
+        # Prim 算法：最小生成树
+        for i in range(n):
+            for j in range(n):
+                for k in range(n):
                     # 若 node_j 到 node_k 需要经过 node_i，且经过 node_i 可以缩短距离
                     # 那么，将 node_j 到 node_k 的距离更新为更短的距离
                     if D[j, k] > D[j, i] + D[i, k]:
                         D[j, k] = D[j, i] + D[i, k]
 
         is_continue = False
-        for i in range(para.get("cpu_nums")):
-            for j in range(para.get("cpu_nums")):
+        for i in range(n):
+            for j in range(n):
                 # 如果 node_{ij} == MAX_VALUE，标识这两个节点之间的的距离非常大
                 # MAX_VALUE 是一个标志数字，不具备实际意义，只用来标识连接性
                 if D[i, j] == para.get("max_value"):
-                    # the graph is not a connected graph
+                    # the graph is not a connected graph  # 不是一个连通图
                     is_continue = True
                     break
+
         # 判断最后一个节点是否具有连接性
         if not is_continue:
             is_connected = True
 
     # step 2: set the bandwidth
-    bw = np.ones((para.get("cpu_nums"), para.get("cpu_nums"))) * -1
-    for i in range(para.get("cpu_nums")):
+    bw = np.ones((n, n)) * -1
+    for i in range(n):
         j = 0
         while j < i:
             if G[i, j] == 1:
@@ -81,8 +86,8 @@ def generate_scenario():
             j = j + 1
 
     # step 3: set the processing power
-    # 生成长度为 para.get("cpu_nums") 的随机数组，元素的取值范围为 [para.get("pp_lower"), para.get("pp_upper")]
-    pp = np.random.randint(para.get("pp_lower"), para.get("pp_upper"), para.get("cpu_nums"))
+    # 生成长度为 n 的随机数组，元素的取值范围为 [para.get("pp_lower"), para.get("pp_upper")]
+    pp = np.random.randint(para.get("pp_lower"), para.get("pp_upper"), n)
 
     return G, bw, pp
 
