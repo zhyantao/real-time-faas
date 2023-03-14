@@ -1,6 +1,7 @@
 import os
 import time
 
+import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 from sklearn.preprocessing import StandardScaler
@@ -92,6 +93,106 @@ def run_ours(y_hat_arima, y_hat_lstm):
     return y_hat
 
 
+def sliding_windows(data, seq_length):
+    X = []
+    y = []
+
+
+    for i in range(data.shape[1] - seq_length - 1):
+        _X = data[:, i:i + seq_length]  # 每次截取一段
+        _y = data[:, i + seq_length]  # 每次拼接一个
+        X.append(_X)
+        y.append(_y)
+
+    return np.array(X), np.array(y)
+
+
+def run_lstm_multi_step(X, y):
+    # 正则化数据
+    ss = StandardScaler()
+    std_data = ss.fit_transform(X)
+    # std_y = ss.fit_transform(y)
+
+    seq_len = 4
+
+    sw_X, sw_y = sliding_windows(std_data, seq_len)
+    # print(sw_X, sw_y)
+
+    # 划分数据集
+    train_size = int(sw_X.shape[0] * 0.67)
+    test_size = sw_X.shape[0] - train_size
+
+    # data_X = np.array(std_data)
+    # data_y = np.array(std_data)
+
+    train_X = np.array(sw_X[:train_size])
+    train_y = np.array(sw_y[:train_size])
+
+    test_X = np.array(sw_X[train_size:])
+    test_y = np.array(sw_y[train_size:])
+    print('--------> test_y: ', test_y)
+    std_test_y = ss.fit_transform(test_y.reshape(1, -1))
+    print('--------> std_test_y: ', std_test_y)
+
+    # (1) 初始化 LSTM 模型
+    lstm_param = LstmParam(mem_cell_ct=100, x_dim=seq_len)
+    lstm_net = LstmNetwork(lstm_param)
+
+    # 打印一些有用调试信息
+    # print('X.shape = ', X.shape)
+    # print('y.shape = ', y.shape)
+
+    # (2) 训练 LSTM 模型
+    for epoch in range(100):
+        # print("iter", "%2s" % str(epoch), end=": ")
+        for layer in range(train_X.shape[1]):
+            for i in range(train_X.shape[0]):
+                lstm_net.x_list_add(train_X[i, layer])
+
+            # for i in range(train_X.shape[1]):
+            #     lstm_net.x_list_add(train_X[:, i])
+            # for i in range(train_X.shape[0]):
+            #     lstm_net.x_list_add(train_X[i])
+
+            # (3) 预测和计算损失
+            # print("y_pred = [" +
+            #       ", ".join(["% 2.5f"
+            #                  # % ss.inverse_transform(lstm_net.lstm_node_list[m].state.h[0].reshape(1, -1))
+            #                  % lstm_net.lstm_node_list[m].state.h[0]
+            #                  for m in range(train_y.shape[0])]) +
+            #       "]", end=", ")
+            loss = lstm_net.y_list_is(train_y[:, 0], ToyLossLayer)  # 计算损失
+            # print("loss:", "%.3e" % loss)
+
+            # (4) 更新模型
+            lstm_param.apply_diff(lr=0.01)
+            lstm_net.x_list_clear()  # 清理掉原来的参数
+
+    # (5) 预测 y
+    # origin_y = ss.inverse_transform(std_y)
+    y_hat = (np.zeros_like(test_y)).reshape(-1)
+    for layer in range(test_X.shape[1]):
+        for i in range(test_X.shape[0]):
+            lstm_net.x_list_add(test_X[i, layer])
+    for m in range(test_X.shape[0]):
+        # pred = lstm_net.lstm_node_list[m].state.h[0]
+        # y_hat[m] = pred
+        pred = lstm_net.lstm_node_list[m].state.h[0]
+        y_hat[m] = pred
+    print('-----> test_y: ', ss.inverse_transform(std_test_y.reshape(1, -1)))
+    print('-----> y_hat: ', ss.inverse_transform(y_hat.reshape(1, -1)))
+    # loss = lstm_net.y_list_is(test_y[:, 0], ToyLossLayer)  # 计算损失
+    # print("loss:", "%.3e" % loss)
+    return y_hat
+
+
+def handle_multi_step(X, y):
+    pred_seq = run_lstm_multi_step(X, y)
+    res = pred_seq.reshape(-1, 2)
+    plt.plot(res)
+    plt.show()
+
+
 if __name__ == '__main__':
 
     selected_container_usage_path = args.selected_container_usage_path
@@ -146,6 +247,7 @@ if __name__ == '__main__':
             losses['lstm'].append(metrics(y_hat_lstm, y))
             # print('y_hat_lstm = {}'.format(y_hat_lstm))
             # print("evaluation (LSTM): {}\n".format(metrics(y_hat_lstm, y)))
+            handle_multi_step(X, y)
 
             # (3) 调用 Ours 预测模型
             start_time = time.time()

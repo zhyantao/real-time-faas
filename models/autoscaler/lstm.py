@@ -1,3 +1,5 @@
+"""LSTM 多步预测"""
+
 import matplotlib.pyplot as plt
 import torch
 from sklearn.preprocessing import MinMaxScaler
@@ -42,8 +44,8 @@ class LSTM(nn.Module):
         y = []
 
         for i in range(len(data) - self.seq_length - 1):
-            _x = data[i:i + self.seq_length]
-            _y = data[i + self.seq_length]
+            _x = data[i:i + self.seq_length]  # 每次截取一段
+            _y = data[i + self.seq_length]  # 每次拼接一个
             x.append(_x)
             y.append(_y)
 
@@ -77,6 +79,8 @@ class LSTM(nn.Module):
             training_data = sc.fit_transform(training_set)
 
             x, y = self.sliding_windows(training_data)
+            # print('x: ', x)
+            # print('y: ', y)
 
             train_size = int(len(y) * 0.67)
             test_size = len(y) - train_size
@@ -84,11 +88,11 @@ class LSTM(nn.Module):
             data_x = Variable(torch.Tensor(np.array(x)))
             data_y = Variable(torch.Tensor(np.array(y)))
 
-            train_x = Variable(torch.Tensor(np.array(x[0:train_size])))
-            train_y = Variable(torch.Tensor(np.array(y[0:train_size])))
+            train_x = Variable(torch.Tensor(np.array(data_x[0:train_size])))
+            train_y = Variable(torch.Tensor(np.array(data_y[0:train_size])))
 
-            test_x = Variable(torch.Tensor(np.array(x[train_size:len(x)])))
-            test_y = Variable(torch.Tensor(np.array(y[train_size:len(y)])))
+            test_x = Variable(torch.Tensor(np.array(data_x[train_size:len(x)])))
+            test_y = Variable(torch.Tensor(np.array(data_y[train_size:len(y)])))
 
             num_epochs = 2000
             learning_rate = 0.01
@@ -111,11 +115,11 @@ class LSTM(nn.Module):
                 # if epoch % 100 == 0:
                 #     print("Epoch: %d, loss: %1.5f" % (epoch, loss.item()))
 
-            self.eval()
-            train_predict = self(data_x)
+            self.eval()  # 评估模型
+            train_predict = self(test_x)  # 预测参数
 
             data_predict = train_predict.data.numpy()
-            data_y_plot = data_y.data.numpy()
+            data_y_plot = test_y.data.numpy()
 
             data_predict = sc.inverse_transform(data_predict)
             data_y_plot = sc.inverse_transform(data_y_plot)
@@ -129,3 +133,8 @@ class LSTM(nn.Module):
             plt.xlabel("Relative Time (s)")
             plt.legend()
             plt.show()
+
+
+if __name__ == '__main__':
+    lstm = LSTM(num_classes=2, input_size=2, hidden_size=2, num_layers=1, seq_length=4)
+    lstm.predict()
