@@ -97,7 +97,6 @@ def sliding_windows(data, seq_length):
     X = []
     y = []
 
-
     for i in range(data.shape[1] - seq_length - 1):
         _X = data[:, i:i + seq_length]  # 每次截取一段
         _y = data[:, i + seq_length]  # 每次拼接一个
@@ -108,14 +107,9 @@ def sliding_windows(data, seq_length):
 
 
 def run_lstm_multi_step(X, y):
-    # 正则化数据
-    ss = StandardScaler()
-    std_data = ss.fit_transform(X)
-    # std_y = ss.fit_transform(y)
+    seq_len = 10
 
-    seq_len = 4
-
-    sw_X, sw_y = sliding_windows(std_data, seq_len)
+    sw_X, sw_y = sliding_windows(X, seq_len)
     # print(sw_X, sw_y)
 
     # 划分数据集
@@ -130,9 +124,28 @@ def run_lstm_multi_step(X, y):
 
     test_X = np.array(sw_X[train_size:])
     test_y = np.array(sw_y[train_size:])
-    print('--------> test_y: ', test_y)
-    std_test_y = ss.fit_transform(test_y.reshape(1, -1))
-    print('--------> std_test_y: ', std_test_y)
+    # print('--------> test_y: ', test_y)
+
+    # 记住他们的形状方便还原
+    train_X_shape = train_X.shape
+    train_y_shape = train_y.shape
+    test_X_shape = test_X.shape
+    test_y_shape = test_y.shape
+
+    # 正则化数据
+    ss = StandardScaler()
+    train_X = ss.fit_transform(train_X.reshape(2, -1))
+    train_y = ss.fit_transform(train_y.reshape(1, -1))
+    test_X = ss.fit_transform(test_X.reshape(2, -1))
+    test_y = ss.fit_transform(test_y.reshape(1, -1))
+    # std_y = ss.fit_transform(y)
+
+    train_X = train_X.reshape(train_X_shape)
+    train_y = train_y.reshape(train_y_shape)
+    test_X = test_X.reshape(test_X_shape)
+
+    # std_test_y = ss.fit_transform(test_y.reshape(1, -1))
+    # print('--------> std_test_y: ', std_test_y)
 
     # (1) 初始化 LSTM 模型
     lstm_param = LstmParam(mem_cell_ct=100, x_dim=seq_len)
@@ -179,22 +192,48 @@ def run_lstm_multi_step(X, y):
         # y_hat[m] = pred
         pred = lstm_net.lstm_node_list[m].state.h[0]
         y_hat[m] = pred
-    print('-----> test_y: ', ss.inverse_transform(std_test_y.reshape(1, -1)))
-    print('-----> y_hat: ', ss.inverse_transform(y_hat.reshape(1, -1)))
+    # print('-----> test_y: ', ss.inverse_transform(test_y.reshape(1, -1)))
+    # print('-----> y_hat: ', ss.inverse_transform(y_hat.reshape(1, -1)))
     # loss = lstm_net.y_list_is(test_y[:, 0], ToyLossLayer)  # 计算损失
     # print("loss:", "%.3e" % loss)
-    return y_hat
+    y_hat = ss.inverse_transform(y_hat.reshape(1, -1)).reshape(-1, 2)
+    y_test = ss.inverse_transform(test_y.reshape(1, -1)).reshape(-1, 2)
+    return y_hat, y_test
 
 
 def handle_multi_step(X, y):
-    pred_seq = run_lstm_multi_step(X, y)
-    res = pred_seq.reshape(-1, 2)
-    plt.plot(res)
+    y_hat, y_test = run_lstm_multi_step(X, y)
+    plt.plot(y_hat)
+    plt.plot(y_test)
     plt.show()
 
 
 if __name__ == '__main__':
+    selected_container_usage_path = args.selected_container_usage_path
 
+    if not os.path.exists(selected_container_usage_path):
+        print("container_usage.csv has not been selected.")
+
+    df = pd.read_csv(selected_container_usage_path)
+    rows = df.shape[0]
+
+    idx = 0
+    while idx < rows:
+        # (1) 每次从文件中读取一个 task 的资源需求变化
+        machine, idx = get_one_machine(df, idx)
+
+        # training_data_cpu = machine.iloc[:, 3:4].values  # CPU
+        # training_data_mem = machine.iloc[:, 4:5].values  # memory
+        training_data = machine.iloc[:, 3:5].values  # CPU 和 memory
+        # plt.plot(training_data, label="cpu_util_percent")
+        # plt.show()
+
+        handle_multi_step(training_data.T, None)
+
+        # break
+
+
+def exampel1():
     selected_container_usage_path = args.selected_container_usage_path
 
     if not os.path.exists(selected_container_usage_path):
@@ -247,7 +286,6 @@ if __name__ == '__main__':
             losses['lstm'].append(metrics(y_hat_lstm, y))
             # print('y_hat_lstm = {}'.format(y_hat_lstm))
             # print("evaluation (LSTM): {}\n".format(metrics(y_hat_lstm, y)))
-            handle_multi_step(X, y)
 
             # (3) 调用 Ours 预测模型
             start_time = time.time()
