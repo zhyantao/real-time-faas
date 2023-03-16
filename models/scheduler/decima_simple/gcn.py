@@ -11,8 +11,7 @@ from tf_op import glorot, zeros
 
 
 class GraphCNN(object):
-    def __init__(self, inputs, input_dim, hid_dims, output_dim,
-                 max_depth, act_fn, scope='gcn'):
+    def __init__(self, inputs, input_dim, hid_dims, output_dim, max_depth, act_fn, scope='gcn'):
 
         self.inputs = inputs
 
@@ -28,6 +27,9 @@ class GraphCNN(object):
         # message passing
         self.adj_mats = [tf.sparse_placeholder(tf.float32, [None, None]) for _ in range(self.max_depth)]
         self.masks = [tf.placeholder(tf.float32, [None, 1]) for _ in range(self.max_depth)]
+
+        for ii in self.adj_mats:
+            print('self.adj_mats.shape: ------------------->  ', ii.shape)
 
         # initialize message passing transformation parameters
         # h: x -> x'

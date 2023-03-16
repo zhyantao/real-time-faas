@@ -311,23 +311,69 @@ class ActorAgent(Agent):
             feed_dict={  # feed_dict 用作占位符，每次神经网络训练时使用的数据
                 i: d for i, d in zip(
                     # key:
-                    [self.node_inputs]  # (1)
-                    + [self.job_inputs]  # (2)
-                    + [self.node_valid_mask]  # (3)
-                    + [self.job_valid_mask]  # (4)
-                    + self.gcn.adj_mats  # (5)
-                    + self.gcn.masks  # (6)
-                    + self.gsn.summ_mats  # (7)
-                    + [self.dag_summ_backward_map],  # (8)
+                    [self.node_inputs]  # (1) Tensor("Placeholder_0", shape=(?, 5), dtype=float32)
+                    + [self.job_inputs]  # (2) Tensor("Placeholder_1:0", shape=(?, 3), dtype=float32)
+                    + [self.node_valid_mask]  # (3) Tensor("Placeholder_40:0", shape=(?, ?), dtype=float32)
+                    + [self.job_valid_mask]  # (4) Tensor("Placeholder_41:0", shape=(?, ?), dtype=float32)
+                    + self.gcn.adj_mats  # (5) Tensor("Placeholder_4:0", shape=(?, 2), dtype=int64)
+                    + self.gcn.masks  # (6) Tensor("Placeholder_26:0", shape=(?, 1), dtype=int64)
+                    + self.gsn.summ_mats  # (7) Tensor("Placeholder_27:0", shape=(?, 1), dtype=int64)
+                    + [self.dag_summ_backward_map],  # (8) Tensor("Placeholder_42:0", shape=(?, ?), dtype=int64)
                     # value:
-                    [node_inputs]
-                    + [job_inputs]
-                    + [node_valid_mask]
-                    + [job_valid_mask]
-                    + gcn_mats
-                    + gcn_masks
-                    + [summ_mats, running_dags_mat]
-                    + [dag_summ_backward_map]
+                    [node_inputs]  # ndarray: (80, 5)
+                    + [job_inputs]  # ndarray: (10, 3)
+                    + [node_valid_mask]  # ndarray: (1, 80)
+                    + [job_valid_mask]  # ndarray: (1, 1000)
+                    + gcn_mats  # ndarray: (80, 1)
+                    + gcn_masks  # ndarray: (80, 80)
+                    + [summ_mats, running_dags_mat]  # ndarray: (80, 80)
+                    + [dag_summ_backward_map]  # ndarray: (80, 10)
                 )
             }
         )
+
+    def gcn_forward(self, node_inputs, summ_mats):
+        return self.sess.run([self.gsn.summaries],
+                             feed_dict={i: d for i, d in zip(
+                                 [self.node_inputs] + self.gsn.summ_mats,
+                                 [node_inputs] + summ_mats)
+                                        })
+
+    def get_params(self):
+        return self.sess.run(self.params)
+
+    def save_model(self, file_path):
+        self.saver.save(self.sess, file_path)
+
+    def get_gradients(self, node_inputs, job_inputs, node_valid_mask, job_valid_mask, gcn_mats, gcn_masks, summ_mats,
+                      running_dags_mat, dag_summ_backward_map, node_act_vec, job_act_vec, adv, entropy_weight):
+
+        return self.sess.run(
+            [self.act_gradients, [self.adv_loss, self.entropy_loss]],
+
+            feed_dict={i: d for i, d in zip(
+                [self.node_inputs] +
+                [self.job_inputs] +
+                [self.node_valid_mask] +
+                [self.job_valid_mask] +
+                self.gcn.adj_mats +
+                self.gcn.masks +
+                self.gsn.summ_mats +
+                [self.dag_summ_backward_map] +
+                [self.node_act_vec] +
+                [self.job_act_vec] +
+                [self.adv] +
+                [self.entropy_weight],
+
+                [node_inputs] +
+                [job_inputs] +
+                [node_valid_mask] +
+                [job_valid_mask] +
+                gcn_mats + gcn_masks +
+                [summ_mats, running_dags_mat] +
+                [dag_summ_backward_map] +
+                [node_act_vec] +
+                [job_act_vec] +
+                [adv] +
+                [entropy_weight]
+            )})
