@@ -82,8 +82,9 @@ class ActorAgent(Agent):
             self.node_inputs, self.node_input_dim, self.hid_dims,
             self.output_dim, self.max_depth, self.act_fn, self.scope)
 
+        # 输入数据：其中一部分是 DAG 的嵌入信息，另一个部分是 node 的拓扑连接
         self.gsn = GraphSNN(
-            tf.concat([self.node_inputs, self.gcn.outputs], axis=1),  # 输入数据：其中一部分是 DAG 的嵌入信息，另一个部分是 node 的拓扑连接
+            tf.concat([self.node_inputs, self.gcn.outputs], axis=1),
             self.node_input_dim + self.output_dim,
             self.hid_dims,  # GraphSNN 的输入维度：self.node_input_dim + self.output_dim
             self.output_dim, self.act_fn, self.scope)
