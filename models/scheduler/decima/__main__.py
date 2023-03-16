@@ -47,8 +47,8 @@ if __name__ == '__main__':
         # agent_exec_act = actor_agent.executor_levels[job_acts[0, job_idx]] - exec_map[node.job_dag]
         agent_exec_act = actor_agent.executor_levels[job_acts[0, job_idx]] - 0
 
-        # use_exec = min(node.num_tasks - node.next_task_idx - exec_commit.node_commit[node] - moving_executors.count(node),
-        #                agent_exec_act, num_source_exec)
+        # use_exec = min(node.num_tasks - node.next_task_idx - exec_commit.node_commit[node] -
+        # moving_executors.count(node), agent_exec_act, num_source_exec)
         use_exec = 4  # 最大并行数量限制
 
         # for storing the action vector in experience
