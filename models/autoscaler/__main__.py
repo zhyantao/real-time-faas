@@ -7,8 +7,10 @@ import pandas as pd
 from sklearn.preprocessing import StandardScaler
 
 from models.autoscaler.analysis import metrics
+from models.autoscaler.arima import MyARIMA
 from models.autoscaler.arima_v2 import BHTARIMA
 from models.autoscaler.figure import TimeSeriesFigure, MetrixFigure
+from models.autoscaler.lstm import LSTM
 from models.autoscaler.lstm_v2 import LstmParam, LstmNetwork, ToyLossLayer
 from models.autoscaler.ours import Ours
 from models.autoscaler.utils import ProgressBar
@@ -208,7 +210,85 @@ def handle_multi_step(X, y):
     plt.show()
 
 
-if __name__ == '__main__':
+def example_1():
+    selected_container_usage_path = args.selected_container_usage_path
+
+    if not os.path.exists(selected_container_usage_path):
+        print("container_usage.csv has not been selected.")
+
+    df = pd.read_csv(selected_container_usage_path)
+    rows = df.shape[0]
+
+    idx, count = 0, 0
+    while idx < rows:
+        # (1) 每次从文件中读取一个 task 的资源需求变化
+        machine, next_idx = get_one_machine(df, idx)
+
+        # training_data_cpu = machine.iloc[:, 3:4].values  # CPU
+        # training_data_mem = machine.iloc[:, 4:5].values  # memory
+        training_data = machine.iloc[:, 3:5].values  # CPU 和 memory
+        # plt.plot(training_data, label="cpu_util_percent")
+        # plt.show()
+
+        predictions = {'arima': [], 'lstm': [], 'ours': []}  # 统计预测值
+        losses = {'arima': [], 'lstm': [], 'ours': []}  # 统计损失
+        # timecost = {'arima': [], 'lstm': [], 'ours': []}  # 统计不同算法的执行时间
+
+        train_size = 50  # 用过去的 50 个数据预测前面的数据
+
+        # 调用 ARIMA 预测模型
+        p, d, q = 2, 1, 1
+        params = [p, d, q]
+        future_periods = 12
+        # start_time = time.time()
+        my_arima = MyARIMA(params, future_periods)
+        predictions_cpu, predictions_mem = my_arima.predict(machine, train_size)
+        for i in range(predictions_cpu.shape[0]):
+            y_hat_arima = np.array([predictions_cpu[i], predictions_mem[i]])
+            y = training_data[train_size + i].reshape(-1, 1)
+            predictions['arima'].append(y_hat_arima)
+            losses['arima'].append(metrics(y_hat_arima, y))
+            # timecost['arima'].append(time.time() - start_time)
+
+        # 调用 LSTM 模型
+        seq_length = 4
+        lstm = LSTM(num_classes=2, input_size=2, hidden_size=2, num_layers=1, seq_length=seq_length)
+        y_hat_lstm = lstm.predict(machine, train_size - seq_length - 1)
+        for i in range(y_hat_lstm.shape[0]):
+            y = training_data[train_size + i].reshape(-1, 1)
+            predictions['lstm'].append(y_hat_lstm[i])
+            losses['lstm'].append(metrics(y_hat_lstm[i], y))
+            # timecost['arima'].append(time.time() - start_time)
+
+        # 使用本文提出的模型
+        n_samples = training_data.shape[0]
+        bar = ProgressBar()
+        for i in range(train_size, n_samples):
+            # (2) 准备数据
+            X = training_data[i - train_size:i].T
+            y = training_data[i].reshape(-1, 1)
+            # (3) 调用 Ours 预测模型
+            start_time = time.time()
+            y_hat_ours = run_lstm(X, y)
+            # timecost['ours'].append(time.time() - start_time)
+            predictions['ours'].append(y_hat_ours)
+            losses['ours'].append(metrics(y_hat_ours, y))
+            # print('y_hat_ours = {}'.format(y_hat_ours))
+            # print("evaluation (Ours): {}\n".format(metrics(y_hat_ours, y)))
+
+            bar.update(percent=100.0 * (i - train_size) / (n_samples - train_size - 1))
+
+        ts_figure = TimeSeriesFigure()
+        ts_figure.visual(training_data, predictions)
+        loss_figure = MetrixFigure()
+        loss_figure.visual(None, losses)
+
+        print('-------------- sample {} end ----------------'.format(count))
+        idx = next_idx
+        count += 1
+
+
+def example_2():
     selected_container_usage_path = args.selected_container_usage_path
 
     if not os.path.exists(selected_container_usage_path):
@@ -233,75 +313,6 @@ if __name__ == '__main__':
         # break
 
 
-def exampel1():
-    selected_container_usage_path = args.selected_container_usage_path
-
-    if not os.path.exists(selected_container_usage_path):
-        print("container_usage.csv has not been selected.")
-
-    df = pd.read_csv(selected_container_usage_path)
-    rows = df.shape[0]
-
-    idx = 0
-    while idx < rows:
-        # (1) 每次从文件中读取一个 task 的资源需求变化
-        machine, idx = get_one_machine(df, idx)
-
-        # training_data_cpu = machine.iloc[:, 3:4].values  # CPU
-        # training_data_mem = machine.iloc[:, 4:5].values  # memory
-        training_data = machine.iloc[:, 3:5].values  # CPU 和 memory
-        # plt.plot(training_data, label="cpu_util_percent")
-        # plt.show()
-
-        predictions = {'arima': [], 'lstm': [], 'ours': []}  # 统计预测值
-        losses = {'arima': [], 'lstm': [], 'ours': []}  # 统计损失
-        timecost = {'arima': [], 'lstm': [], 'ours': []}  # 统计不同算法的执行时间
-
-        seq_len = 50  # 用过去的 50 个数据预测前面的数据
-        n_samples = training_data.shape[0]
-        bar = ProgressBar()
-        for i in range(seq_len, n_samples):
-            # (2) 准备数据
-            X = training_data[i - seq_len:i].T
-            y = training_data[i].reshape(-1, 1)
-            # print('X: ', X)
-            # print('y:', y)
-
-            # print('y_truth = {}\n'.format(y.reshape(-1)))  # 用 reshape(-1) 拉成一维向量
-
-            # (3) 调用 ARIMA 预测模型
-            start_time = time.time()
-            y_hat_arima = run_arima(X, y)
-            timecost['arima'].append(time.time() - start_time)
-            predictions['arima'].append(y_hat_arima)
-            losses['arima'].append(metrics(y_hat_arima, y))
-            # print('y_hat_ARIMA = {}'.format(y_hat_arima))
-            # print("evaluation (ARIMA): {}\n".format(metrics(y_hat_arima, y)))
-
-            # (3) 调用 LSTM 预测模型
-            start_time = time.time()
-            y_hat_lstm = run_lstm(X, y)
-            timecost['lstm'].append(time.time() - start_time)
-            predictions['lstm'].append(y_hat_lstm)
-            losses['lstm'].append(metrics(y_hat_lstm, y))
-            # print('y_hat_lstm = {}'.format(y_hat_lstm))
-            # print("evaluation (LSTM): {}\n".format(metrics(y_hat_lstm, y)))
-
-            # (3) 调用 Ours 预测模型
-            start_time = time.time()
-            y_hat_ours = run_ours(y_hat_arima, y_hat_lstm)
-            timecost['ours'].append(time.time() - start_time)
-            predictions['ours'].append(y_hat_ours)
-            losses['ours'].append(metrics(y_hat_ours, y))
-            # print('y_hat_ours = {}'.format(y_hat_ours))
-            # print("evaluation (Ours): {}\n".format(metrics(y_hat_ours, y)))
-
-            bar.update(percent=100.0 * (i - seq_len) / (n_samples - seq_len - 1))
-
-        ts_figure = TimeSeriesFigure()
-        ts_figure.visual(training_data, predictions)
-        loss_figure = MetrixFigure()
-        loss_figure.visual(timecost, losses)
-
-        print('-------------- epoch {} end ----------------'.format(idx))
-        break
+if __name__ == '__main__':
+    example_1()  # 单步滚动预测
+    # example_2()  # 多步预测

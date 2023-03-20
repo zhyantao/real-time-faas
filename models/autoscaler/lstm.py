@@ -1,7 +1,7 @@
 """LSTM 多步预测"""
 
-import matplotlib.pyplot as plt
 import torch
+from pandas import DataFrame
 from sklearn.preprocessing import MinMaxScaler
 from torch import nn
 from torch.autograd import Variable
@@ -51,90 +51,61 @@ class LSTM(nn.Module):
 
         return np.array(x), np.array(y)
 
-    def predict(self, selected_container_usage_path=para.get("selected_container_usage_path")):
-        """
-        测试选中的 container usage 预测效果
+    def predict(self, machine: DataFrame, train_size):
+        """测试选中的 container usage 预测效果"""
+        # 处理单个 machine 的代码
+        training_set = machine.iloc[:, 3:5].values
+        # plt.plot(training_set, label="cpu_util_percent")
+        # plt.show()
 
-        :param selected_container_usage_path:
-        :return:
-        """
-        if not os.path.exists(selected_container_usage_path):
-            print("container_usage.csv has not been selected.")
+        # 归一化处理
+        sc = MinMaxScaler()
+        training_data = sc.fit_transform(training_set)
 
-        df = pd.read_csv(selected_container_usage_path)
-        rows = df.shape[0]
-        idx = 0
+        x, y = self.sliding_windows(training_data)
+        # print('x: ', x)
+        # print('y: ', y)
 
-        while idx < rows:
-            machine, idx = get_one_machine(df, idx)
-            # print(machine)
+        train_size = train_size
+        test_size = len(y) - train_size
 
-            # 处理单个 machine 的代码
-            training_set = machine.iloc[:, 3:5].values
-            # plt.plot(training_set, label="cpu_util_percent")
-            # plt.show()
+        data_x = Variable(torch.Tensor(np.array(x)))
+        data_y = Variable(torch.Tensor(np.array(y)))
 
-            # 归一化处理
-            sc = MinMaxScaler()
-            training_data = sc.fit_transform(training_set)
+        train_x = Variable(torch.Tensor(np.array(data_x[0:train_size])))
+        train_y = Variable(torch.Tensor(np.array(data_y[0:train_size])))
 
-            x, y = self.sliding_windows(training_data)
-            # print('x: ', x)
-            # print('y: ', y)
+        test_x = Variable(torch.Tensor(np.array(data_x[train_size:len(x)])))
+        test_y = Variable(torch.Tensor(np.array(data_y[train_size:len(y)])))
 
-            train_size = int(len(y) * 0.67)
-            test_size = len(y) - train_size
+        num_epochs = 2000
+        learning_rate = 0.01
 
-            data_x = Variable(torch.Tensor(np.array(x)))
-            data_y = Variable(torch.Tensor(np.array(y)))
+        criterion = torch.nn.MSELoss()  # mean-squared error for regression
+        optimizer = torch.optim.Adam(self.parameters(), lr=learning_rate)
+        # optimizer = torch.optim.SGD(lstm.parameters(), lr=learning_rate)
 
-            train_x = Variable(torch.Tensor(np.array(data_x[0:train_size])))
-            train_y = Variable(torch.Tensor(np.array(data_y[0:train_size])))
+        # Train the model
+        for epoch in range(num_epochs):
+            outputs = self(train_x)
+            optimizer.zero_grad()
 
-            test_x = Variable(torch.Tensor(np.array(data_x[train_size:len(x)])))
-            test_y = Variable(torch.Tensor(np.array(data_y[train_size:len(y)])))
+            # obtain the loss function
+            loss = criterion(outputs, train_y)
 
-            num_epochs = 2000
-            learning_rate = 0.01
+            loss.backward()
 
-            criterion = torch.nn.MSELoss()  # mean-squared error for regression
-            optimizer = torch.optim.Adam(self.parameters(), lr=learning_rate)
-            # optimizer = torch.optim.SGD(lstm.parameters(), lr=learning_rate)
+            optimizer.step()
+            # if epoch % 100 == 0:
+            #     print("Epoch: %d, loss: %1.5f" % (epoch, loss.item()))
 
-            # Train the model
-            for epoch in range(num_epochs):
-                outputs = self(train_x)
-                optimizer.zero_grad()
+        self.eval()  # 评估模型
+        train_predict = self(test_x)  # 预测参数
 
-                # obtain the loss function
-                loss = criterion(outputs, train_y)
+        data_predict = train_predict.data.numpy()
+        data_y_plot = test_y.data.numpy()
 
-                loss.backward()
+        data_predict = sc.inverse_transform(data_predict)
+        data_y_plot = sc.inverse_transform(data_y_plot)
 
-                optimizer.step()
-                # if epoch % 100 == 0:
-                #     print("Epoch: %d, loss: %1.5f" % (epoch, loss.item()))
-
-            self.eval()  # 评估模型
-            train_predict = self(test_x)  # 预测参数
-
-            data_predict = train_predict.data.numpy()
-            data_y_plot = test_y.data.numpy()
-
-            data_predict = sc.inverse_transform(data_predict)
-            data_y_plot = sc.inverse_transform(data_y_plot)
-
-            plt.axvline(x=train_size, c='r', linestyle='--')
-
-            plt.plot(data_y_plot, label=['Real CPU Util.', 'Real Mem Util.'])
-            plt.plot(data_predict, label=['Predicted CPU Util.', 'Predicted Mem Util.'])
-            plt.suptitle('CPU and Mem Usage Prediction')
-            plt.ylabel("Utilization Rate (%)")
-            plt.xlabel("Relative Time (s)")
-            plt.legend()
-            plt.show()
-
-
-if __name__ == '__main__':
-    lstm = LSTM(num_classes=2, input_size=2, hidden_size=2, num_layers=1, seq_length=4)
-    lstm.predict()
+        return data_predict

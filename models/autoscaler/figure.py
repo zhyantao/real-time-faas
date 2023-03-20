@@ -61,7 +61,7 @@ class TimeSeriesFigure(Figure):
         # 绘制 ARIMA 预测的数据
         axs[0].plot(origin_data, label=['Real CPU util.', 'Real Mem util.'])
         axs[0].plot(range(split_line_pos, origin_data.shape[0]), compared_data['arima'],  # 用 range 指定起点坐标
-                       label=['ARIMA pred. CPU util.', 'ARIMA pred. Mem util.'])
+                    label=['ARIMA pred. CPU util.', 'ARIMA pred. Mem util.'])
         axs[0].axvline(x=split_line_pos, c='r', linestyle='--')
         axs[0].set_title('ARIMA prediction')
         axs[0].set_ylabel("Utilization Rate (%)")
@@ -71,7 +71,7 @@ class TimeSeriesFigure(Figure):
         # 绘制 LSTM 预测的数据
         axs[1].plot(origin_data, label=['Real CPU util.', 'Real Mem util.'])
         axs[1].plot(range(split_line_pos, origin_data.shape[0]), compared_data['lstm'],
-                       label=['LSTM pred. CPU util.', 'LSTM pred. Mem util.'])
+                    label=['LSTM pred. CPU util.', 'LSTM pred. Mem util.'])
         axs[1].axvline(x=split_line_pos, c='r', linestyle='--')
         axs[1].set_title('LSTM prediction')
         axs[1].set_ylabel("Utilization Rate (%)")
@@ -81,7 +81,7 @@ class TimeSeriesFigure(Figure):
         # 绘制 Ours 预测的数据
         axs[2].plot(origin_data, label=['Real CPU util.', 'Real Mem util.'])
         axs[2].plot(range(split_line_pos, origin_data.shape[0]), compared_data['ours'],
-                       label=['Ours pred. CPU util.', 'Ours pred. Mem util.'])
+                    label=['Ours pred. CPU util.', 'Ours pred. Mem util.'])
         axs[2].axvline(x=split_line_pos, c='r', linestyle='--')
         axs[2].set_title('Ours prediction')
         axs[2].set_ylabel("Utilization Rate (%)")
@@ -128,36 +128,27 @@ class MetrixFigure(Figure):
             nd['ours'].append(item['nd'])
             smape['ours'].append(item['smape'])
 
-        # 创建一个 2 * 3 子图布局
-        rows, cols = 2, 3
-        fig, axs = plt.subplots(rows, cols, figsize=(10, 5))
+        # 创建一个 2 * 2 子图布局
+        rows, cols = 2, 2
+        fig, axs = plt.subplots(rows, cols, figsize=(10, 8))
 
-        # 绘制第一个子图
-        axs[0, 0].plot(acc['arima'], label='ARIMA')
-        axs[0, 0].plot(acc['lstm'], label='LSTM')
-        axs[0, 0].plot(acc['ours'], label='Ours')
-        axs[0, 0].set_title('Accuracy', fontsize=11)
-        axs[0, 0].set_ylabel("Percent (%)")
+        # 绘制第二个子图
+        axs[0, 0].plot(rmse['arima'], label='ARIMA')
+        axs[0, 0].plot(rmse['lstm'], label='LSTM')
+        axs[0, 0].plot(rmse['ours'], label='Ours')
+        axs[0, 0].set_title('RMSE', fontsize=11)
+        axs[0, 0].set_ylabel("RMSE")
         axs[0, 0].set_xlabel("Task Number (#)")
         axs[0, 0].legend(fontsize=8)
 
-        # 绘制第二个子图
-        axs[0, 1].plot(rmse['arima'], label='ARIMA')
-        axs[0, 1].plot(rmse['lstm'], label='LSTM')
-        axs[0, 1].plot(rmse['ours'], label='Ours')
-        axs[0, 1].set_title('RMSE', fontsize=11)
-        axs[0, 1].set_ylabel("RMSE")
+        # 绘制第三个子图
+        axs[0, 1].plot(nrmse['arima'], label='ARIMA')
+        axs[0, 1].plot(nrmse['lstm'], label='LSTM')
+        axs[0, 1].plot(nrmse['ours'], label='Ours')
+        axs[0, 1].set_title('Normalized RMSE', fontsize=11)
+        axs[0, 1].set_ylabel("Normalized RMSE")
         axs[0, 1].set_xlabel("Task Number (#)")
         axs[0, 1].legend(fontsize=8)
-
-        # 绘制第三个子图
-        axs[0, 2].plot(nrmse['arima'], label='ARIMA')
-        axs[0, 2].plot(nrmse['lstm'], label='LSTM')
-        axs[0, 2].plot(nrmse['ours'], label='Ours')
-        axs[0, 2].set_title('Normalized RMSE', fontsize=11)
-        axs[0, 2].set_ylabel("Normalized RMSE")
-        axs[0, 2].set_xlabel("Task Number (#)")
-        axs[0, 2].legend(fontsize=8)
 
         # 绘制第四个子图
         axs[1, 0].plot(nd['arima'], label='ARIMA')
@@ -177,20 +168,23 @@ class MetrixFigure(Figure):
         axs[1, 1].set_xlabel("Task Number (#)")
         axs[1, 1].legend(fontsize=8)
 
-        # 绘制第六个子图
-        axs[1, 2].plot(timecost['arima'], label='ARIMA')
-        axs[1, 2].plot(timecost['lstm'], label='LSTM')
-        axs[1, 2].plot(timecost['ours'], label='Ours')
-        axs[1, 2].set_title('Algo. exec. Time Cost', fontsize=11)
-        axs[1, 2].set_ylabel("Time Cost (seconds)")
-        axs[1, 2].set_xlabel("Task Number (#)")
-        axs[1, 2].legend(fontsize=8)
-
         # 添加整图标题
         fig.tight_layout()  # 调整子图布局以避免重叠
         fig.suptitle('Metrics Comparison')
         plt.subplots_adjust(top=0.88)  # 调整整图标题的位置，以避免和子图重叠
         plt.savefig('{}/{}_loss.png'.format(self.metrics_saving_path, self.timestamp),
+                    dpi=600, format='png')
+        plt.show()
+
+        plt.figure()
+        plt.plot(acc['arima'], label='ARIMA')
+        plt.plot(acc['lstm'], label='LSTM')
+        plt.plot(acc['ours'], label='Ours')
+        plt.title('Accuracy', fontsize=11)
+        plt.ylabel("Percent (%)")
+        plt.xlabel("Task Number (#)")
+        plt.legend(fontsize=8)
+        plt.savefig('{}/{}_accuracy.png'.format(self.metrics_saving_path, self.timestamp),
                     dpi=600, format='png')
         plt.show()
 
@@ -311,7 +305,7 @@ class WorkloadFigure(Figure):
         plt.show()
 
 
-if __name__ == '__main__':
+def example_0():
     # 生成数据
     x1 = np.random.rand(50)
     y1 = np.random.rand(50)
@@ -334,6 +328,8 @@ if __name__ == '__main__':
     plt.ylabel('Y Axis')
     plt.show()
 
+
+def example_1():
     # 重建 DAG
     df = pd.read_csv(args.selected_batch_task_path)
     idx = 0
@@ -343,6 +339,8 @@ if __name__ == '__main__':
         dag_figure = DAGFigure()
         dag_figure.visual(G, job_name)
 
+
+def example_2():
     mappings = {
         0: [ScheduleEvent(task_id=1000, start=0, end=14.0, cpu_id=0),
             ScheduleEvent(task_id=13, start=14.0, end=27.0, cpu_id=0),
@@ -369,6 +367,15 @@ if __name__ == '__main__':
     gantt_figure = GanttFigure()
     gantt_figure.visual(mappings, None)
 
+
+def example_3():
     df = pd.read_csv(args.selected_container_usage_path)
     workload_figure = WorkloadFigure()
     workload_figure.visual(df, None)
+
+
+if __name__ == '__main__':
+    # example_0()
+    # example_1()  # DAG 重构
+    example_2()  # 甘特图示例
+    # example_3()
