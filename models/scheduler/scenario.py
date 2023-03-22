@@ -27,7 +27,7 @@ def generate_scenario():
     n = args.cpu_nums
 
     G = np.zeros((n, n))
-    D = np.ones((n, n)) * eval(args.max_value)
+    D = np.ones((n, n)) * args.max_value
 
     for i in range(n):
         G[i, i] = 1
