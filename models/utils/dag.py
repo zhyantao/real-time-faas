@@ -3,7 +3,7 @@ import numpy as np
 import pandas as pd
 from pandas import DataFrame
 
-from models.autoscaler.utils import generate_random_numbers
+from models.utils.tools import generate_random_numbers
 
 
 class DAG:

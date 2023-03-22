@@ -5,7 +5,7 @@ import numpy as np
 import pandas as pd
 from pandas import DataFrame
 
-from models.autoscaler.dag import DAG
+from models.utils.dag import DAG
 from models.utils.dataset import get_one_job
 from models.utils.params import args
 

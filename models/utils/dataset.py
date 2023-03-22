@@ -12,18 +12,15 @@ import re
 
 import numpy as np
 import pandas as pd
-import yaml
 
-from models.autoscaler.utils import ProgressBar
-
-with open("E:/Workshop/real-time-faas/configs/parameter.yaml", 'r') as f:
-    para = yaml.load(f, Loader=yaml.FullLoader)
+from models.utils.text import ProgressBar
+from models.utils.params import args
 
 
-def sample_jobs(batch_task_path=para.get("batch_task_path"),
-                selected_batch_task_path=para.get("selected_batch_task_path"),
-                batch_instance_path=para.get("batch_instance_path"),
-                selected_batch_instance_path=para.get("selected_batch_instance_path")):
+def sample_jobs(batch_task_path=args.batch_task_path,
+                selected_batch_task_path=args.selected_batch_task_path,
+                batch_instance_path=args.batch_instance_path,
+                selected_batch_instance_path=args.selected_batch_instance_path):
     """
     :return: 从 batch_task.csv 和 batch_instance.csv 中提取 100 个 job_name 相同的 jobs, 保存到文件中
     """
@@ -106,9 +103,9 @@ def sample_jobs(batch_task_path=para.get("batch_task_path"),
                     break
 
             count += 1
-            percent = count / float(para.get("total_jobs")) * 100
+            percent = count / float(args.total_jobs) * 100
             bar.update(percent)
-            if count == para.get("total_jobs"):
+            if count == args.total_jobs:
                 return
 
         elif job_name_num_batch_task < job_name_num_batch_instance:
@@ -125,7 +122,6 @@ def sample_jobs(batch_task_path=para.get("batch_task_path"),
                 if job_name_num_batch_task >= job_name_num_batch_instance:
                     break
 
-
         elif job_name_num_batch_task > job_name_num_batch_instance:
             while j < chunk_size:
                 j += 1
@@ -141,8 +137,8 @@ def sample_jobs(batch_task_path=para.get("batch_task_path"),
                     break
 
 
-def get_topological_order(selected_batch_task_path=para.get("selected_batch_task_path"),
-                          batch_task_topological_order_path=para.get("batch_task_topological_order_path")):
+def get_topological_order(selected_batch_task_path=args.selected_batch_task_path,
+                          batch_task_topological_order_path=args.batch_task_topological_order_path):
     """
     获取每个 job 中 task 的拓扑排序，保存到文件中。
     """
@@ -158,7 +154,7 @@ def get_topological_order(selected_batch_task_path=para.get("selected_batch_task
     rows = df.shape[0]  # CSV 文件的行数
     idx = 0
 
-    total_jobs = para.get("total_jobs")
+    total_jobs = args.total_jobs
     sorted_num = 0
     bar = ProgressBar()
 
@@ -278,8 +274,8 @@ def reverse_dict(d):
     return result
 
 
-def sample_machines(container_usage_path=para.get("container_usage_path"),
-                    selected_container_usage_path=para.get("selected_container_usage_path")):
+def sample_machines(container_usage_path=args.container_usage_path,
+                    selected_container_usage_path=args.selected_container_usage_path):
     """
     从 container_usage.csv 文件中提取指定数量的 machines
 
@@ -321,9 +317,9 @@ def sample_machines(container_usage_path=para.get("container_usage_path"),
                 machine_id = current_chunk_container_usage.loc[idx + i, 1]  # 更新为下一个 machine_id
 
                 count += 1
-                percent = count / float(para.get("total_machines")) * 100
+                percent = count / float(args.total_machines) * 100
                 bar.update(percent)
-                if count == para.get("total_machines"):
+                if count == args.total_machines:
                     return
 
 

@@ -9,13 +9,12 @@ from sklearn.preprocessing import StandardScaler
 from models.autoscaler.analysis import metrics
 from models.autoscaler.arima import MyARIMA
 from models.autoscaler.arima_v2 import BHTARIMA
-from models.autoscaler.figure import TimeSeriesFigure, MetrixFigure
 from models.autoscaler.lstm import LSTM
 from models.autoscaler.lstm_v2 import LstmParam, LstmNetwork, ToyLossLayer
-from models.autoscaler.ours import Ours
-from models.autoscaler.utils import ProgressBar
 from models.utils.dataset import get_one_machine
+from models.utils.figure import TimeSeriesFigure, MetrixFigure
 from models.utils.params import args
+from models.utils.text import ProgressBar
 
 
 def run_lstm(X, y):
@@ -86,12 +85,6 @@ def run_arima(X, y):
     pred, _ = model.run()
     y_hat = pred[..., -1]
 
-    return y_hat
-
-
-def run_ours(y_hat_arima, y_hat_lstm):
-    model = Ours()
-    y_hat = model.merge(y_hat_arima, y_hat_lstm)
     return y_hat
 
 

@@ -7,10 +7,8 @@ import pprint
 import random
 
 import numpy as np
-import yaml
 
-with open('E:/Workshop/real-time-faas/configs/parameter.yaml', 'r') as f:
-    para = yaml.load(f, Loader=yaml.FullLoader)
+from models.utils.params import args
 
 
 def generate_scenario():
@@ -26,10 +24,10 @@ def generate_scenario():
     # G_{ij} = 1 表示 node_i 和 node_j 之间可以通信，否则不能
     # D_{ij} = MAX_VALUE 表示 node_i 和 node_j 无法通信，否则表示最短通信距离
 
-    n = para.get("cpu_nums")
+    n = args.cpu_nums
 
     G = np.zeros((n, n))
-    D = np.ones((n, n)) * eval(para.get("max_value"))
+    D = np.ones((n, n)) * eval(args.max_value)
 
     for i in range(n):
         G[i, i] = 1
@@ -40,7 +38,7 @@ def generate_scenario():
         for i in range(n):
             # randomly connect i and at most 'DENSITY' other servers
             # 将 node_i 随机连接其他 node，最多连接 DENSITY 个其他 node
-            conn_node_num = random.randint(0, para.get("density"))  # density 控制连接数量
+            conn_node_num = random.randint(0, args.density)  # density 控制连接数量
             for j in range(conn_node_num):
                 k = random.randint(0, n - 1)
                 G[i, k], G[k, i] = 1, 1
@@ -65,7 +63,7 @@ def generate_scenario():
             for j in range(n):
                 # 如果 node_{ij} == MAX_VALUE，标识这两个节点之间的的距离非常大
                 # MAX_VALUE 是一个标志数字，不具备实际意义，只用来标识连接性
-                if D[i, j] == para.get("max_value"):
+                if D[i, j] == args.max_value:
                     # the graph is not a connected graph  # 不是一个连通图
                     is_continue = True
                     break
@@ -81,13 +79,13 @@ def generate_scenario():
         while j < i:
             if G[i, j] == 1:
                 # 对能通信的 node_i 和 node_j 设置一个随机的带宽
-                b = random.randint(para.get("bw_lower"), para.get("bw_upper"))
+                b = random.randint(args.bw_lower, args.bw_upper)
                 bw[i, j], bw[j, i] = b, b
             j = j + 1
 
     # step 3: set the processing power
-    # 生成长度为 n 的随机数组，元素的取值范围为 [para.get("pp_lower"), para.get("pp_upper")]
-    pp = np.random.randint(para.get("pp_lower"), para.get("pp_upper"), n)
+    # 生成长度为 n 的随机数组，元素的取值范围为 [args.pp_lower, args.pp_upper]
+    pp = np.random.randint(args.pp_lower, args.pp_upper, n)
 
     return G, bw, pp
 
@@ -114,7 +112,7 @@ def go_forward(node, node_dst, paths_ij, path_ij, path_nodes_ij, G):
     else:
         path_ij.append(node)
         path_nodes_ij.add(node)  # 将 node 添加到集合 path_nodes_ij 中
-        for i in range(para.get("cpu_nums")):
+        for i in range(args.cpu_nums):
             if G[node][i] and (i not in path_nodes_ij):
                 go_forward(i, node_dst, paths_ij, path_ij, path_nodes_ij, G)
         path_ij.pop()
@@ -128,9 +126,9 @@ def get_simple_paths(G):
     获取任意两个 server 之间的简单路径
     """
     simple_paths = []
-    for i in range(para.get("cpu_nums")):
+    for i in range(args.cpu_nums):
         paths_from_i = []
-        for j in range(para.get("cpu_nums")):
+        for j in range(args.cpu_nums):
             node = i
             node_dst = j
             paths_ij, path_ij = [], []
@@ -166,10 +164,10 @@ def get_ratio(simple_paths, bw):
     reciprocals_list = []
     proportions_list = []
 
-    for i in range(para.get("cpu_nums")):
+    for i in range(args.cpu_nums):
         reciprocals = []
         proportions = []
-        for j in range(para.get("cpu_nums")):
+        for j in range(args.cpu_nums):
             paths = simple_paths[i][j]
             paths_len = len(paths)
             reciprocal_sum_list = []
@@ -206,8 +204,8 @@ def set_funcs():
     设置处理单元的处理能力和需要处理的数据大小，这两个变量被所有的 jobs 共用。
     """
     # set the processing power required
-    pp_required = np.random.randint(para.get("pp_required_lower"), para.get("pp_required_upper"),
-                                    (para.get("max_task_nums")))
-    data_stream = np.random.randint(para.get("data_stream_size_lower"), para.get("data_stream_size_upper"),
-                                    (para.get("max_task_nums")))
+    pp_required = np.random.randint(args.pp_required_lower, args.pp_required_upper,
+                                    (args.max_task_nums))
+    data_stream = np.random.randint(args.data_stream_size_lower, args.data_stream_size_upper,
+                                    (args.max_task_nums))
     return pp_required, data_stream

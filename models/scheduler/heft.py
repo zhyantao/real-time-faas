@@ -16,14 +16,13 @@ comm_cost - function :: job, job, agent, agent -> time to transfer results
 (function ---> job, edge server ---> agent)
 """
 import datetime
-import pprint
 import random
 from collections import namedtuple
 from functools import partial
 from itertools import chain
 
 from models.utils.dataset import *
-from models.utils.scenario import para, get_simple_paths, print_simple_paths, get_ratio, set_funcs, generate_scenario, \
+from models.scheduler.scenario import para, get_simple_paths, print_simple_paths, get_ratio, set_funcs, generate_scenario, \
     print_scenario
 
 

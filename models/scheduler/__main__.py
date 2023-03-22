@@ -1,10 +1,8 @@
-from matplotlib import pyplot as plt
-
 from models.scheduler.dpe import DPE
 from models.scheduler.heft import HEFT
 from models.utils.dataset import sample_jobs, get_topological_order
 from models.utils.params import args
-from models.utils.scenario import generate_scenario, print_scenario, get_simple_paths, \
+from models.scheduler.scenario import generate_scenario, print_scenario, get_simple_paths, \
     print_simple_paths, get_ratio, set_funcs
 
 if __name__ == '__main__':
