@@ -77,6 +77,8 @@ class HEFT:
             task_nums = 0
 
             task_name = df.loc[idx, 'task_name'].split('_')[0]
+            job_name = df.loc[idx, 'job_name']
+            print(job_name)
 
             if task_name == 'task' or task_name == "MergeTask":
                 _, idx = get_one_job(df, idx)  # 仅增加 idx
@@ -104,6 +106,8 @@ class HEFT:
                 task_deployment_all.append(jobson)
                 cpu_task_mapping_list_all.append(orders)
 
+                print(makespan)
+
             calculated_num += 1
             percent = calculated_num / float(total_job_nums) * 100
             # for overflow
@@ -112,10 +116,10 @@ class HEFT:
             bar.update(percent)
             idx += task_nums
 
-        print('----------> cpu task mapping list all: \n')
-        pprint.pprint(cpu_task_mapping_list_all)
-        print('----------> task deployment all: \n')
-        pprint.pprint(task_deployment_all)
+        # print('----------> cpu task mapping list all: \n')
+        # pprint.pprint(cpu_task_mapping_list_all)
+        # print('----------> task deployment all: \n')
+        # pprint.pprint(task_deployment_all)
 
         print('The overall makespan achieved by HEFT: %f second' % makespan_all)
         print('The average makespan: %f second' % (makespan_all / total_job_nums))

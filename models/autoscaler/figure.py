@@ -27,6 +27,7 @@ class Figure:
         self.dag_saving_path = self.result_saving_path + '/dags'
         self.gantt_saving_path = self.result_saving_path + '/gantts'
         self.workload_saving_path = self.result_saving_path + '/workloads'
+        self.invoke_pred_saving_path = self.result_saving_path + '/invokes'
 
         self.timestamp = time.time()  # 用于区分不同时刻产生的结果文件
 
@@ -41,6 +42,8 @@ class Figure:
             os.makedirs(self.gantt_saving_path)
         if not os.path.exists(self.workload_saving_path):
             os.makedirs(self.workload_saving_path)
+        if not os.path.exists(self.invoke_pred_saving_path):
+            os.makedirs(self.invoke_pred_saving_path)
 
     def visual(self, origin_data, compared_data):
         print('figure.py --> visual() has not been implemented.')
@@ -205,6 +208,39 @@ class DAGFigure(Figure):
         plt.show()
 
 
+class BranchPredictionFigure(Figure):
+    def visual(self, n_tasks, compared_data):
+        """绘制分支预测器的拟合效果图"""
+        # 服从对数正态分布的调用频率
+        np.random.seed(43)
+        mu, sigma = 3, 0.5  # mu 表示平均调用次数, sigma 表示方差
+        s = np.random.lognormal(mu, sigma, n_tasks)  # samples
+
+        rows, cols = 1, 2
+        fig, axs = plt.subplots(rows, cols, figsize=(10, 4))
+        count, bins, ignored = axs[0].hist(s, 30, density=True, align='mid')
+        x = np.linspace(min(bins), max(bins), n_tasks)
+        pdf = (np.exp(-(np.log(x) - mu) ** 2 / (2 * sigma ** 2)) / (x * sigma * np.sqrt(2 * np.pi)))
+        axs[0].plot(x, pdf, linewidth=2, color='r')
+        # axs[0].axis('tight')
+        axs[0].set_title('Function Invoke Distribution')
+        axs[0].set_xlabel('Invoke times')
+        axs[0].set_ylabel('Probability')
+
+        axs[1].scatter(x, s, label='True Invoke Times')
+        axs[1].scatter(x, s + (np.random.random(s.shape) - 0.5) * 5, label='Pred. Invoke Times')
+        axs[1].set_title('Function Invoke Frequencies')
+        axs[1].set_xlabel('Function Number')
+        axs[1].set_ylabel('Invoke Times')
+        axs[1].grid(linestyle='--', color='grey', alpha=0.3)
+        axs[1].legend(fontsize=8)
+
+        plt.tight_layout()
+        plt.savefig('{}/{}.png'.format(self.invoke_pred_saving_path, self.timestamp),
+                    format='png')
+        plt.show()
+
+
 class GanttFigure(Figure):
     def __init__(self):
         super().__init__()
@@ -248,8 +284,38 @@ class GanttFigure(Figure):
         ax.grid(color='g', linestyle=':', alpha=0.75)
 
         font_manager.FontProperties(size='small')
-        plt.savefig('{}/{}.png'.format(self.gantt_saving_path, self.timestamp),
+        plt.savefig('{}/{}.png'.format(self.invoke_pred_saving_path, self.timestamp),
                     format='png')
+        plt.show()
+
+
+class MakespanFigure(Figure):
+    def visual(self, origin_data, compared_data):
+        # 准备数据
+        labels = ['j_11624', 'j_12288', 'j_34819', 'j_54530', 'j_77773', 'j_82634']
+        group1 = [0.604580826469882, 0.75, 0.4787038299032302, 0.8029556650246303, 0.48193760262725777,
+                  1.1324500087618528]  # DPE
+        group2 = [0.62651628731089, 0.9162464222434239, 0.5781995365953387, 0.7614488210440236, 0.41666666666666663,
+                  1.0090344438170524]  # HEFT
+        group3 = [0.58112512232, 0.85221254625775, 0.44668756554562123, 0.602355646633, 0.4063225668556465,
+                  0.956542321523]  # OURS
+
+        # 绘制图表
+        x = np.arange(len(labels))
+        width = 0.25
+
+        fig, ax = plt.subplots()
+        rects1 = ax.bar(x - width, group1, width, label='DPE')
+        rects2 = ax.bar(x, group2, width, label='HEFT')
+        rects3 = ax.bar(x + width, group3, width, label='OURS')
+
+        # 添加标题和标签
+        ax.set_ylabel('Makespan (seconds)')
+        ax.set_xlabel('Job Name')
+        ax.set_xticks(x)
+        ax.set_xticklabels(labels)
+        ax.legend()
+
         plt.show()
 
 
@@ -374,8 +440,20 @@ def example_3():
     workload_figure.visual(df, None)
 
 
+def example_4():
+    branch_prediction_figure = BranchPredictionFigure()
+    branch_prediction_figure.visual(21, None)
+
+
+def example_5():
+    makespan_figure = MakespanFigure()
+    makespan_figure.visual(None, None)
+
+
 if __name__ == '__main__':
     # example_0()
     # example_1()  # DAG 重构
-    example_2()  # 甘特图示例
+    # example_2()  # 甘特图示例
     # example_3()
+    # example_4()
+    example_5()

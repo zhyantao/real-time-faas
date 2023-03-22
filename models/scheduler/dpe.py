@@ -5,7 +5,6 @@ DPE 算法实现：
 import datetime
 
 from models.utils.dataset import *
-from models.utils.figure import SchedulingResult
 from models.utils.scenario import para, generate_scenario, print_scenario, get_simple_paths, print_simple_paths, \
     get_ratio, set_funcs
 
@@ -58,6 +57,9 @@ class DPE:
             else:
                 job, next_idx = get_one_job(df, idx)
                 task_nums = next_idx - idx
+
+                job_name = job.loc[idx, 'job_name']
+                print(job_name)
 
                 job_pp_required = self.pp_required[:task_nums]  # 要求的处理能力 processor power
                 job_data_stream = self.data_stream[:task_nums]  # 要求传输的数据量
@@ -220,6 +222,8 @@ class DPE:
                 task_start_time_all.append(task_start_time)  # 记录所有所有 job 的最早开始时间
                 count += 1
 
+                print(makespan)
+
             calculated_num += 1
             percent = calculated_num / float(total_job_nums) * 100
             # for overflow
@@ -228,13 +232,14 @@ class DPE:
             bar.update(percent)
             idx += task_nums
 
-        for i in range(count):
-            scheduling_result = SchedulingResult(cpu_earliest_finish_time_all,
-                                                 task_deployment_all,
-                                                 cpu_task_mapping_list_all,
-                                                 task_start_time_all,
-                                                 i)
-            scheduling_result.print()
+        # 打印调度结果
+        # for i in range(count):
+        #     scheduling_result = SchedulingResult(cpu_earliest_finish_time_all,
+        #                                          task_deployment_all,
+        #                                          cpu_task_mapping_list_all,
+        #                                          task_start_time_all,
+        #                                          i)
+        #     scheduling_result.print()
 
         print('The overall makespan achieved by DPE: %f seconds' % makespan_all)
         print('The average makespan: %f seconds' % (makespan_all / total_job_nums))
