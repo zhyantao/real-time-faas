@@ -1,3 +1,8 @@
+"""
+时序差分 LSTM 实现
+
+Adapt based on: https://github.com/nicodjimenez/lstm
+"""
 import os
 
 import numpy as np
@@ -28,7 +33,7 @@ def rand_arr(a, b, *args):
 
 class LstmParam:
     def __init__(self, mem_cell_ct, x_dim):
-        self.mem_cell_ct = mem_cell_ct
+        self.mem_cell_ct = mem_cell_ct  # 记忆单元的个数 mem cell count
         self.x_dim = x_dim
         concat_len = x_dim + mem_cell_ct
         # weight matrices

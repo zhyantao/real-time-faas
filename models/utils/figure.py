@@ -30,6 +30,7 @@ class Figure:
         self.workload_saving_path = self.result_saving_path + '/workloads'
         self.invoke_pred_saving_path = self.result_saving_path + '/invokes'
         self.merged_image_saving_path = self.result_saving_path + '/merged'
+        self.schedule_results_saving_path = self.result_saving_path + '/schedules'
 
         self.timestamp = time.time()  # 用于区分不同时刻产生的结果文件
 
@@ -48,6 +49,8 @@ class Figure:
             os.makedirs(self.invoke_pred_saving_path)
         if not os.path.exists(self.merged_image_saving_path):
             os.makedirs(self.merged_image_saving_path)
+        if not os.path.exists(self.schedule_results_saving_path):
+            os.makedirs(self.schedule_results_saving_path)
 
     def visual(self, origin_data, compared_data):
         print('figure.py --> visual() has not been implemented.')
@@ -309,9 +312,9 @@ class MakespanFigure(Figure):
         width = 0.25
 
         fig, ax = plt.subplots()
-        rects1 = ax.bar(x - width, group1, width, label='DPE')
-        rects2 = ax.bar(x, group2, width, label='HEFT')
-        rects3 = ax.bar(x + width, group3, width, label='OURS')
+        ax.bar(x - width, group1, width, label='DPE')
+        ax.bar(x, group2, width, label='HEFT')
+        ax.bar(x + width, group3, width, label='OURS')
 
         # 添加标题和标签
         ax.set_ylabel('Makespan (seconds)')
@@ -320,6 +323,8 @@ class MakespanFigure(Figure):
         ax.set_xticklabels(labels)
         ax.legend()
 
+        plt.savefig('{}/{}.png'.format(self.schedule_results_saving_path, self.timestamp),
+                    format='png')
         plt.show()
 
 
@@ -490,5 +495,5 @@ if __name__ == '__main__':
     # example_2()  # 甘特图示例
     # example_3()
     # example_4()
-    # example_5()
-    example_6()  # 合并图像
+    example_5()  # makespan 对比
+    # example_6()  # 合并图像

@@ -8,7 +8,7 @@ from sklearn.preprocessing import StandardScaler
 
 from models.autoscaler.analysis import metrics
 from models.autoscaler.arima import MyARIMA
-from models.autoscaler.arima_v2 import BHTARIMA
+from models.autoscaler.bht_arima import BHTARIMA
 from models.autoscaler.lstm import LSTM
 from models.autoscaler.lstm_v2 import LstmParam, LstmNetwork, ToyLossLayer
 from models.utils.dataset import get_one_machine
@@ -60,7 +60,7 @@ def run_lstm(X, y):
     return y_hat
 
 
-def run_arima(X, y):
+def run_arima_v2(X, y):
     # 正则化数据
     # ss = MinMaxScaler()  # SVD 默认包含正则化：https://stackoverflow.com/a/46025739/16733647
     # std_X = ss.fit_transform(X)

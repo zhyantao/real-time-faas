@@ -1,5 +1,4 @@
-"""LSTM 多步预测"""
-
+"""LSTM: PyTorch Implementation"""
 import torch
 from pandas import DataFrame
 from sklearn.preprocessing import MinMaxScaler

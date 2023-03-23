@@ -1,3 +1,4 @@
+"""Take from BHT-ARIMA: https://github.com/huawei-noah/BHT-ARIMA"""
 import copy
 import warnings
 
