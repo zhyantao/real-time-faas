@@ -17,14 +17,14 @@ from models.utils.params import args
 from models.utils.text import ProgressBar
 
 
-def run_lstm(X, y):
+def run_lstm_v2(X, y):
     # 正则化数据
     ss = StandardScaler()
     std_X = ss.fit_transform(X)
     std_y = ss.fit_transform(y)
 
     # (1) 初始化 LSTM 模型
-    lstm_param = LstmParam(mem_cell_ct=100, x_dim=X.shape[1])
+    lstm_param = LstmParam(mem_cell_ct=128, x_dim=X.shape[1])
     lstm_net = LstmNetwork(lstm_param)
 
     # 打印一些有用调试信息
@@ -223,14 +223,14 @@ def example_1():
         # plt.plot(training_data, label="cpu_util_percent")
         # plt.show()
 
-        predictions = {'arima': [], 'lstm': [], 'ours': []}  # 统计预测值
-        losses = {'arima': [], 'lstm': [], 'ours': []}  # 统计损失
+        predictions = {'arima': [], 'bht_arima': [], 'lstm': [], 'ours': []}  # 统计预测值
+        losses = {'arima': [], 'bht_arima': [], 'lstm': [], 'ours': []}  # 统计损失
         # timecost = {'arima': [], 'lstm': [], 'ours': []}  # 统计不同算法的执行时间
 
         train_size = 50  # 用过去的 50 个数据预测前面的数据
 
         # 调用 ARIMA 预测模型
-        p, d, q = 2, 1, 1
+        p, d, q = 2, 1, 2
         params = [p, d, q]
         future_periods = 12
         # start_time = time.time()
@@ -245,7 +245,7 @@ def example_1():
 
         # 调用 LSTM 模型
         seq_length = 4
-        lstm = LSTM(num_classes=2, input_size=2, hidden_size=2, num_layers=1, seq_length=seq_length)
+        lstm = LSTM(num_classes=2, input_size=2, hidden_size=128, num_layers=1, seq_length=seq_length)
         y_hat_lstm = lstm.predict(machine, train_size - seq_length - 1)
         for i in range(y_hat_lstm.shape[0]):
             y = training_data[train_size + i].reshape(-1, 1)
@@ -260,9 +260,15 @@ def example_1():
             # (2) 准备数据
             X = training_data[i - train_size:i].T
             y = training_data[i].reshape(-1, 1)
+
+            # 调用 BHT ARIMA 模型
+            y_hat_bht_arima = run_arima_v2(X, y)
+            predictions['bht_arima'].append(y_hat_bht_arima)
+            losses['bht_arima'].append(metrics(y_hat_bht_arima, y))
+
             # (3) 调用 Ours 预测模型
             start_time = time.time()
-            y_hat_ours = run_lstm(X, y)
+            y_hat_ours = run_lstm_v2(X, y)
             # timecost['ours'].append(time.time() - start_time)
             predictions['ours'].append(y_hat_ours)
             losses['ours'].append(metrics(y_hat_ours, y))

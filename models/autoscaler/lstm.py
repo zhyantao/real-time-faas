@@ -77,7 +77,7 @@ class LSTM(nn.Module):
         test_x = Variable(torch.Tensor(np.array(data_x[train_size:len(x)])))
         test_y = Variable(torch.Tensor(np.array(data_y[train_size:len(y)])))
 
-        num_epochs = 2000
+        num_epochs = 5000
         learning_rate = 0.01
 
         criterion = torch.nn.MSELoss()  # mean-squared error for regression

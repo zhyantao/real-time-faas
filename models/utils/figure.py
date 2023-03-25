@@ -64,39 +64,49 @@ class TimeSeriesFigure(Figure):
         # 设置分割线
         split_line_pos = origin_data.shape[0] - len(compared_data['arima'])
 
-        # 创建一个 1 * 3 子图布局
-        rows, cols = 1, 3
-        fig, axs = plt.subplots(rows, cols, figsize=(10, 3))
+        # 创建一个 2 * 2 子图布局
+        rows, cols = 2, 2
+        fig, axs = plt.subplots(rows, cols, figsize=(10, 8))
 
         # 绘制 ARIMA 预测的数据
-        axs[0].plot(origin_data, label=['Real CPU util.', 'Real Mem util.'])
-        axs[0].plot(range(split_line_pos, origin_data.shape[0]), compared_data['arima'],  # 用 range 指定起点坐标
-                    label=['ARIMA pred. CPU util.', 'ARIMA pred. Mem util.'])
-        axs[0].axvline(x=split_line_pos, c='r', linestyle='--')
-        axs[0].set_title('ARIMA prediction')
-        axs[0].set_ylabel("Utilization Rate (%)")
-        axs[0].set_xlabel("Job Number (#)")
-        axs[0].legend(fontsize=8)
+        axs[0, 0].plot(origin_data, label=['True CPU', 'True Mem'])
+        axs[0, 0].plot(range(split_line_pos, origin_data.shape[0]), compared_data['arima'],  # 用 range 指定起点坐标
+                       label=['Predicted CPU', 'Predicted Mem'])
+        axs[0, 0].axvline(x=split_line_pos, c='r', linestyle='--')
+        axs[0, 0].set_title('ARIMA')
+        axs[0, 0].set_ylabel("Utilization Rate/%")
+        axs[0, 0].set_xlabel("Job Number")
+        axs[0, 0].legend(fontsize=8)
 
         # 绘制 LSTM 预测的数据
-        axs[1].plot(origin_data, label=['Real CPU util.', 'Real Mem util.'])
-        axs[1].plot(range(split_line_pos, origin_data.shape[0]), compared_data['lstm'],
-                    label=['LSTM pred. CPU util.', 'LSTM pred. Mem util.'])
-        axs[1].axvline(x=split_line_pos, c='r', linestyle='--')
-        axs[1].set_title('LSTM prediction')
-        axs[1].set_ylabel("Utilization Rate (%)")
-        axs[1].set_xlabel("Job Number (#)")
-        axs[1].legend(fontsize=8)
+        axs[0, 1].plot(origin_data, label=['True CPU', 'True Mem'])
+        axs[0, 1].plot(range(split_line_pos, origin_data.shape[0]), compared_data['lstm'],
+                       label=['Predicted CPU', 'Predicted Mem'])
+        axs[0, 1].axvline(x=split_line_pos, c='r', linestyle='--')
+        axs[0, 1].set_title('LSTM')
+        axs[0, 1].set_ylabel("Utilization Rate/%")
+        axs[0, 1].set_xlabel("Job Number")
+        axs[0, 1].legend(fontsize=8)
+
+        # 绘制 BHT ARIMA 预测的数据
+        axs[1, 0].plot(origin_data, label=['True CPU', 'True Mem'])
+        axs[1, 0].plot(range(split_line_pos, origin_data.shape[0]), compared_data['bht_arima'],
+                       label=['Predicted CPU', 'Predicted Mem'])
+        axs[1, 0].axvline(x=split_line_pos, c='r', linestyle='--')
+        axs[1, 0].set_title('BHT-ARIMA')
+        axs[1, 0].set_ylabel("Utilization Rate/%")
+        axs[1, 0].set_xlabel("Job Number")
+        axs[1, 0].legend(fontsize=8)
 
         # 绘制 Ours 预测的数据
-        axs[2].plot(origin_data, label=['Real CPU util.', 'Real Mem util.'])
-        axs[2].plot(range(split_line_pos, origin_data.shape[0]), compared_data['ours'],
-                    label=['Ours pred. CPU util.', 'Ours pred. Mem util.'])
-        axs[2].axvline(x=split_line_pos, c='r', linestyle='--')
-        axs[2].set_title('Ours prediction')
-        axs[2].set_ylabel("Utilization Rate (%)")
-        axs[2].set_xlabel("Job Number (#)")
-        axs[2].legend(fontsize=8)
+        axs[1, 1].plot(origin_data, label=['True CPU', 'True Mem'])
+        axs[1, 1].plot(range(split_line_pos, origin_data.shape[0]), compared_data['ours'],
+                       label=['Predicted CPU', 'Predicted Mem'])
+        axs[1, 1].axvline(x=split_line_pos, c='r', linestyle='--')
+        axs[1, 1].set_title('Ours')
+        axs[1, 1].set_ylabel("Utilization Rate/%")
+        axs[1, 1].set_xlabel("Job Number")
+        axs[1, 1].legend(fontsize=8)
 
         # 添加图片的辅助信息
         fig.tight_layout()  # 调整子图布局以避免重叠
@@ -111,11 +121,11 @@ class MetrixFigure(Figure):
     def visual(self, timecost, compared_data):
         """可视化各种损失函数"""
 
-        acc = {'arima': [], 'lstm': [], 'ours': []}
-        rmse = {'arima': [], 'lstm': [], 'ours': []}
-        nrmse = {'arima': [], 'lstm': [], 'ours': []}
-        nd = {'arima': [], 'lstm': [], 'ours': []}
-        smape = {'arima': [], 'lstm': [], 'ours': []}
+        acc = {'arima': [], 'bht_arima': [], 'lstm': [], 'ours': []}
+        rmse = {'arima': [], 'bht_arima': [], 'lstm': [], 'ours': []}
+        nrmse = {'arima': [], 'bht_arima': [], 'lstm': [], 'ours': []}
+        nd = {'arima': [], 'bht_arima': [], 'lstm': [], 'ours': []}
+        smape = {'arima': [], 'bht_arima': [], 'lstm': [], 'ours': []}
 
         for item in compared_data['arima']:
             acc['arima'].append(item['acc'])
@@ -138,6 +148,13 @@ class MetrixFigure(Figure):
             nd['ours'].append(item['nd'])
             smape['ours'].append(item['smape'])
 
+        for item in compared_data['bht_arima']:
+            acc['bht_arima'].append(item['acc'])
+            rmse['bht_arima'].append(item['rmse'])
+            nrmse['bht_arima'].append(item['nrmse'])
+            nd['bht_arima'].append(item['nd'])
+            smape['bht_arima'].append(item['smape'])
+
         # 创建一个 2 * 2 子图布局
         rows, cols = 2, 2
         fig, axs = plt.subplots(rows, cols, figsize=(10, 8))
@@ -146,36 +163,44 @@ class MetrixFigure(Figure):
         axs[0, 0].plot(rmse['arima'], label='ARIMA')
         axs[0, 0].plot(rmse['lstm'], label='LSTM')
         axs[0, 0].plot(rmse['ours'], label='Ours')
+        axs[0, 0].plot(rmse['bht_arima'], label='BHT ARIMA')
         axs[0, 0].set_title('RMSE', fontsize=11)
         axs[0, 0].set_ylabel("RMSE")
-        axs[0, 0].set_xlabel("Task Number (#)")
+        axs[0, 0].set_xlabel("Task Number")
+        axs[0, 0].set_ylim([0, 100])
         axs[0, 0].legend(fontsize=8)
 
         # 绘制第三个子图
         axs[0, 1].plot(nrmse['arima'], label='ARIMA')
         axs[0, 1].plot(nrmse['lstm'], label='LSTM')
         axs[0, 1].plot(nrmse['ours'], label='Ours')
+        axs[0, 1].plot(nrmse['bht_arima'], label='BHT ARIMA')
         axs[0, 1].set_title('Normalized RMSE', fontsize=11)
         axs[0, 1].set_ylabel("Normalized RMSE")
-        axs[0, 1].set_xlabel("Task Number (#)")
+        axs[0, 1].set_xlabel("Task Number")
+        axs[0, 1].set_ylim([0, 2.5])
         axs[0, 1].legend(fontsize=8)
 
         # 绘制第四个子图
         axs[1, 0].plot(nd['arima'], label='ARIMA')
         axs[1, 0].plot(nd['lstm'], label='LSTM')
         axs[1, 0].plot(nd['ours'], label='Ours')
+        axs[1, 0].plot(nd['bht_arima'], label='BHT ARIMA')
         axs[1, 0].set_title('Normalized Deviation', fontsize=11)
         axs[1, 0].set_ylabel("Normalized Deviation")
-        axs[1, 0].set_xlabel("Task Number (#)")
+        axs[1, 0].set_xlabel("Task Number")
+        axs[1, 0].set_ylim([0, 3])
         axs[1, 0].legend(fontsize=8)
 
         # 绘制第五个子图
         axs[1, 1].plot(smape['arima'], label='ARIMA')
         axs[1, 1].plot(smape['lstm'], label='LSTM')
         axs[1, 1].plot(smape['ours'], label='Ours')
+        axs[1, 1].plot(smape['bht_arima'], label='BHT ARIMA')
         axs[1, 1].set_title('SMAPE', fontsize=11)
         axs[1, 1].set_ylabel("SMAPE")
-        axs[1, 1].set_xlabel("Task Number (#)")
+        axs[1, 1].set_xlabel("Task Number")
+        axs[1, 1].set_ylim([0, 2])
         axs[1, 1].legend(fontsize=8)
 
         # 添加整图标题
@@ -190,9 +215,11 @@ class MetrixFigure(Figure):
         plt.plot(acc['arima'], label='ARIMA')
         plt.plot(acc['lstm'], label='LSTM')
         plt.plot(acc['ours'], label='Ours')
+        plt.plot(acc['bht_arima'], label='BHT ARIMA')
         plt.title('Accuracy', fontsize=11)
-        plt.ylabel("Percent (%)")
-        plt.xlabel("Task Number (#)")
+        plt.ylabel("Percent %")
+        plt.xlabel("Task Number")
+        plt.ylim([0, 1])
         plt.legend(fontsize=8)
         plt.savefig('{}/{}_accuracy.png'.format(self.metrics_saving_path, self.timestamp),
                     dpi=600, format='png')

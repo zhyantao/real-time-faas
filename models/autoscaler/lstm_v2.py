@@ -7,7 +7,6 @@ import os
 
 import numpy as np
 import pandas as pd
-from sklearn.preprocessing import StandardScaler
 
 from models.utils.dataset import get_one_machine
 from models.utils.params import args
@@ -96,8 +95,8 @@ class LstmNode:
         # non-recurrent input concatenated with recurrent input
         self.xc = None
 
-    # 正向更新
     def bottom_data_is(self, x, s_prev=None, h_prev=None):
+        """正向更新"""
         # if this is the first lstm node in the network
         if s_prev is None:
             s_prev = np.zeros_like(self.state.s)
@@ -108,37 +107,32 @@ class LstmNode:
         self.h_prev = h_prev
 
         # concatenate x(t) and h(t-1)
-        xc = np.hstack((x, h_prev))
+        xc = np.hstack((x, h_prev))  # 水平按列堆叠数组
         self.state.g = np.tanh(np.dot(self.param.wg, xc) + self.param.bg)
         self.state.i = sigmoid(np.dot(self.param.wi, xc) + self.param.bi)
         self.state.f = sigmoid(np.dot(self.param.wf, xc) + self.param.bf)
         self.state.o = sigmoid(np.dot(self.param.wo, xc) + self.param.bo)
         self.state.s = self.state.g * self.state.i + s_prev * self.state.f
-        # self.state.h = np.tanh(self.state.s) * self.state.o # version 2
         self.state.h = self.state.s * self.state.o
 
         self.xc = xc
 
-    # 反向传播
     def top_diff_is(self, top_diff_h, top_diff_s):
-        # notice that top_diff_s is carried along the constant error carousel
-        # ds = self.state.o * (1 - self.state.s ** 2) * top_diff_h + top_diff_s  # version 1
-        # ds = self.state.o * top_diff_h + np.tanh(top_diff_s) # version 2
-        ds = self.state.o * top_diff_h + top_diff_s
-        # do = np.tanh(self.state.s) * top_diff_h # version 2
-        do = self.state.s * top_diff_h
+        """误差反向传播"""
+        ds = self.state.o * top_diff_h + top_diff_s  # dL(t) / ds(t) = .... 注意 s(t) 本身是一个递归函数, 需要特殊处理
+        do = self.state.s * top_diff_h  # dL(t) / do(t) = .... 因为将 o(t) 看做变量时, s(t) 可看做常数处理
         di = self.state.g * ds
         dg = self.state.i * ds
         df = self.s_prev * ds
 
-        # diffs w.r.t. vector inside sigma / tanh function
-        di_input = sigmoid_derivative(self.state.i) * di
-        df_input = sigmoid_derivative(self.state.f) * df
+        # vector inside sigma / tanh function 的导数
+        di_input = sigmoid_derivative(self.state.i) * di  # 求误差对输入门的输入的导数
+        df_input = sigmoid_derivative(self.state.f) * df  # 求误差对遗忘门的输入的导数
         do_input = sigmoid_derivative(self.state.o) * do
         dg_input = tanh_derivative(self.state.g) * dg
 
-        # diffs w.r.t. inputs
-        self.param.wi_diff += np.outer(di_input, self.xc)
+        # inputs 的导数
+        self.param.wi_diff += np.outer(di_input, self.xc)  # 求误差对输入门上的参数的导数
         self.param.wf_diff += np.outer(df_input, self.xc)
         self.param.wo_diff += np.outer(do_input, self.xc)
         self.param.wg_diff += np.outer(dg_input, self.xc)
@@ -147,16 +141,17 @@ class LstmNode:
         self.param.bo_diff += do_input
         self.param.bg_diff += dg_input
 
-        # compute bottom diff
-        dxc = np.zeros_like(self.xc)
+        # 计算 bottom diff
+        # 计算记忆单元输入的累积误差，误差来源于所有的输入的误差累积和
+        dxc = np.zeros_like(self.xc)  # dxc 表示记忆单元的输入 diff of x_{cell}
         dxc += np.dot(self.param.wi.T, di_input)
         dxc += np.dot(self.param.wf.T, df_input)
         dxc += np.dot(self.param.wo.T, do_input)
         dxc += np.dot(self.param.wg.T, dg_input)
 
-        # save bottom diffs
-        self.state.bottom_diff_s = ds * self.state.f
-        self.state.bottom_diff_h = dxc[self.param.x_dim:]
+        # 保存 bottom diffs
+        self.state.bottom_diff_s = ds * self.state.f  # dL(t) / ds(t)
+        self.state.bottom_diff_h = dxc[self.param.x_dim:]  # dL(t) / dh(t-1)
 
 
 class LstmNetwork:
@@ -166,18 +161,20 @@ class LstmNetwork:
         # input sequence
         self.x_list = []
 
-    def y_list_is(self, y_list, loss_layer):
+    def y_list_is(self, y_truth, loss_layer):
         """
-        Updates diffs by setting target sequence
-        with corresponding loss layer.
-        Will *NOT* update parameters.  To update parameters,
-        call self.lstm_param.apply_diff()
+        根据真实值和预测值计算损失。
+        注意，该函数并不会更新模型参数，要更新模型参数，需要调用 self.lstm_param.apply_diff()。
+        :param y_truth: 真实值
+        :param loss_layer: 损失函数
+        :return:
         """
-        assert len(y_list) == len(self.x_list)
+        assert len(y_truth) == len(self.x_list)
         idx = len(self.x_list) - 1
         # first node only gets diffs from label ...
-        loss = loss_layer.loss(self.lstm_node_list[idx].state.h, y_list[idx])
-        diff_h = loss_layer.bottom_diff(self.lstm_node_list[idx].state.h, y_list[idx])
+        # 从  T 到 1 反向计算损失
+        loss = loss_layer.loss(self.lstm_node_list[idx].state.h, y_truth[idx])
+        diff_h = loss_layer.bottom_diff(self.lstm_node_list[idx].state.h, y_truth[idx])
         # here s is not affecting loss due to h(t+1), hence we set equal to zero
         diff_s = np.zeros(self.lstm_param.mem_cell_ct)
         self.lstm_node_list[idx].top_diff_is(diff_h, diff_s)
@@ -186,8 +183,8 @@ class LstmNetwork:
         # ... following nodes also get diffs from next nodes, hence we add diffs to diff_h
         # we also propagate error along constant error carousel using diff_s
         while idx >= 0:
-            loss += loss_layer.loss(self.lstm_node_list[idx].state.h, y_list[idx])
-            diff_h = loss_layer.bottom_diff(self.lstm_node_list[idx].state.h, y_list[idx])
+            loss += loss_layer.loss(self.lstm_node_list[idx].state.h, y_truth[idx])
+            diff_h = loss_layer.bottom_diff(self.lstm_node_list[idx].state.h, y_truth[idx])
             diff_h += self.lstm_node_list[idx + 1].state.bottom_diff_h
             diff_s = self.lstm_node_list[idx + 1].state.bottom_diff_s
             self.lstm_node_list[idx].top_diff_is(diff_h, diff_s)
@@ -217,9 +214,7 @@ class LstmNetwork:
 
 
 class ToyLossLayer:
-    """
-    Computes square loss with first element of hidden layer array.
-    """
+    """计算隐藏层数组中第一个元素的平方误差"""
 
     @classmethod
     def loss(self, pred, label):
@@ -230,95 +225,6 @@ class ToyLossLayer:
         diff = np.zeros_like(pred)
         diff[0] = 2 * (pred[0] - label)
         return diff
-
-
-def sliding_windows(data, seq_length):
-    X = []
-    y = []
-
-    for i in range(data.shape[1] - seq_length - 1):
-        _X = data[:, i:i + seq_length]  # 每次截取一段
-        _y = data[:, i + seq_length]  # 每次拼接一个
-        X.append(_X)
-        y.append(_y)
-
-    return np.array(X), np.array(y)
-
-
-def run_lstm_multi_step(X, y):
-    # 正则化数据
-    ss = StandardScaler()
-    std_data = ss.fit_transform(X)
-    # std_y = ss.fit_transform(y)
-
-    seq_len = 4
-
-    sw_X, sw_y = sliding_windows(std_data, seq_len)
-    # print(sw_X, sw_y)
-
-    # 划分数据集
-    train_size = int(sw_X.shape[0] * 0.67)
-    test_size = sw_X.shape[0] - train_size
-
-    # data_X = np.array(std_data)
-    # data_y = np.array(std_data)
-
-    train_X = np.array(sw_X[:train_size])
-    train_y = np.array(sw_y[:train_size])
-
-    test_X = np.array(sw_X[train_size:])
-    test_y = np.array(sw_y[train_size:])
-
-    # (1) 初始化 LSTM 模型
-    lstm_param = LstmParam(mem_cell_ct=100, x_dim=seq_len)
-    lstm_net = LstmNetwork(lstm_param)
-
-    # 打印一些有用调试信息
-    # print('X.shape = ', X.shape)
-    # print('y.shape = ', y.shape)
-
-    # (2) 训练 LSTM 模型
-    for epoch in range(100):
-        # print("iter", "%2s" % str(epoch), end=": ")
-        for layer in range(train_X.shape[1]):
-            for i in range(train_X.shape[0]):
-                lstm_net.x_list_add(train_X[i, layer])
-
-            # for i in range(train_X.shape[1]):
-            #     lstm_net.x_list_add(train_X[:, i])
-            # for i in range(train_X.shape[0]):
-            #     lstm_net.x_list_add(train_X[i])
-
-            # (3) 预测和计算损失
-            print("y_pred = [" +
-                  ", ".join(["% 2.5f"
-                             # % ss.inverse_transform(lstm_net.lstm_node_list[m].state.h[0].reshape(1, -1))
-                             % lstm_net.lstm_node_list[m].state.h[0]
-                             for m in range(train_y.shape[0])]) +
-                  "]", end=", ")
-            loss = lstm_net.y_list_is(train_y[:, 0], ToyLossLayer)  # 计算损失
-            print("loss:", "%.3e" % loss)
-
-            # (4) 更新模型
-            lstm_param.apply_diff(lr=0.01)
-            lstm_net.x_list_clear()  # 清理掉原来的参数
-
-    # (5) 预测 y
-    # origin_y = ss.inverse_transform(std_y)
-    y_hat = (np.zeros_like(test_y)).reshape(-1)
-    for layer in range(test_X.shape[1]):
-        for i in range(test_X.shape[0]):
-            lstm_net.x_list_add(test_X[i, layer])
-    for m in range(train_y.shape[0]):
-        pred = lstm_net.lstm_node_list[m].state.h[0]
-        # pred = ss.inverse_transform(lstm_net.lstm_node_list[i].state.h[0].reshape(1, -1))
-        # y_hat[m] = ss.inverse_transform(pred.reshape(1, -1))
-        y_hat[m] = pred
-    print('-----> test_y: ', test_y)
-    print('-----> y_hat: ', y_hat)
-    loss = lstm_net.y_list_is(train_y[:, 0], ToyLossLayer)  # 计算损失
-    print("loss:", "%.3e" % loss)
-    return y_hat
 
 
 if __name__ == '__main__':
@@ -344,6 +250,6 @@ if __name__ == '__main__':
         X = training_data.T
         y = training_data[-1].reshape(-1, 1)
 
-        run_lstm_multi_step(X, y)
+        # run_lstm_multi_step(X, y)
 
         break
