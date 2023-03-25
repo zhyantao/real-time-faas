@@ -280,6 +280,8 @@ def example_1():
         idx = next_idx
         count += 1
 
+        break
+
 
 def example_2():
     selected_container_usage_path = args.selected_container_usage_path

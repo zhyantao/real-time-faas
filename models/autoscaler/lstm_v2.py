@@ -84,8 +84,8 @@ class LstmState:
         self.o = np.zeros(mem_cell_ct)
         self.s = np.zeros(mem_cell_ct)
         self.h = np.zeros(mem_cell_ct)
-        self.bottom_diff_h = np.zeros_like(self.h)
-        self.bottom_diff_s = np.zeros_like(self.s)
+        self.bottom_diff_h = np.zeros_like(self.h)  # h 的下导数
+        self.bottom_diff_s = np.zeros_like(self.s)  # s 的下导数
 
 
 class LstmNode:
@@ -96,10 +96,13 @@ class LstmNode:
         # non-recurrent input concatenated with recurrent input
         self.xc = None
 
+    # 正向更新
     def bottom_data_is(self, x, s_prev=None, h_prev=None):
         # if this is the first lstm node in the network
-        if s_prev is None: s_prev = np.zeros_like(self.state.s)
-        if h_prev is None: h_prev = np.zeros_like(self.state.h)
+        if s_prev is None:
+            s_prev = np.zeros_like(self.state.s)
+        if h_prev is None:
+            h_prev = np.zeros_like(self.state.h)
         # save data for use in backprop
         self.s_prev = s_prev
         self.h_prev = h_prev
@@ -116,6 +119,7 @@ class LstmNode:
 
         self.xc = xc
 
+    # 反向传播
     def top_diff_is(self, top_diff_h, top_diff_s):
         # notice that top_diff_s is carried along the constant error carousel
         # ds = self.state.o * (1 - self.state.s ** 2) * top_diff_h + top_diff_s  # version 1
