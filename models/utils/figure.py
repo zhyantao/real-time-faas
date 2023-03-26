@@ -111,7 +111,7 @@ class TimeSeriesFigure(Figure):
         # 添加图片的辅助信息
         fig.tight_layout()  # 调整子图布局以避免重叠
         fig.suptitle('CPU and Mem Usage Prediction')
-        plt.subplots_adjust(top=0.81)  # 调整整图标题的位置，以避免和子图重叠
+        plt.subplots_adjust(top=0.9)  # 调整整图标题的位置，以避免和子图重叠
         plt.savefig('{}/{}_timeseries.png'.format(self.metrics_saving_path, self.timestamp),
                     dpi=600, format='png')
         plt.show()
@@ -206,7 +206,7 @@ class MetrixFigure(Figure):
         # 添加整图标题
         fig.tight_layout()  # 调整子图布局以避免重叠
         fig.suptitle('Metrics Comparison')
-        plt.subplots_adjust(top=0.88)  # 调整整图标题的位置，以避免和子图重叠
+        plt.subplots_adjust(top=0.9)  # 调整整图标题的位置，以避免和子图重叠
         plt.savefig('{}/{}_loss.png'.format(self.metrics_saving_path, self.timestamp),
                     dpi=600, format='png')
         plt.show()

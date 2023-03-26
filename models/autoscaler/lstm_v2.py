@@ -32,8 +32,9 @@ def rand_arr(a, b, *args):
 
 class LstmParam:
     def __init__(self, mem_cell_ct, x_dim):
+        """初始化 LSTM 参数"""
         self.mem_cell_ct = mem_cell_ct  # 记忆单元的个数 mem cell count
-        self.x_dim = x_dim
+        self.x_dim = x_dim  # 输入 x 的维度，表示需要有多少个先验数据用来学习
         concat_len = x_dim + mem_cell_ct
         # weight matrices
         self.wg = rand_arr(-0.1, 0.1, mem_cell_ct, concat_len)
@@ -56,6 +57,7 @@ class LstmParam:
         self.bo_diff = np.zeros(mem_cell_ct)
 
     def apply_diff(self, lr=1.0):
+        """更新参数"""
         self.wg -= lr * self.wg_diff
         self.wi -= lr * self.wi_diff
         self.wf -= lr * self.wf_diff
@@ -94,6 +96,8 @@ class LstmNode:
         self.param = lstm_param
         # non-recurrent input concatenated with recurrent input
         self.xc = None
+        self.s_prev = None
+        self.h_prev = None
 
     def bottom_data_is(self, x, s_prev=None, h_prev=None):
         """正向更新"""
@@ -108,8 +112,8 @@ class LstmNode:
 
         # concatenate x(t) and h(t-1)
         xc = np.hstack((x, h_prev))  # 水平按列堆叠数组
-        self.state.g = np.tanh(np.dot(self.param.wg, xc) + self.param.bg)
-        self.state.i = sigmoid(np.dot(self.param.wi, xc) + self.param.bi)
+        self.state.g = np.tanh(np.dot(self.param.wg, xc) + self.param.bg + self.state.bottom_diff_s)
+        self.state.i = sigmoid(np.dot(self.param.wi, xc) + self.param.bi + self.state.bottom_diff_s)
         self.state.f = sigmoid(np.dot(self.param.wf, xc) + self.param.bf)
         self.state.o = sigmoid(np.dot(self.param.wo, xc) + self.param.bo)
         self.state.s = self.state.g * self.state.i + s_prev * self.state.f
