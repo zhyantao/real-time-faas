@@ -75,7 +75,7 @@ class TimeSeriesFigure(Figure):
         axs[0, 0].axvline(x=split_line_pos, c='r', linestyle='--')
         axs[0, 0].set_title('ARIMA')
         axs[0, 0].set_ylabel("Utilization Rate/%")
-        axs[0, 0].set_xlabel("Job Number")
+        axs[0, 0].set_xlabel("Time/s")
         axs[0, 0].legend(fontsize=8)
 
         # 绘制 LSTM 预测的数据
@@ -85,7 +85,7 @@ class TimeSeriesFigure(Figure):
         axs[0, 1].axvline(x=split_line_pos, c='r', linestyle='--')
         axs[0, 1].set_title('LSTM')
         axs[0, 1].set_ylabel("Utilization Rate/%")
-        axs[0, 1].set_xlabel("Job Number")
+        axs[0, 1].set_xlabel("Time/s")
         axs[0, 1].legend(fontsize=8)
 
         # 绘制 BHT ARIMA 预测的数据
@@ -95,7 +95,7 @@ class TimeSeriesFigure(Figure):
         axs[1, 0].axvline(x=split_line_pos, c='r', linestyle='--')
         axs[1, 0].set_title('BHT-ARIMA')
         axs[1, 0].set_ylabel("Utilization Rate/%")
-        axs[1, 0].set_xlabel("Job Number")
+        axs[1, 0].set_xlabel("Time/s")
         axs[1, 0].legend(fontsize=8)
 
         # 绘制 Ours 预测的数据
@@ -105,7 +105,7 @@ class TimeSeriesFigure(Figure):
         axs[1, 1].axvline(x=split_line_pos, c='r', linestyle='--')
         axs[1, 1].set_title('Ours')
         axs[1, 1].set_ylabel("Utilization Rate/%")
-        axs[1, 1].set_xlabel("Job Number")
+        axs[1, 1].set_xlabel("Time/s")
         axs[1, 1].legend(fontsize=8)
 
         # 添加图片的辅助信息
@@ -166,7 +166,7 @@ class MetrixFigure(Figure):
         axs[0, 0].plot(rmse['bht_arima'], label='BHT ARIMA')
         axs[0, 0].set_title('RMSE', fontsize=11)
         axs[0, 0].set_ylabel("RMSE")
-        axs[0, 0].set_xlabel("Task Number")
+        axs[0, 0].set_xlabel("Time/s")
         axs[0, 0].set_ylim([0, 100])
         axs[0, 0].legend(fontsize=8)
 
@@ -177,7 +177,7 @@ class MetrixFigure(Figure):
         axs[0, 1].plot(nrmse['bht_arima'], label='BHT ARIMA')
         axs[0, 1].set_title('Normalized RMSE', fontsize=11)
         axs[0, 1].set_ylabel("Normalized RMSE")
-        axs[0, 1].set_xlabel("Task Number")
+        axs[0, 1].set_xlabel("Time/s")
         axs[0, 1].set_ylim([0, 2.5])
         axs[0, 1].legend(fontsize=8)
 
@@ -188,7 +188,7 @@ class MetrixFigure(Figure):
         axs[1, 0].plot(nd['bht_arima'], label='BHT ARIMA')
         axs[1, 0].set_title('Normalized Deviation', fontsize=11)
         axs[1, 0].set_ylabel("Normalized Deviation")
-        axs[1, 0].set_xlabel("Task Number")
+        axs[1, 0].set_xlabel("Time/s")
         axs[1, 0].set_ylim([0, 3])
         axs[1, 0].legend(fontsize=8)
 
@@ -199,7 +199,7 @@ class MetrixFigure(Figure):
         axs[1, 1].plot(smape['bht_arima'], label='BHT ARIMA')
         axs[1, 1].set_title('SMAPE', fontsize=11)
         axs[1, 1].set_ylabel("SMAPE")
-        axs[1, 1].set_xlabel("Task Number")
+        axs[1, 1].set_xlabel("Time/s")
         axs[1, 1].set_ylim([0, 2])
         axs[1, 1].legend(fontsize=8)
 
@@ -218,7 +218,7 @@ class MetrixFigure(Figure):
         plt.plot(acc['bht_arima'], label='BHT ARIMA')
         plt.title('Accuracy', fontsize=11)
         plt.ylabel("Percent %")
-        plt.xlabel("Task Number")
+        plt.xlabel("Time/s")
         plt.ylim([0, 1])
         plt.legend(fontsize=8)
         plt.savefig('{}/{}_accuracy.png'.format(self.metrics_saving_path, self.timestamp),
