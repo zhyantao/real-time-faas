@@ -53,5 +53,4 @@ class UDG:
 
 if __name__ == '__main__':
     udg = UDG()
-    udg.generate_udg_from_random(n_nodes=10, n_max_connections=1, bandwidth_lower=20, bandwidth_upper=60)
-    # print(np.random.randint(99))
+    udg.generate_udg_from_random(10, 9, 20, 60)
