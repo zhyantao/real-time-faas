@@ -1,9 +1,19 @@
 import unittest
 
+import pandas as pd
+
+from models.utils.dag import DAG
+from models.utils.dataset import get_one_job
 from models.utils.figure import *
+from models.utils.udg import UDG
 
 
 class FigureTest(unittest.TestCase):
+
+    def test_workload_analysis_figure(self):
+        df = pd.read_csv(args.selected_container_usage_path)
+        workload_analysis_figure = WorkloadAnalysisFigure()
+        workload_analysis_figure.visual(df, None)
 
     def test_figure(self):
         # 生成数据

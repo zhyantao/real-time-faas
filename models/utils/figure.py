@@ -7,16 +7,13 @@ from collections import namedtuple
 import matplotlib.pyplot as plt
 import networkx as nx
 import numpy as np
-import pandas as pd
 from PIL import Image
 from matplotlib import font_manager
 from networkx import DiGraph, Graph
 from pandas import DataFrame
 
-from models.utils.dag import DAG
-from models.utils.dataset import get_one_machine, get_one_job
+from models.utils.dataset import get_one_machine
 from models.utils.params import args
-from models.utils.udg import UDG
 
 ScheduleEvent = namedtuple('ScheduleEvent', 'task_id start end cpu_id')
 
@@ -376,7 +373,7 @@ class MakespanFigure(Figure):
 
 class WorkloadFigure(Figure):
     def visual(self, data: DataFrame, compared_data):
-        # 创建一个 2 * 3 子图布局
+        # 创建一个 3 * 3 的子图布局
         rows, cols = 3, 3
         fig, axs = plt.subplots(rows, cols, figsize=(10, 8))
 
@@ -426,6 +423,68 @@ class WorkloadFigure(Figure):
         plt.show()
 
 
+class WorkloadAnalysisFigure(Figure):
+    def visual(self, data: DataFrame, compared_data):
+        df_rows = data.shape[0]
+
+        all_cpu_data = []
+        all_mem_data = []
+        x_axis_names = []
+        idx, count = 0, 0
+        while idx < df_rows:
+            machine, idx = get_one_machine(data, idx)
+            machine_name = machine['machine_id'].loc[machine.index[0]]
+
+            # 获取单个容器的 CPU 和内存消耗变化情况
+            cpu_usage = machine.iloc[:, 3:4].values
+            mem_usage = machine.iloc[:, 4:5].values
+
+            all_cpu_data.append(cpu_usage.flatten())
+            all_mem_data.append(mem_usage.flatten())
+
+            x_axis_names.append(machine_name)
+
+            # # 绘制直方图
+            # plt.figure()
+            # plt.hist(cpu_usage, bins=40)
+            # plt.title("CPU Usage")
+            # plt.xlabel("Value")
+            # plt.ylabel("Frequency")
+            # plt.show()
+            #
+            # # 绘制直方图
+            # plt.figure()
+            # plt.hist(mem_usage, bins=50)
+            # plt.title("Memory Usage")
+            # plt.xlabel("Value")
+            # plt.ylabel("Frequency")
+            # plt.show()
+
+            count += 1
+            if count == 9:
+                break
+
+        fig, axs = plt.subplots(1, 2, figsize=(10, 6))
+        axs[0].boxplot(all_cpu_data)
+        axs[0].set_xticklabels(x_axis_names, rotation=45)
+        axs[0].set_title('CPU Usage')
+        axs[0].set_xlabel("Machine Name")
+        axs[0].set_ylabel("Percent/%")
+
+        axs[1].boxplot(all_mem_data)
+        axs[1].set_xticklabels(x_axis_names, rotation=45)
+        axs[1].set_title('Memory Usage')
+        axs[1].set_xlabel("Machine Name")
+        axs[1].set_ylabel("Percent/%")
+
+        fig.tight_layout()  # 调整子图布局以避免重叠
+        fig.suptitle('Box Plot')
+        plt.subplots_adjust(top=0.88)  # 调整整图标题的位置，以避免和子图重叠
+        plt.savefig('{}/{}_workload_analysis.png'.format(self.workload_saving_path, self.timestamp),
+                    dpi=600, format='png')
+        plt.show()
+
+
 class MergeFigure(Figure):
     def visual(self, image_list, compared_data):
         n = len(image_list)
@@ -442,4 +501,3 @@ class MergeFigure(Figure):
                 result.paste(images[i * cols + j], (j * width, i * height))
         result.save(self.merged_image_saving_path + '/{}.png'.format(self.timestamp))
         result.show()
-
