@@ -4,9 +4,7 @@ import numpy as np
 
 
 class Node(object):
-    """
-    Node 实体类
-    """
+    """Node 实体类"""
 
     def __init__(self, resources, duration, label):
         self.resources = resources

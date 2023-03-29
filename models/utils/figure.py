@@ -10,12 +10,13 @@ import numpy as np
 import pandas as pd
 from PIL import Image
 from matplotlib import font_manager
-from networkx import DiGraph
+from networkx import DiGraph, Graph
 from pandas import DataFrame
 
 from models.utils.dag import DAG
 from models.utils.dataset import get_one_machine, get_one_job
 from models.utils.params import args
+from models.utils.udg import UDG
 
 ScheduleEvent = namedtuple('ScheduleEvent', 'task_id start end cpu_id')
 
@@ -31,6 +32,7 @@ class Figure:
         self.invoke_pred_saving_path = self.result_saving_path + '/invokes'
         self.merged_image_saving_path = self.result_saving_path + '/merged'
         self.schedule_results_saving_path = self.result_saving_path + '/schedules'
+        self.udg_saving_path = self.result_saving_path + '/udgs'
 
         self.timestamp = time.time()  # 用于区分不同时刻产生的结果文件
 
@@ -51,6 +53,8 @@ class Figure:
             os.makedirs(self.merged_image_saving_path)
         if not os.path.exists(self.schedule_results_saving_path):
             os.makedirs(self.schedule_results_saving_path)
+        if not os.path.exists(self.udg_saving_path):
+            os.makedirs(self.udg_saving_path)
 
     def visual(self, origin_data, compared_data):
         print('figure.py --> visual() has not been implemented.')
@@ -238,6 +242,21 @@ class DAGFigure(Figure):
 
         plt.axis("off")
         plt.savefig('{}/{}.png'.format(self.dag_saving_path, job_name),
+                    format='png')
+        plt.show()
+
+
+class UDGFigure(Figure):
+    def visual(self, G: Graph, udg_name=None):
+        plt.title(udg_name)
+
+        pos = nx.nx_agraph.graphviz_layout(G, prog='dot')
+        nx.draw(G, pos, font_color='whitesmoke', with_labels=True)
+        edge_labels = nx.get_edge_attributes(G, 'weight')
+        nx.draw_networkx_edge_labels(G, pos, edge_labels=edge_labels, font_size=8)
+
+        plt.axis("off")
+        plt.savefig('{}/{}.png'.format(self.udg_saving_path, udg_name),
                     format='png')
         plt.show()
 
@@ -515,6 +534,25 @@ def example_6():
     ]
     MergeFigure().visual(image_list1, None)
 
+    image_list2 = [
+        "E:\\Workshop\\real-time-faas\\results\\udgs\\max_connection_3_1680084850.4353304.png",
+        "E:\\Workshop\\real-time-faas\\results\\udgs\\max_connection_2_1680084824.861884.png",
+        "E:\\Workshop\\real-time-faas\\results\\udgs\\max_connection_3_1680084851.3031876.png",
+        "E:\\Workshop\\real-time-faas\\results\\udgs\\max_connection_3_1680084852.2823596.png",
+        "E:\\Workshop\\real-time-faas\\results\\udgs\\max_connection_5_1680084863.1467211.png",
+        "E:\\Workshop\\real-time-faas\\results\\udgs\\max_connection_5_1680084863.8470132.png",
+    ]
+    MergeFigure().visual(image_list2, None)
+
+
+def example_7():
+    udg_figure = UDGFigure()
+    udg = UDG()
+
+    for _ in range(10):
+        G, udg_name = udg.generate_udg_from_random(10, 5, 20, 60)
+        udg_figure.visual(G, udg_name + '_' + str(time.time()))
+
 
 if __name__ == '__main__':
     # example_0()
@@ -522,5 +560,6 @@ if __name__ == '__main__':
     # example_2()  # 甘特图示例
     # example_3()
     # example_4()
-    example_5()  # makespan 对比
-    # example_6()  # 合并图像
+    # example_5()  # makespan 对比
+    example_6()  # 合并图像
+    # example_7()

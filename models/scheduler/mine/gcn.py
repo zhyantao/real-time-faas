@@ -19,7 +19,8 @@ from torch.autograd import Variable
 from torch.nn.modules.module import Module
 from torch.nn.parameter import Parameter
 
-from models.utils.dataset import get_one_job, para
+from models.utils.dataset import get_one_job
+from models.utils.params import args
 
 
 class GraphConvolution(Module):
@@ -165,7 +166,7 @@ def accuracy(output, labels):
 
 
 if __name__ == '__main__':
-    df = pd.read_csv(para.get("selected_batch_task_path"))
+    df = pd.read_csv(args.selected_batch_task_path)
 
     rows = df.shape[0]  # CSV 文件的行数
     idx = 0

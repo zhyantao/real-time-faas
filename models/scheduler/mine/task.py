@@ -2,13 +2,10 @@ import numpy as np
 
 
 class Task(object):
-    """
-    Task 实体类
-    """
+    """Task 实体类"""
 
     def __init__(self, resources, duration, label):
         """
-
         :param resources: 资源需求的种类 [resource1, resource2, resource3]
         :param duration: 作业的总运行时间
         :param label: 作业的标签（assignment)

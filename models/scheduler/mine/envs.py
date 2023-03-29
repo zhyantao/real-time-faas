@@ -7,9 +7,7 @@ from task import Task
 
 
 class Environment(object):
-    """
-    状态空间表示
-    """
+    """状态空间表示"""
 
     def __init__(self, nodes, queue_size, backlog_size, task_generator):
         """

@@ -14,9 +14,7 @@ from utils import _load_tasks
 
 
 class Action(object):
-    """
-    调度行为
-    """
+    """调度行为"""
 
     def __init__(self, task, node):
         self.task = task
@@ -27,9 +25,7 @@ class Action(object):
 
 
 class Scheduler(ABC):
-    """
-    接口函数：调度器
-    """
+    """接口函数：调度器"""
 
     @abstractmethod
     def schedule(self):
@@ -116,10 +112,7 @@ class DeepRMTrainer(nn.Module):
             '__cache__/summary/dqn-{0}'.format(datetime.datetime.now().strftime("%Y%m%d-%H%M%S")))
 
     def _train(self):
-        """
-        训练过程
-        :return:
-        """
+        """训练过程"""
         for i in range(self.episodes):
             self.epsilon = max(self.min_epsilon, self.epsilon * self.decay)
             self.total_rewards[i] = self.train_episode()
@@ -128,10 +121,7 @@ class DeepRMTrainer(nn.Module):
             print('Episode {0} Job Slowdown {1}'.format(i, -self.total_rewards[i]))
 
     def train_episode(self):
-        """
-        每个 train episode 需要做的事情
-        :return:
-        """
+        """每个 train episode 需要做的事情"""
         rewards = 0
         step = 0
         self.environment, _ = load(load_scheduler=False)
@@ -174,11 +164,7 @@ class DeepRMTrainer(nn.Module):
         return rewards
 
     def _explain(self, action_index):
-        """
-        解释动作
-        :param action_index:
-        :return:
-        """
+        """解释动作"""
         task_limit = self.environment.queue_size
         node_limit = len(self.environment.nodes)
         if action_index == task_limit * node_limit:
@@ -194,12 +180,7 @@ class DeepRMTrainer(nn.Module):
 
 
 def load(load_environment=True, load_scheduler=True):
-    """
-    从 conf/env.conf.json 中加载环境和调度器
-    :param load_environment:
-    :param load_scheduler:
-    :return:
-    """
+    """从 conf/env.conf.json 中加载环境和调度器"""
     tasks = _load_tasks()  # [ Task(resources=[2, 3, 3], duration=2, label=task1), ... ]
     task_generator = (t for t in tasks)
 

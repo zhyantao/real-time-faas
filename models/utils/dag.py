@@ -1,3 +1,4 @@
+"""有向图生成器：数据来源于 Alibaba Trace Data v2018"""
 import networkx as nx
 import numpy as np
 import pandas as pd
