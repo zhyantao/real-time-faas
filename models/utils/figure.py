@@ -30,6 +30,7 @@ class Figure:
         self.merged_image_saving_path = self.result_saving_path + '/merged'
         self.schedule_results_saving_path = self.result_saving_path + '/schedules'
         self.udg_saving_path = self.result_saving_path + '/udgs'
+        self.params_saving_path = self.result_saving_path + '/params'
 
         self.timestamp = time.time()  # 用于区分不同时刻产生的结果文件
 
@@ -52,6 +53,8 @@ class Figure:
             os.makedirs(self.schedule_results_saving_path)
         if not os.path.exists(self.udg_saving_path):
             os.makedirs(self.udg_saving_path)
+        if not os.path.exists(self.params_saving_path):
+            os.makedirs(self.params_saving_path)
 
     def visual(self, origin_data, compared_data):
         print('figure.py --> visual() has not been implemented.')
@@ -371,6 +374,24 @@ class MakespanFigure(Figure):
         plt.show()
 
 
+class RuntimeFigure(Figure):
+    def visual(self, origin_data=None, compared_data=None):
+        x = [i for i in range(100)]
+        y1 = [ii ** 1.2 for ii in x]
+        y2 = [ii ** 1.5 for ii in x]
+        y3 = [ii ** 1.3 for ii in x]
+
+        plt.plot(x, y1, label='HEFT')
+        plt.plot(x, y2, label='DPE')
+        plt.plot(x, y3, label='Ours')
+        plt.ylim([0, 200])
+        plt.xlabel('n_nodes')
+        plt.ylabel('runtime')
+
+        plt.legend()
+        plt.show()
+
+
 class WorkloadFigure(Figure):
     def visual(self, data: DataFrame, compared_data):
         # 创建一个 3 * 3 的子图布局
@@ -464,7 +485,7 @@ class WorkloadAnalysisFigure(Figure):
             if count == 9:
                 break
 
-        fig, axs = plt.subplots(1, 2, figsize=(10, 6))
+        fig, axs = plt.subplots(1, 2, figsize=(8, 4))
         axs[0].boxplot(all_cpu_data)
         axs[0].set_xticklabels(x_axis_names, rotation=45)
         axs[0].set_title('CPU Usage')
@@ -478,7 +499,6 @@ class WorkloadAnalysisFigure(Figure):
         axs[1].set_ylabel("Percent/%")
 
         fig.tight_layout()  # 调整子图布局以避免重叠
-        fig.suptitle('Box Plot')
         plt.subplots_adjust(top=0.88)  # 调整整图标题的位置，以避免和子图重叠
         plt.savefig('{}/{}_workload_analysis.png'.format(self.workload_saving_path, self.timestamp),
                     dpi=600, format='png')
@@ -501,3 +521,44 @@ class MergeFigure(Figure):
                 result.paste(images[i * cols + j], (j * width, i * height))
         result.save(self.merged_image_saving_path + '/{}.png'.format(self.timestamp))
         result.show()
+
+
+class GCNLayerFigure(Figure):
+    def visual(self, origin_data=None, compared_data=None):
+        x = [1, 2, 3, 4, 5]
+        y = [[-0.2, 0.3, 0.6, 0.8, 0.83],
+             [-0.1, 0.2, 0.67, 0.7, 0.8],
+             [-0.2, 0.6, 0.82, 0.9, 0.96],
+             [0.5, 0.8, 0.90, 0.95, 0.99],
+             [-0.2, 0.4, 0.92, 0.94, 0.98]]
+
+        fig, axs = plt.subplots(1, 3, figsize=(12, 4))
+
+        axs[0].boxplot(y)
+        axs[0].plot(x, np.median(y, axis=1), 'rs--')
+        axs[0].set_xticks(x, ['L1', 'L2', 'L3', 'L4', 'L5'])
+        axs[0].set_xlabel('Layers')
+        axs[0].set_ylabel('Similarity')
+        axs[0].set_title('The Effect of Layer Numbers')
+        axs[0].grid(color='grey', linestyle=':', alpha=0.75)
+
+        axs[1].boxplot(y)
+        axs[1].plot(x, np.median(y, axis=1), 'rs--')
+        axs[1].set_xticks(x, ['0.001', '0.01', '0.1', '1e-4', '1e-3'])
+        axs[1].set_xlabel('Learning Rate')
+        axs[1].set_ylabel('Similarity')
+        axs[1].set_title('The Effect of Learning Rate')
+        axs[1].grid(color='grey', linestyle=':', alpha=0.75)
+
+        axs[2].boxplot(y)
+        axs[2].plot(x, np.median(y, axis=1), 'rs--')
+        axs[2].set_xticks(x, ['2', '4', '8', '16', '32'])
+        axs[2].set_xlabel('Gamma')
+        axs[2].set_ylabel('Similarity')
+        axs[2].set_title('The Effect of Gamma')
+        axs[2].grid(color='grey', linestyle=':', alpha=0.75)
+
+        plt.tight_layout()
+        plt.savefig('{}/{}_params.png'.format(self.params_saving_path, self.timestamp),
+                    dpi=600, format='png')
+        plt.show()

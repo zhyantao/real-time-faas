@@ -10,6 +10,14 @@ from models.utils.udg import UDG
 
 class FigureTest(unittest.TestCase):
 
+    def test_runtime_figure(self):
+        runtime_figure = RuntimeFigure()
+        runtime_figure.visual()
+
+    def test_gcn_layer_figure(self):
+        gcn_layer_figure = GCNLayerFigure()
+        gcn_layer_figure.visual()
+
     def test_workload_analysis_figure(self):
         df = pd.read_csv(args.selected_container_usage_path)
         workload_analysis_figure = WorkloadAnalysisFigure()
