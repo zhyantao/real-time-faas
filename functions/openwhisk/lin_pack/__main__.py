@@ -38,9 +38,14 @@ def main(args):
     was_cold = cold
     cold = False
     try:
-        n = int(args.get("n", 20))
+        # n = int(args.get("n", 20))
+        n = 10000
         result = linpack(n)
         print(result)
         return {"body": {"result": result, "cold": was_cold}}
     except Exception as e:
         return {"body": {"result": str(e), "cold": was_cold}}
+
+
+if __name__ == '__main__':
+    main(10)
