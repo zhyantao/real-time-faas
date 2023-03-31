@@ -1,5 +1,0 @@
-boto3
-uuid
-s3transfer
-jmespath
-botocore

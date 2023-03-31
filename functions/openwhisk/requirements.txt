@@ -1,0 +1,13 @@
+requests
+numpy
+Pillow
+boto3
+uuid
+chameleon
+six
+pyaes
+s3transfer
+jmespath
+botocore
+tensorflow
+keras

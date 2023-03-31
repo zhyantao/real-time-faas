@@ -38,8 +38,7 @@ def main(args):
     was_cold = cold
     cold = False
     try:
-        # n = int(args.get("n", 20))
-        n = 10000
+        n = int(args.get("n", 20))
         result = linpack(n)
         print(result)
         return {"body": {"result": result, "cold": was_cold}}
@@ -48,4 +47,4 @@ def main(args):
 
 
 if __name__ == '__main__':
-    main(10)
+    main({})

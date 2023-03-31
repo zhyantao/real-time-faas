@@ -39,3 +39,6 @@ def main(args):
     latency = time() - start
 
     return {"body": {'latency': latency, 'data': data, "cold": was_cold}}
+
+if __name__ == '__main__':
+    main({})

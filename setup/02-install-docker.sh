@@ -30,3 +30,10 @@ sudo docker run hello-world
 docker image prune -f                                             # 清理 <none> 容器
 docker rmi -f $(docker images | grep '<none>' | awk '{print $3}') # 清理 <none> 容器
 docker rm $(docker ps -a | grep Exited | awk '{print $1}')        # 清理异常退出的容器
+
+# 列出所有镜像
+docker images
+
+# 删除指定镜像
+docker image rm 192.168.163.146:5000/python3action:1.0.0
+docker image rm openwhisk/action-python-v3.7:1.17.0

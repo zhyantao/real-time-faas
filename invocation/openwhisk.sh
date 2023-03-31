@@ -7,16 +7,17 @@ wsk -i package list /whisk.system
 wsk -i action list
 
 # 删除函数
-wsk -i action delete hello
+wsk -i action delete lin_pack
 
 # 打包 functions
-cd hello/ # 一定要切换到这里面，因为相对路径会导致一些问题
-zip -r hello.zip *
+cd lin_pack/ # 一定要切换到这里面，因为相对路径会导致一些问题
+zip -r lin_pack.zip *
 
 # 创建 OpenWhisk 操作：入口函数的文件名必须为 __main__.py，且该文件中包含 main() 函数
-wsk -i action update hello --kind python:3 hello.zip
+# 使用本地依赖 (如: numpy) 创建函数
+wsk -i action update lin_pack lin_pack.zip --docker 192.168.163.146:5000/python3action:1.0.0
 
 # 调用 OpenWhisk 操作
-wsk -i action invoke hello --result
+wsk -i action invoke lin_pack --result --param n 100
 # wsk -i activation list # 报错时查看 activation id
 # wsk -i activation logs <activation_id>
