@@ -1,6 +1,12 @@
+numpy==1.19.5
+scikit-learn==3.1.0
+Keras==2.2.4
+matplotlib==3.0.3
+opencv-python==4.1.0.25
+Pillow==6.2.0
+scikit-image==0.15.0
+tensorflow==1.15.2
 requests
-numpy
-Pillow
 boto3
 uuid
 chameleon
@@ -9,5 +15,4 @@ pyaes
 s3transfer
 jmespath
 botocore
-tensorflow
-keras
+pandas

@@ -15,9 +15,9 @@ zip -r lin_pack.zip *
 
 # 创建 OpenWhisk 操作：入口函数的文件名必须为 __main__.py，且该文件中包含 main() 函数
 # 使用本地依赖 (如: numpy) 创建函数
-wsk -i action update lin_pack lin_pack.zip --docker 192.168.163.146:5000/python3action:1.0.0
+wsk -i action update lin_pack lin_pack.zip --docker 192.168.163.146:5000/python3action:1.1.0
 
 # 调用 OpenWhisk 操作
-wsk -i action invoke lin_pack --result --param n 100
+wsk -i action invoke lin_pack --result
 # wsk -i activation list # 报错时查看 activation id
 # wsk -i activation logs <activation_id>
