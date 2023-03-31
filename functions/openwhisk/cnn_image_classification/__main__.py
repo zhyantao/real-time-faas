@@ -4,7 +4,7 @@ import traceback
 try:
     # import boto3
     from tensorflow.python.keras.preprocessing import image
-    from tensorflow.python.keras.applications.resnet50 import preprocess_input, decode_predictions
+    from tensorflow.python.keras.applications import preprocess_input, decode_predictions
     from tensorflow.python.keras.utils import get_file
     from squeezenet import SqueezeNet
     import numpy as np
@@ -45,18 +45,17 @@ def main(args):
         model_bucket = args.get("model_bucket", 1)
 
         # download_path = tmp + '{}{}'.format(uuid.uuid4(), object_key)
-        download_path = get_file('{}{}'.format(uuid.uuid4(), object_key),
-                                 "https://github.com/kmu-bigdata/serverless-faas-workbench/raw/master/dataset/image/animal-dog.jpg",
-                                 cache_dir='/tmp/')
+        image_path = './animal-dog.jpg'
         # s3_client.download_file(input_bucket, object_key, download_path)
 
         model_path = tmp + '{}{}'.format(uuid.uuid4(), model_object_key)
         # s3_client.download_file(model_bucket, model_object_key, model_path)
 
-        latency, result = predict(download_path)
+        latency, result = predict(image_path)
 
         _tmp_dic = {x[1]: {'N': str(x[2])} for x in result[0]}
 
+        print({"body": {"latency": latency, "msg": msg, "cold": was_cold}})
         return {"body": {"latency": latency, "msg": msg, "cold": was_cold}}
     except Exception as e:
         err = "whelp"
@@ -64,4 +63,8 @@ def main(args):
             err = traceback.format_exc()
         except Exception as fug:
             err = str(fug)
+        print({"body": {"cust_error": msg, "thing": err, "cold": was_cold}})
         return {"body": {"cust_error": msg, "thing": err, "cold": was_cold}}
+
+if __name__ == '__main__':
+    main({})
