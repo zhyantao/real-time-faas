@@ -10,6 +10,10 @@ from models.utils.udg import UDG
 
 class FigureTest(unittest.TestCase):
 
+    def test_problem_size_figure(self):
+        problem_size_figure = ProblemSizeFigure()
+        problem_size_figure.visual()
+
     def test_runtime_figure(self):
         runtime_figure = RuntimeFigure()
         runtime_figure.visual()

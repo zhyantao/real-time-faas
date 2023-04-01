@@ -42,6 +42,6 @@ parser.add_argument('--bw_upper', type=int, default=70, help='已有的带宽总
 parser.add_argument('--bw_lower', type=int, default=30, help='已有的带宽总量下限')
 parser.add_argument('--density', type=int, default=10, help='节点的最大连接密度')
 parser.add_argument('--n_pairs', type=int, default=12, help='？？？')
-parser.add_argument('--cpu_nums', type=int, default=4, help='处理器数量')
+parser.add_argument('--cpu_nums', type=int, default=20, help='处理器数量')
 
 args = parser.parse_args()

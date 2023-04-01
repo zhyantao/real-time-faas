@@ -610,3 +610,45 @@ class DQNParamsFigure(Figure):
         plt.savefig('{}/{}_params.png'.format(self.params_saving_path, self.timestamp),
                     dpi=600, format='png')
         plt.show()
+
+
+class ProblemSizeFigure(Figure):
+    def visual(self, origin_data=None, compared_data=None):
+        problem_size = ['N10C5', 'N20C5', 'N20C10', 'N50C10', 'N50C20']
+        makespan = [
+            [221.548, 242.001, 264.214],  # N10C5
+            [210.116, 220.115, 236.154],  # N20C5
+            [184.165, 210.112, 195.143],  # N20C10
+            [192.564, 195.156, 198.156],  # N50C10
+            [162.353, 215.124, 154.554]  # N50C20
+        ]
+        runtime = [
+            [0.84532, 0.67025, 3.5487],  # N10D5
+            [5.6512, 1.45045, 4.3651],  # N20C5
+            [19.345, 3.145045, 6.5542],  # N20C10
+            [58.362, 8.2654, 8.2156],  # N50C10
+            [163.215, 20.1665, 16.5612]  # N50C20
+        ]
+        labels = ['DPE', 'HEFT', 'Ours']
+
+        fig, axs = plt.subplots(1, 2, figsize=(8, 4))
+
+        axs[0].plot(problem_size, makespan, 's--', label=labels)
+        axs[0].set_xticklabels(problem_size, rotation=45)
+        axs[0].set_title('The Effect of Problem Size on Makespan')
+        axs[0].set_xlabel('Problem Size')
+        axs[0].set_ylabel('Makespan/ms')
+        axs[0].legend()
+
+        axs[1].plot(problem_size, runtime, 's--', label=labels)
+        axs[1].set_xticklabels(problem_size, rotation=45)
+        axs[1].set_title('The Effect of Problem Size on Runtime')
+        axs[1].set_ylim([0, 20])
+        axs[1].set_xlabel('Problem Size')
+        axs[1].set_ylabel('Runtime/s')
+        axs[1].legend()
+
+        plt.tight_layout()
+        plt.savefig('{}/{}_problem_size.png'.format(self.schedule_results_saving_path, self.timestamp),
+                    dpi=600, format='png')
+        plt.show()

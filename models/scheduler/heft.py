@@ -413,6 +413,7 @@ class HEFT:
         jobs = sorted(jobs, key=rank)
 
         orders = {agent: [] for agent in agents}
+        print(orders)
         jobson = dict()
         for job in reversed(jobs):
             HEFT.allocate(job, orders, jobson, prev, comm_cost, comm_cost_array, comp_cost, comp_cost_array)
