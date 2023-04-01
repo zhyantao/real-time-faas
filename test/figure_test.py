@@ -14,9 +14,15 @@ class FigureTest(unittest.TestCase):
         runtime_figure = RuntimeFigure()
         runtime_figure.visual()
 
-    def test_gcn_layer_figure(self):
-        gcn_layer_figure = GCNLayerFigure()
-        gcn_layer_figure.visual()
+    def test_gcn_params_figure(self):
+        for i in range(100):
+            gcn_layer_figure = GCNParamsFigure()
+            gcn_layer_figure.visual()
+
+    def test_dqn_params_figure(self):
+        for i in range(100):
+            dqn_params_figure = DQNParamsFigure()
+            dqn_params_figure.visual()
 
     def test_workload_analysis_figure(self):
         df = pd.read_csv(args.selected_container_usage_path)

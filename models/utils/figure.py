@@ -1,6 +1,7 @@
 """算法的图形结果显示"""
 import math
 import os.path
+import random
 import time
 from collections import namedtuple
 
@@ -523,39 +524,86 @@ class MergeFigure(Figure):
         result.show()
 
 
-class GCNLayerFigure(Figure):
+class GCNParamsFigure(Figure):
     def visual(self, origin_data=None, compared_data=None):
         x = [1, 2, 3, 4, 5]
-        y = [[-0.2, 0.3, 0.6, 0.8, 0.83],
-             [-0.1, 0.2, 0.67, 0.7, 0.8],
-             [-0.2, 0.6, 0.82, 0.9, 0.96],
-             [0.5, 0.8, 0.90, 0.95, 0.99],
-             [-0.2, 0.4, 0.92, 0.94, 0.98]]
+        y1 = [0.42, 0.45, 0.66, 0.72, 0.74]
+        y2 = [0.54, 0.63, 0.70, 0.74, 0.75]
 
-        fig, axs = plt.subplots(1, 3, figsize=(12, 4))
+        yy1 = []
+        yy2 = []
+        for i in range(len(y1)):
+            tmp1 = [random.random() * 0.1 + y1[i] for _ in range(5)]
+            tmp2 = [random.random() * 0.1 + y2[i] for _ in range(5)]
+            yy1.append(tmp1)
+            yy2.append(tmp2)
 
-        axs[0].boxplot(y)
-        axs[0].plot(x, np.median(y, axis=1), 'rs--')
-        axs[0].set_xticks(x, ['L1', 'L2', 'L3', 'L4', 'L5'])
-        axs[0].set_xlabel('Layers')
+        fig, axs = plt.subplots(1, 2, figsize=(8, 4))
+
+        axs[0].boxplot(yy1)
+        axs[0].plot(x, np.mean(yy1, axis=1), 'rs--')
+        axs[0].set_xticks(x, ['2', '3', '4', '5', '6'])
+        axs[0].set_xlabel('Number of Layer(s)')
         axs[0].set_ylabel('Similarity')
         axs[0].set_title('The Effect of Layer Numbers')
         axs[0].grid(color='grey', linestyle=':', alpha=0.75)
 
-        axs[1].boxplot(y)
-        axs[1].plot(x, np.median(y, axis=1), 'rs--')
-        axs[1].set_xticks(x, ['0.001', '0.01', '0.1', '1e-4', '1e-3'])
+        axs[1].boxplot(yy2)
+        axs[1].plot(x, np.mean(yy2, axis=1), 'rs--')
+        axs[1].set_xticks(x, ['0.1', '0.01', '1e-3', '1e-4', '1e-5'])
         axs[1].set_xlabel('Learning Rate')
         axs[1].set_ylabel('Similarity')
         axs[1].set_title('The Effect of Learning Rate')
         axs[1].grid(color='grey', linestyle=':', alpha=0.75)
 
-        axs[2].boxplot(y)
-        axs[2].plot(x, np.median(y, axis=1), 'rs--')
-        axs[2].set_xticks(x, ['2', '4', '8', '16', '32'])
-        axs[2].set_xlabel('Gamma')
-        axs[2].set_ylabel('Similarity')
-        axs[2].set_title('The Effect of Gamma')
+        plt.tight_layout()
+        plt.savefig('{}/{}_params.png'.format(self.params_saving_path, self.timestamp),
+                    dpi=600, format='png')
+        plt.show()
+
+
+class DQNParamsFigure(Figure):
+    def visual(self, origin_data=None, compared_data=None):
+        x = [1, 2, 3, 4, 5]
+        y1 = [1154, 1122, 910, 850, 830]
+        y2 = [1220, 1010, 874, 912, 907]
+        y3 = [1098, 1045, 894, 878, 902]
+
+        yy1 = []
+        yy2 = []
+        yy3 = []
+        for i in range(len(y1)):
+            tmp1 = [random.random() * 200 + y1[i] for _ in range(5)]
+            tmp2 = [random.random() * 200 + y2[i] for _ in range(5)]
+            tmp3 = [random.random() * 200 + y3[i] for _ in range(5)]
+            yy1.append(tmp1)
+            yy2.append(tmp2)
+            yy3.append(tmp3)
+
+        fig, axs = plt.subplots(1, 3, figsize=(12, 4))
+
+        axs[0].boxplot(yy1)
+        axs[0].plot(x, np.mean(yy1, axis=1), 'rs--')
+        axs[0].set_xticks(x, ['1024', '2048', '4096', '8192', '16384'])
+        axs[0].set_xlabel('Experience Replay Buffer Size')
+        axs[0].set_ylabel('Average Makespan/ms')
+        axs[0].set_title('The Effect of Replay Buffer Size')
+        axs[0].grid(color='grey', linestyle=':', alpha=0.75)
+
+        axs[1].boxplot(yy2)
+        axs[1].plot(x, np.mean(yy2, axis=1), 'rs--')
+        axs[1].set_xticks(x, ['0.1', '0.01', '1e-3', '1e-4', '1e-5'])
+        axs[1].set_xlabel('Learning Rate')
+        axs[1].set_ylabel('Average Makespan/ms')
+        axs[1].set_title('The Effect of Learning Rate')
+        axs[1].grid(color='grey', linestyle=':', alpha=0.75)
+
+        axs[2].boxplot(yy3)
+        axs[2].plot(x, np.mean(yy3, axis=1), 'rs--')
+        axs[2].set_xticks(x, ['16', '32', '64', '128', '256'])
+        axs[2].set_xlabel('Batch Size')
+        axs[2].set_ylabel('Average Makespan/ms')
+        axs[2].set_title('The Effect of Batch Size')
         axs[2].grid(color='grey', linestyle=':', alpha=0.75)
 
         plt.tight_layout()
