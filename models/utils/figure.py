@@ -329,8 +329,8 @@ class GanttFigure(Figure):
         # 设置图像属性
         pos = np.arange(0.5, num_cpus * 0.5 + 0.5, 0.5)
         print(pos)
-        plt.ylabel('CPU Number (#)', fontsize=12)
-        plt.xlabel('Time Cost (s)', fontsize=12)
+        plt.ylabel('CPU Number', fontsize=12)
+        plt.xlabel('Execute Time/s', fontsize=12)
         locs, labels = plt.yticks(pos, cpus)  # 重新设置 y 轴步长（locs）和每个步长对应的名称（labels）
         plt.setp(labels, fontsize=12)  # 设置 y 轴坐标
         ax.set_ylim(ymin=-0.1, ymax=num_cpus * 0.5 + 0.5)

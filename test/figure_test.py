@@ -68,7 +68,7 @@ class FigureTest(unittest.TestCase):
 
     def test_gantt(self):
         mappings = {
-            0: [ScheduleEvent(task_id=1000, start=0, end=14.0, cpu_id=0),
+            0: [ScheduleEvent(task_id=10, start=0, end=14.0, cpu_id=0),
                 ScheduleEvent(task_id=13, start=14.0, end=27.0, cpu_id=0),
                 ScheduleEvent(task_id=1, start=27.0, end=40.0, cpu_id=0),
                 ScheduleEvent(task_id=12, start=40.0, end=51.0, cpu_id=0),
