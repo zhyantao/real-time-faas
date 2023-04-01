@@ -359,12 +359,12 @@ class MakespanFigure(Figure):
         width = 0.25
 
         fig, ax = plt.subplots()
-        ax.bar(x - width, group1, width, label='DPE')
-        ax.bar(x, group2, width, label='HEFT')
-        ax.bar(x + width, group3, width, label='OURS')
+        ax.bar(x - width, group1, width, label='DPE', edgecolor='k')
+        ax.bar(x, group2, width, label='HEFT',  edgecolor='k')
+        ax.bar(x + width, group3, width, label='OURS',  edgecolor='k')
 
         # 添加标题和标签
-        ax.set_ylabel('Makespan (seconds)')
+        ax.set_ylabel('Makespan/s')
         ax.set_xlabel('Job Name')
         ax.set_xticks(x)
         ax.set_xticklabels(labels)
