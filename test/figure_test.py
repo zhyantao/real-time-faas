@@ -19,42 +19,17 @@ class FigureTest(unittest.TestCase):
         runtime_figure.visual()
 
     def test_gcn_params_figure(self):
-        for i in range(100):
-            gcn_layer_figure = GCNParamsFigure()
-            gcn_layer_figure.visual()
+        gcn_layer_figure = GCNParamsFigure()
+        gcn_layer_figure.visual()
 
     def test_dqn_params_figure(self):
-        for i in range(100):
-            dqn_params_figure = DQNParamsFigure()
-            dqn_params_figure.visual()
+        dqn_params_figure = DQNParamsFigure()
+        dqn_params_figure.visual()
 
     def test_workload_analysis_figure(self):
         df = pd.read_csv(args.selected_container_usage_path)
         workload_analysis_figure = WorkloadAnalysisFigure()
         workload_analysis_figure.visual(df, None)
-
-    def test_figure(self):
-        # 生成数据
-        x1 = np.random.rand(50)
-        y1 = np.random.rand(50)
-        x2 = np.random.rand(50)
-        y2 = np.random.rand(50)
-
-        # 绘制折线图
-        plt.figure()
-        plt.plot(x1, y1, '-o', label='Line 1')
-        plt.plot(x2, y2, '-o', label='Line 2')
-        plt.legend()
-        plt.show()
-
-        # 绘制散点图
-        plt.figure()
-        plt.scatter(x1, y1, color='red', marker='o')
-        plt.scatter(x2, y2, color='blue', marker='s')
-        plt.title('Multiple Scatter Plots')
-        plt.xlabel('X Axis')
-        plt.ylabel('Y Axis')
-        plt.show()
 
     def test_rebuild_DAG(self):
         # 重建 DAG

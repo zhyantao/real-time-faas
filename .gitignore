@@ -119,3 +119,5 @@ results/
 tpch/
 *.png
 *.pth
+*.doc
+*.docx

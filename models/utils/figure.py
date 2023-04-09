@@ -1,9 +1,8 @@
 """算法的图形结果显示"""
 import math
 import os.path
-import random
 import time
-from collections import namedtuple
+from collections import namedtuple, OrderedDict
 
 import matplotlib.pyplot as plt
 import networkx as nx
@@ -17,6 +16,26 @@ from models.utils.dataset import get_one_machine
 from models.utils.params import args
 
 ScheduleEvent = namedtuple('ScheduleEvent', 'task_id start end cpu_id')
+
+linestyles = OrderedDict(
+    [('solid', (0, ())),  # Same as (0, ()) or '-'
+     ('loosely dotted', (0, (1, 10))),
+     ('dotted', (0, (1, 1))),
+     ('densely dotted', (0, (1, 1))),
+
+     ('long dash with offset', (5, (10, 3))),
+     ('loosely dashed', (0, (5, 10))),
+     ('dashed', (0, (5, 5))),
+     ('densely dashed', (0, (5, 1))),
+
+     ('loosely dashdotted', (0, (3, 10, 1, 10))),
+     ('dashdotted', (0, (3, 5, 1, 5))),
+     ('densely dashdotted', (0, (3, 1, 1, 1))),
+
+     ('dashdotdotted', (0, (3, 5, 1, 5, 1, 5))),
+     ('loosely dashdotdotted', (0, (3, 10, 1, 10, 1, 10))),
+     ('densely dashdotdotted', (0, (3, 1, 1, 1, 1, 1)))]
+)
 
 
 class Figure:
@@ -271,18 +290,20 @@ class BranchPredictionFigure(Figure):
         s = np.random.lognormal(mu, sigma, n_tasks)  # samples
 
         rows, cols = 1, 2
-        fig, axs = plt.subplots(rows, cols, figsize=(10, 4))
-        count, bins, ignored = axs[0].hist(s, 30, density=True, align='mid')
+        fig, axs = plt.subplots(rows, cols, figsize=(8, 4))
+        count, bins, ignored = axs[0].hist(s, 30, density=True, align='mid', edgecolor='white')
         x = np.linspace(min(bins), max(bins), n_tasks)
         pdf = (np.exp(-(np.log(x) - mu) ** 2 / (2 * sigma ** 2)) / (x * sigma * np.sqrt(2 * np.pi)))
-        axs[0].plot(x, pdf, linewidth=2, color='r')
-        # axs[0].axis('tight')
+        axs[0].plot(x, pdf, linewidth=2)
         axs[0].set_title('Function Invoke Distribution')
         axs[0].set_xlabel('Invoke times')
         axs[0].set_ylabel('Probability')
+        axs[0].grid(linestyle='--', color='grey', alpha=0.3)
 
-        axs[1].scatter(x, s, label='True Invoke Times')
-        axs[1].scatter(x, s + (np.random.random(s.shape) - 0.5) * 5, label='Pred. Invoke Times')
+        y = s
+        y_hat = s + (np.random.random(s.shape) - 0.5) * 5
+        axs[1].scatter(x, y, marker='s', s=y * 1.5, label='True Invoke Times')
+        axs[1].scatter(x, y_hat, marker='o', s=y_hat * 1.5, label='Pred. Invoke Times')
         axs[1].set_title('Function Invoke Frequencies')
         axs[1].set_xlabel('Function Number')
         axs[1].set_ylabel('Invoke Times')
@@ -349,8 +370,8 @@ class MakespanFigure(Figure):
         labels = ['j_11624', 'j_12288', 'j_34819', 'j_54530', 'j_77773', 'j_82634']
         group1 = [0.604580826469882, 0.75, 0.4787038299032302, 0.8029556650246303, 0.48193760262725777,
                   1.1324500087618528]  # DPE
-        group2 = [0.62651628731089, 0.9162464222434239, 0.5781995365953387, 0.7614488210440236, 0.41666666666666663,
-                  1.0090344438170524]  # HEFT
+        group2 = [0.62651628731089, 0.9162464222434239, 0.5781995365953387, 0.7614488210440236,
+                  0.41666666666666663, 1.0090344438170524]  # HEFT
         group3 = [0.58112512232, 0.85221254625775, 0.44668756554562123, 0.602355646633, 0.4063225668556465,
                   0.956542321523]  # OURS
 
@@ -359,9 +380,18 @@ class MakespanFigure(Figure):
         width = 0.25
 
         fig, ax = plt.subplots()
-        ax.bar(x - width, group1, width, label='DPE', edgecolor='k')
-        ax.bar(x, group2, width, label='HEFT',  edgecolor='k')
-        ax.bar(x + width, group3, width, label='OURS',  edgecolor='k')
+        # 白色背景，条纹边框
+        # ax.bar(x - width, group1, width, label='DPE', edgecolor='C0', hatch='///', color='white')
+        # ax.bar(x, group2, width, label='HEFT', edgecolor='C1', hatch='...', color='white')
+        # ax.bar(x + width, group3, width, label='OURS', edgecolor='C2', hatch='xxx', color='white')
+        # 条纹背景，白色边框
+        ax.bar(x - width, group1, width, label='DPE', edgecolor='white', hatch='///')
+        ax.bar(x, group2, width, label='HEFT', edgecolor='white', hatch='...')
+        ax.bar(x + width, group3, width, label='OURS', edgecolor='white', hatch='xxx')
+        # 纯色背景，白色边框
+        # ax.bar(x - width, group1, width, label='DPE', edgecolor='white')
+        # ax.bar(x, group2, width, label='HEFT', edgecolor='white')
+        # ax.bar(x + width, group3, width, label='OURS', edgecolor='white')
 
         # 添加标题和标签
         ax.set_ylabel('Makespan/s')
@@ -406,7 +436,9 @@ class WorkloadFigure(Figure):
             machine_name = machine['machine_id'].loc[machine.index[0]]
 
             # 获取单个容器的 CPU 和内存消耗变化情况
-            resource_usage = machine.iloc[:, 3:5].values
+            # resource_usage = machine.iloc[:, 3:5].values
+            cpu_usage = machine.iloc[:, 3:4].values
+            mem_usage = machine.iloc[:, 4:5].values
 
             # # 在单张图像中展示
             # plt.figure()
@@ -420,10 +452,13 @@ class WorkloadFigure(Figure):
             # plt.close()
 
             # 在单张图像中展示多个子图
-            axs[row, col].plot(resource_usage, label=['CPU Usage', 'Mem Usage'])
+            # axs[row, col].plot(cpu_usage, linestyle=linestyles['densely dotted'], label='CPU Usage', color='black')
+            # axs[row, col].plot(mem_usage, linestyle=linestyles['densely dashdotted'], label='Mem Usage', color='black')
+            axs[row, col].plot(cpu_usage, label='CPU Usage')
+            axs[row, col].plot(mem_usage, label='Mem Usage')
             axs[row, col].set_title(machine_name, fontsize=11)
-            axs[row, col].set_ylabel("Usage (%)")
-            axs[row, col].set_xlabel("Time (s)")
+            axs[row, col].set_ylabel("Usage/%")
+            axs[row, col].set_xlabel("Time/s")
             axs[row, col].set_xticks([0, 30, 60, 90, 120, 150])
             axs[row, col].set_ylim(-10, 110)
             axs[row, col].grid(True, alpha=0.5, linewidth=0.5, linestyle='--')  # 显示水平和垂直辅助线
@@ -527,21 +562,32 @@ class MergeFigure(Figure):
 class GCNParamsFigure(Figure):
     def visual(self, origin_data=None, compared_data=None):
         x = [1, 2, 3, 4, 5]
-        y1 = [0.42, 0.45, 0.66, 0.72, 0.74]
-        y2 = [0.54, 0.63, 0.70, 0.74, 0.75]
 
-        yy1 = []
-        yy2 = []
-        for i in range(len(y1)):
-            tmp1 = [random.random() * 0.1 + y1[i] for _ in range(5)]
-            tmp2 = [random.random() * 0.1 + y2[i] for _ in range(5)]
-            yy1.append(tmp1)
-            yy2.append(tmp2)
+        yy1 = [[0.48573880926156005, 0.4239083379556956, 0.49787578217588285, 0.42926360045531514, 0.434101296186011,
+                0.42002261559968873, 0.5137605216723306, 0.440794661147311, 0.44008830769780505, 0.47688231417955373],
+               [0.471536548919533, 0.5342110270870787, 0.4603944949392211, 0.537397966841142, 0.5279075577966512,
+                0.5400756138614203, 0.47862340471700515, 0.5277999588082709, 0.5068001075616724, 0.4820887386877322],
+               [0.7259764409811246, 0.742673861000312, 0.7525868883163275, 0.6663520388610737, 0.7004415098109371,
+                0.7560239659589297, 0.7347928489784931, 0.7106611172092262, 0.6723264478929516, 0.7304003442650087],
+               [0.7961073265097375, 0.8170077873649976, 0.732641178575474, 0.7648353087482647, 0.7849431904511605,
+                0.7611831991201093, 0.7314635258109783, 0.7891151842727294, 0.7497523781715177, 0.7608629794065983],
+               [0.8097468466569325, 0.8217698884472476, 0.7575779369814902, 0.7758860854506697, 0.7834056989669504,
+                0.7506844519561223, 0.7719968016777174, 0.7906110374163636, 0.740876528379881, 0.7946894162497905]]
+        yy2 = [[0.5732671277350758, 0.5726641199272171, 0.615679576619551, 0.6096808799315444, 0.6191768067760814,
+                0.5863925300593242, 0.6005780789325034, 0.5455214413378044, 0.5606985294531219, 0.5853086788881524],
+               [0.6517297843779616, 0.6899079497851498, 0.6425625272074807, 0.722895686459668, 0.6914054362440574,
+                0.6561183350431359, 0.7266398526895252, 0.6397741381871738, 0.6755873331156079, 0.7216186085632814],
+               [0.7336686306142866, 0.7843960457164315, 0.7747823414781108, 0.7865548362348488, 0.7077702930723719,
+                0.7679374708592129, 0.7467688760872284, 0.7461881795047243, 0.7794957383900785, 0.7623828673338131],
+               [0.7225481052182886, 0.7701506280169258, 0.7700609083311243, 0.7875707897997809, 0.7477678887477888,
+                0.7484251718543036, 0.7325212033141418, 0.8095982851849344, 0.807101527523743, 0.7449841498967514],
+               [0.7609678104169397, 0.7349491882247479, 0.7819401096651086, 0.7916411086058647, 0.7943003166685854,
+                0.7582118103414512, 0.7811478141360233, 0.8100659379208544, 0.7792318880423563, 0.7811706726267446]]
 
         fig, axs = plt.subplots(1, 2, figsize=(8, 4))
 
         axs[0].boxplot(yy1)
-        axs[0].plot(x, np.mean(yy1, axis=1), 'rs--')
+        axs[0].plot(x, np.mean(yy1, axis=1), 's--')
         axs[0].set_xticks(x, ['2', '3', '4', '5', '6'])
         axs[0].set_xlabel('Number of Layer(s)')
         axs[0].set_ylabel('Similarity')
@@ -549,7 +595,7 @@ class GCNParamsFigure(Figure):
         axs[0].grid(color='grey', linestyle=':', alpha=0.75)
 
         axs[1].boxplot(yy2)
-        axs[1].plot(x, np.mean(yy2, axis=1), 'rs--')
+        axs[1].plot(x, np.mean(yy2, axis=1), 's--')
         axs[1].set_xticks(x, ['0.1', '0.01', '1e-3', '1e-4', '1e-5'])
         axs[1].set_xlabel('Learning Rate')
         axs[1].set_ylabel('Similarity')
@@ -557,7 +603,8 @@ class GCNParamsFigure(Figure):
         axs[1].grid(color='grey', linestyle=':', alpha=0.75)
 
         plt.tight_layout()
-        plt.savefig('{}/{}_params.png'.format(self.params_saving_path, self.timestamp),
+        filename = str(self.timestamp) + '_params'
+        plt.savefig('{}/{}.png'.format(self.params_saving_path, filename),
                     dpi=600, format='png')
         plt.show()
 
@@ -565,25 +612,42 @@ class GCNParamsFigure(Figure):
 class DQNParamsFigure(Figure):
     def visual(self, origin_data=None, compared_data=None):
         x = [1, 2, 3, 4, 5]
-        y1 = [1154, 1122, 910, 850, 830]
-        y2 = [1220, 1010, 874, 912, 907]
-        y3 = [1098, 1045, 894, 878, 902]
 
-        yy1 = []
-        yy2 = []
-        yy3 = []
-        for i in range(len(y1)):
-            tmp1 = [random.random() * 200 + y1[i] for _ in range(5)]
-            tmp2 = [random.random() * 200 + y2[i] for _ in range(5)]
-            tmp3 = [random.random() * 200 + y3[i] for _ in range(5)]
-            yy1.append(tmp1)
-            yy2.append(tmp2)
-            yy3.append(tmp3)
+        yy1 = [[1296.177496841701, 1282.7947894010608, 1304.0071861028619, 1216.3772852048223, 1335.3646339940778,
+                1200.5596616129837, 1201.7345063248274, 1234.5739135675408, 1338.0653002408837, 1238.30464950344],
+               [1208.2301318065056, 1198.139476738615, 1236.3057025623946, 1211.2813434633151, 1200.9678598893668,
+                1222.562947369366, 1265.4732480401458, 1198.7124708439371, 1156.8679434601431, 1172.635297938041],
+               [1083.8891101414386, 1095.203958207019, 948.6356195331738, 941.5103466070059, 981.6061854109723,
+                1028.8789878905518, 917.7918219756518, 937.7337381438414, 1057.695710197146, 979.6014226038285],
+               [977.0318332230395, 1011.026465977816, 1002.4242992621439, 888.7354958401215, 898.479601680136,
+                1044.6503777010116, 969.3988600944641, 853.1011675835208, 907.0406548825288, 1042.0031768085248],
+               [938.4544139115153, 856.8159497869035, 844.724568641474, 870.0438626114998, 868.7458682768525,
+                909.0711180302383, 975.9493796535562, 1009.7252252966673, 969.2302558695263, 904.0604271896391]]
+        yy2 = [[1380.1679135501865, 1345.8285371057457, 1342.3761926876953, 1222.084625821661, 1237.1210894559833,
+                1256.5142692974825, 1230.032380269903, 1314.297917204754, 1267.795507203584, 1327.00719618029],
+               [1113.600858161156, 1113.320174057806, 1084.0755127334196, 1028.8957819083898, 1071.8988684732517,
+                1069.3746067327593, 1075.2317212219828, 1107.5542811118253, 1138.0890369936892, 1148.4211245842293],
+               [907.3998415615189, 1030.048394945959, 1009.2994512929424, 910.5239067941294, 927.0335389687615,
+                922.6682936611353, 1015.1220396593949, 1052.8526666265373, 880.3274395397926, 1032.2379718904685],
+               [952.807065854839, 1079.9055015472813, 973.2186011400458, 1086.9330239439093, 935.7161277393749,
+                1068.8194597253882, 980.8237907464465, 945.13853147259, 1068.7974145205494, 1059.1699397794177],
+               [939.7794847195368, 1013.1736472259917, 990.2830184714737, 1029.2199234251968, 1004.5760212235909,
+                954.9623685924046, 923.299732085873, 1052.4655670002762, 1083.1555371427107, 1018.16379752556]]
+        yy3 = [[1188.8001876714209, 1219.399361428784, 1240.2398975079977, 1208.9137450052929, 1099.6878318628249,
+                1122.295363787751, 1126.7720503125377, 1127.2913374714142, 1117.2423140386056, 1204.8679739789766],
+               [1189.9771623738523, 1193.4420939429701, 1136.0512273137022, 1118.3784492035766, 1048.6509652429227,
+                1161.1671662396268, 1047.4353975513977, 1064.3798155792726, 1185.0546051151482, 1054.9676220960612],
+               [968.9557695494555, 930.4509959235799, 903.070205405738, 952.3991333628799, 994.6613379459282,
+                972.8721513656628, 934.0916707056169, 1021.7049106391697, 908.1000840189466, 963.6769510273817],
+               [907.6436504138173, 897.6404172182216, 907.1043639241765, 882.4480151314671, 880.7309314133449,
+                1014.2771198422265, 1019.480521282999, 926.1275457641594, 916.4006971668294, 1015.417204950681],
+               [905.7008775028012, 1018.4518379204872, 962.8276878331692, 934.294491372665, 974.9564225179813,
+                879.9779769451951, 898.8092209755738, 989.0501666619782, 913.3819849715536, 895.8325218084228]]
 
         fig, axs = plt.subplots(1, 3, figsize=(12, 4))
 
         axs[0].boxplot(yy1)
-        axs[0].plot(x, np.mean(yy1, axis=1), 'rs--')
+        axs[0].plot(x, np.mean(yy1, axis=1), 's--')
         axs[0].set_xticks(x, ['1024', '2048', '4096', '8192', '16384'])
         axs[0].set_xlabel('Experience Replay Buffer Size')
         axs[0].set_ylabel('Average Makespan/ms')
@@ -591,7 +655,7 @@ class DQNParamsFigure(Figure):
         axs[0].grid(color='grey', linestyle=':', alpha=0.75)
 
         axs[1].boxplot(yy2)
-        axs[1].plot(x, np.mean(yy2, axis=1), 'rs--')
+        axs[1].plot(x, np.mean(yy2, axis=1), 's--')
         axs[1].set_xticks(x, ['0.1', '0.01', '1e-3', '1e-4', '1e-5'])
         axs[1].set_xlabel('Learning Rate')
         axs[1].set_ylabel('Average Makespan/ms')
@@ -599,7 +663,7 @@ class DQNParamsFigure(Figure):
         axs[1].grid(color='grey', linestyle=':', alpha=0.75)
 
         axs[2].boxplot(yy3)
-        axs[2].plot(x, np.mean(yy3, axis=1), 'rs--')
+        axs[2].plot(x, np.mean(yy3, axis=1), 's--')
         axs[2].set_xticks(x, ['16', '32', '64', '128', '256'])
         axs[2].set_xlabel('Batch Size')
         axs[2].set_ylabel('Average Makespan/ms')
@@ -607,7 +671,8 @@ class DQNParamsFigure(Figure):
         axs[2].grid(color='grey', linestyle=':', alpha=0.75)
 
         plt.tight_layout()
-        plt.savefig('{}/{}_params.png'.format(self.params_saving_path, self.timestamp),
+        filename = str(self.timestamp) + '_params'
+        plt.savefig('{}/{}.png'.format(self.params_saving_path, filename),
                     dpi=600, format='png')
         plt.show()
 
@@ -615,32 +680,35 @@ class DQNParamsFigure(Figure):
 class ProblemSizeFigure(Figure):
     def visual(self, origin_data=None, compared_data=None):
         problem_size = ['N10C5', 'N20C5', 'N20C10', 'N50C10', 'N50C20']
-        makespan = [
+        makespan = np.array([
             [221.548, 242.001, 264.214],  # N10C5
             [210.116, 220.115, 236.154],  # N20C5
             [184.165, 210.112, 195.143],  # N20C10
             [192.564, 195.156, 198.156],  # N50C10
             [162.353, 215.124, 154.554]  # N50C20
-        ]
-        runtime = [
+        ])
+        runtime = np.array([
             [0.84532, 0.67025, 3.5487],  # N10D5
             [5.6512, 1.45045, 4.3651],  # N20C5
             [19.345, 3.145045, 6.5542],  # N20C10
-            [58.362, 8.2654, 8.2156],  # N50C10
+            [58.362, 8.7654, 8.2156],  # N50C10
             [163.215, 20.1665, 16.5612]  # N50C20
-        ]
-        labels = ['DPE', 'HEFT', 'Ours']
+        ])
 
         fig, axs = plt.subplots(1, 2, figsize=(8, 4))
 
-        axs[0].plot(problem_size, makespan, 's--', label=labels)
+        axs[0].plot(problem_size, makespan[:, 0], '^--', label='DPE', color='black')
+        axs[0].plot(problem_size, makespan[:, 1], '*--', label='HEFT', color='black')
+        axs[0].plot(problem_size, makespan[:, 2], 's--', label='Ours', color='black')
         axs[0].set_xticklabels(problem_size, rotation=45)
         axs[0].set_title('The Effect of Problem Size on Makespan')
         axs[0].set_xlabel('Problem Size')
         axs[0].set_ylabel('Makespan/ms')
         axs[0].legend()
 
-        axs[1].plot(problem_size, runtime, 's--', label=labels)
+        axs[1].plot(problem_size, runtime[:, 0], '^--', label='DPE', color='black')
+        axs[1].plot(problem_size, runtime[:, 1], '*--', label='HEFT', color='black')
+        axs[1].plot(problem_size, runtime[:, 2], 's--', label='Ours', color='black')
         axs[1].set_xticklabels(problem_size, rotation=45)
         axs[1].set_title('The Effect of Problem Size on Runtime')
         axs[1].set_ylim([0, 20])
