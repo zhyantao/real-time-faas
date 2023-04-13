@@ -3,9 +3,9 @@
 import numpy as np
 
 
-def rmse(dataA, dataB):
+def rmse(y_pred, y_true):
     """RMSE"""
-    t1 = np.sum((dataA - dataB) ** 2) / np.size(dataB)
+    t1 = np.sum((y_pred - y_true) ** 2) / np.size(y_true)
     return np.sqrt(t1)
 
 

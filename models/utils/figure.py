@@ -124,9 +124,10 @@ class TimeSeriesFigure(Figure):
 
         # 绘制 Ours 预测的数据
         axs[1, 1].plot(origin_data, label=['True CPU', 'True Mem'])
-        axs[1, 1].plot(range(split_line_pos, origin_data.shape[0]), compared_data['ours'],
+        start_x_pos = origin_data.shape[0] - len(compared_data['ours'])
+        axs[1, 1].plot(range(start_x_pos, origin_data.shape[0]), compared_data['ours'],
                        label=['Predicted CPU', 'Predicted Mem'])
-        axs[1, 1].axvline(x=split_line_pos, c='r', linestyle='--')
+        axs[1, 1].axvline(x=start_x_pos, c='r', linestyle='--')
         axs[1, 1].set_title('Ours')
         axs[1, 1].set_ylabel("Utilization Rate/%")
         axs[1, 1].set_xlabel("Time/s")
