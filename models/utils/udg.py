@@ -46,7 +46,7 @@ class UDG:
             for j in connection_set[i]:
                 G.add_edge(i, j, weight=random.randint(bandwidth_lower, bandwidth_upper))
 
-        udg_name = 'max_connection_' + str(n_max_connections)
+        udg_name = str(n_nodes) + ' nodes ' + str(n_max_connections) + ' connections'
 
         return G, udg_name
 

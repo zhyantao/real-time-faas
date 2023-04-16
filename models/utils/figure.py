@@ -8,7 +8,6 @@ import matplotlib.pyplot as plt
 import networkx as nx
 import numpy as np
 from PIL import Image
-from matplotlib import font_manager
 from networkx import DiGraph, Graph
 from pandas import DataFrame
 
@@ -267,7 +266,7 @@ class DAGFigure(Figure):
 
 class UDGFigure(Figure):
     def visual(self, G: Graph, udg_name=None):
-        plt.title(udg_name)
+        plt.title(udg_name, y=-0.1)
 
         pos = nx.nx_agraph.graphviz_layout(G, prog='dot')
         nx.draw(G, pos, font_color='whitesmoke', with_labels=True)
@@ -523,13 +522,13 @@ class WorkloadAnalysisFigure(Figure):
         fig, axs = plt.subplots(1, 2, figsize=(8, 4))
         axs[0].boxplot(all_cpu_data)
         axs[0].set_xticklabels(x_axis_names, rotation=45)
-        axs[0].set_title('CPU Usage')
+        axs[0].set_title('(a) CPU Usage', y=-0.45)
         axs[0].set_xlabel("Machine Name")
         axs[0].set_ylabel("Percent/%")
 
         axs[1].boxplot(all_mem_data)
         axs[1].set_xticklabels(x_axis_names, rotation=45)
-        axs[1].set_title('Memory Usage')
+        axs[1].set_title('(b) Memory Usage', y=-0.45)
         axs[1].set_xlabel("Machine Name")
         axs[1].set_ylabel("Percent/%")
 
@@ -580,7 +579,7 @@ class GCNParamsFigure(Figure):
         axs[0].set_xticks(x, ['2', '3', '4', '5', '6'])
         axs[0].set_xlabel('Number of Layer(s)')
         axs[0].set_ylabel('Similarity')
-        axs[0].set_title('The Effect of Layer Numbers')
+        axs[0].set_title('(a) The Effect of Layer Numbers', y=-0.25)
         axs[0].grid(color='grey', linestyle=':', alpha=0.75)
 
         axs[1].boxplot(yy2)
@@ -588,7 +587,7 @@ class GCNParamsFigure(Figure):
         axs[1].set_xticks(x, ['0.1', '0.01', '1e-3', '1e-4', '1e-5'])
         axs[1].set_xlabel('Learning Rate')
         axs[1].set_ylabel('Similarity')
-        axs[1].set_title('The Effect of Learning Rate')
+        axs[1].set_title('(b) The Effect of Learning Rate', y=-0.25)
         axs[1].grid(color='grey', linestyle=':', alpha=0.75)
 
         plt.tight_layout()
@@ -625,7 +624,7 @@ class DQNParamsFigure(Figure):
         axs[0].set_xticks(x, ['1024', '2048', '4096', '8192', '16384'])
         axs[0].set_xlabel('Experience Replay Buffer Size')
         axs[0].set_ylabel('Average Makespan/ms')
-        axs[0].set_title('The Effect of Replay Buffer Size')
+        axs[0].set_title('(a) The Effect of Replay Buffer Size', y=-0.25)
         axs[0].grid(color='grey', linestyle=':', alpha=0.75)
 
         axs[1].boxplot(yy2)
@@ -633,7 +632,7 @@ class DQNParamsFigure(Figure):
         axs[1].set_xticks(x, ['0.1', '0.01', '1e-3', '1e-4', '1e-5'])
         axs[1].set_xlabel('Learning Rate')
         axs[1].set_ylabel('Average Makespan/ms')
-        axs[1].set_title('The Effect of Learning Rate')
+        axs[1].set_title('(b) The Effect of Learning Rate', y=-0.25)
         axs[1].grid(color='grey', linestyle=':', alpha=0.75)
 
         axs[2].boxplot(yy3)
@@ -641,7 +640,7 @@ class DQNParamsFigure(Figure):
         axs[2].set_xticks(x, ['16', '32', '64', '128', '256'])
         axs[2].set_xlabel('Batch Size')
         axs[2].set_ylabel('Average Makespan/ms')
-        axs[2].set_title('The Effect of Batch Size')
+        axs[2].set_title('(c) The Effect of Batch Size', y=-0.25)
         axs[2].grid(color='grey', linestyle=':', alpha=0.75)
 
         plt.tight_layout()
@@ -671,20 +670,20 @@ class ProblemSizeFigure(Figure):
 
         fig, axs = plt.subplots(1, 2, figsize=(8, 4))
 
-        axs[0].plot(problem_size, makespan[:, 0], '^--', label='DPE', color='black')
-        axs[0].plot(problem_size, makespan[:, 1], '*--', label='HEFT', color='black')
-        axs[0].plot(problem_size, makespan[:, 2], 's--', label='OURS', color='black')
+        axs[0].plot(problem_size, makespan[:, 0], '^--', label='DPE')
+        axs[0].plot(problem_size, makespan[:, 1], '*--', label='HEFT')
+        axs[0].plot(problem_size, makespan[:, 2], 's--', label='OURS')
         axs[0].set_xticklabels(problem_size, rotation=45)
-        axs[0].set_title('The Effect of Problem Size on Makespan')
+        axs[0].set_title('(a) The Effect of Problem Size on Makespan', y=-0.4)
         axs[0].set_xlabel('Problem Size')
         axs[0].set_ylabel('Makespan/ms')
         axs[0].legend()
 
-        axs[1].plot(problem_size, runtime[:, 0], '^--', label='DPE', color='black')
-        axs[1].plot(problem_size, runtime[:, 1], '*--', label='HEFT', color='black')
-        axs[1].plot(problem_size, runtime[:, 2], 's--', label='OURS', color='black')
+        axs[1].plot(problem_size, runtime[:, 0], '^--', label='DPE')
+        axs[1].plot(problem_size, runtime[:, 1], '*--', label='HEFT')
+        axs[1].plot(problem_size, runtime[:, 2], 's--', label='OURS')
         axs[1].set_xticklabels(problem_size, rotation=45)
-        axs[1].set_title('The Effect of Problem Size on Runtime')
+        axs[1].set_title('(b) The Effect of Problem Size on Runtime', y=-0.4)
         axs[1].set_ylim([0, 20])
         axs[1].set_xlabel('Problem Size')
         axs[1].set_ylabel('Runtime/s')

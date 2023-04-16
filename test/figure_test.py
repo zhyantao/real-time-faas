@@ -99,12 +99,12 @@ class FigureTest(unittest.TestCase):
         MergeFigure().visual(image_list1, None)
 
         image_list2 = [
-            "E:\\Workshop\\real-time-faas\\results\\udgs\\max_connection_3_1680084850.4353304.png",
-            "E:\\Workshop\\real-time-faas\\results\\udgs\\max_connection_2_1680084824.861884.png",
-            "E:\\Workshop\\real-time-faas\\results\\udgs\\max_connection_3_1680084851.3031876.png",
-            "E:\\Workshop\\real-time-faas\\results\\udgs\\max_connection_3_1680084852.2823596.png",
-            "E:\\Workshop\\real-time-faas\\results\\udgs\\max_connection_5_1680084863.1467211.png",
-            "E:\\Workshop\\real-time-faas\\results\\udgs\\max_connection_5_1680084863.8470132.png",
+            "E:\\Workshop\\real-time-faas\\results\\udgs\\(a) 10 nodes 5 connections.png",
+            "E:\\Workshop\\real-time-faas\\results\\udgs\\(b) 10 nodes 2 connections.png",
+            "E:\\Workshop\\real-time-faas\\results\\udgs\\(c) 10 nodes 3 connections.png",
+            "E:\\Workshop\\real-time-faas\\results\\udgs\\(d) 10 nodes 5 connections.png",
+            "E:\\Workshop\\real-time-faas\\results\\udgs\\(e) 10 nodes 3 connections.png",
+            "E:\\Workshop\\real-time-faas\\results\\udgs\\(f) 10 nodes 5 connections.png",
         ]
         MergeFigure().visual(image_list2, None)
 
@@ -113,7 +113,17 @@ class FigureTest(unittest.TestCase):
         udg = UDG()
 
         G, udg_name = udg.generate_udg_from_random(10, 5, 20, 60)
-        udg_figure.visual(G, udg_name + '_' + str(time.time()))
+        udg_figure.visual(G, '(a) '+udg_name)
+        G, udg_name = udg.generate_udg_from_random(10, 2, 20, 60)
+        udg_figure.visual(G, '(b) '+udg_name)
+        G, udg_name = udg.generate_udg_from_random(10, 3, 20, 60)
+        udg_figure.visual(G, '(c) '+udg_name)
+        G, udg_name = udg.generate_udg_from_random(10, 5, 20, 60)
+        udg_figure.visual(G, '(d) '+udg_name)
+        G, udg_name = udg.generate_udg_from_random(10, 3, 20, 60)
+        udg_figure.visual(G, '(e) '+udg_name)
+        G, udg_name = udg.generate_udg_from_random(10, 5, 20, 60)
+        udg_figure.visual(G, '(f) '+udg_name)
 
 
 if __name__ == '__main__':
