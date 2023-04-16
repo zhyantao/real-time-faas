@@ -44,4 +44,4 @@ parser.add_argument('--density', type=int, default=10, help='节点的最大连�
 parser.add_argument('--n_pairs', type=int, default=12, help='？？？')
 parser.add_argument('--cpu_nums', type=int, default=20, help='处理器数量')
 
-args = parser.parse_args()
+args = parser.parse_args(args=[])

@@ -335,7 +335,7 @@ class GanttFigure(Figure):
         cpus = list(schedule_events.keys())
         num_cpus = len(cpus)
 
-        fig = plt.figure(figsize=(15, 6))
+        fig = plt.figure(figsize=(8, 4))
         ax = fig.add_subplot(111)
         # 绘制水平柱状图
         for idx, cpu in enumerate(cpus):
@@ -348,15 +348,15 @@ class GanttFigure(Figure):
         # 设置图像属性
         pos = np.arange(0.5, num_cpus * 0.5 + 0.5, 0.5)
         print(pos)
-        plt.ylabel('CPU Number')
-        plt.xlabel('Execute Time/s')
+        plt.ylabel('CPU Number', size='large')
+        plt.xlabel('Execute Time/s', size='large')
         locs, labels = plt.yticks(pos, cpus)  # 重新设置 y 轴步长（locs）和每个步长对应的名称（labels）
         plt.setp(labels, fontsize=12)  # 设置 y 轴坐标
         ax.set_ylim(ymin=-0.1, ymax=num_cpus * 0.5 + 0.5)
         ax.set_xlim(xmin=-5)
         ax.grid(color='g', linestyle=':', alpha=0.75)
 
-        # font_manager.FontProperties(size='large')
+        plt.subplots_adjust(top=0.96)
         plt.savefig('{}/{}.png'.format(self.gantt_saving_path, self.timestamp),
                     format='png')
         plt.show()
@@ -398,26 +398,9 @@ class MakespanFigure(Figure):
         ax.set_xticklabels(labels)
         ax.legend()
 
+        plt.subplots_adjust(top=0.96)
         plt.savefig('{}/{}.png'.format(self.schedule_results_saving_path, self.timestamp),
                     format='png')
-        plt.show()
-
-
-class RuntimeFigure(Figure):
-    def visual(self, origin_data=None, compared_data=None):
-        x = [i for i in range(100)]
-        y1 = [ii ** 1.2 for ii in x]
-        y2 = [ii ** 1.5 for ii in x]
-        y3 = [ii ** 1.3 for ii in x]
-
-        plt.plot(x, y1, label='HEFT')
-        plt.plot(x, y2, label='DPE')
-        plt.plot(x, y3, label='OURS')
-        plt.ylim([0, 200])
-        plt.xlabel('n_nodes')
-        plt.ylabel('runtime')
-
-        plt.legend()
         plt.show()
 
 
@@ -522,18 +505,18 @@ class WorkloadAnalysisFigure(Figure):
         fig, axs = plt.subplots(1, 2, figsize=(8, 4))
         axs[0].boxplot(all_cpu_data)
         axs[0].set_xticklabels(x_axis_names, rotation=45)
-        axs[0].set_title('(a) CPU Usage', y=-0.45)
+        axs[0].set_title('(a) CPU Usage', y=-0.4, pad=5)
         axs[0].set_xlabel("Machine Name")
         axs[0].set_ylabel("Percent/%")
 
         axs[1].boxplot(all_mem_data)
         axs[1].set_xticklabels(x_axis_names, rotation=45)
-        axs[1].set_title('(b) Memory Usage', y=-0.45)
+        axs[1].set_title('(b) Memory Usage', y=-0.4, pad=5)
         axs[1].set_xlabel("Machine Name")
         axs[1].set_ylabel("Percent/%")
 
         fig.tight_layout()  # 调整子图布局以避免重叠
-        plt.subplots_adjust(top=0.88)  # 调整整图标题的位置，以避免和子图重叠
+        plt.subplots_adjust(bottom=0.3)  # 调整整图标题的位置，以避免和子图重叠
         plt.savefig('{}/{}_workload_analysis.png'.format(self.workload_saving_path, self.timestamp),
                     dpi=600, format='png')
         plt.show()
@@ -690,6 +673,7 @@ class ProblemSizeFigure(Figure):
         axs[1].legend()
 
         plt.tight_layout()
+        plt.subplots_adjust(bottom=0.29)
         plt.savefig('{}/{}_problem_size.png'.format(self.schedule_results_saving_path, self.timestamp),
                     dpi=600, format='png')
         plt.show()

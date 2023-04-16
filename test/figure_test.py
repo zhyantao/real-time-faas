@@ -10,13 +10,15 @@ from models.utils.udg import UDG
 
 class FigureTest(unittest.TestCase):
 
+    # 图 4-13 问题规模对算法运行时间的影响
     def test_problem_size_figure(self):
         problem_size_figure = ProblemSizeFigure()
         problem_size_figure.visual()
 
-    def test_runtime_figure(self):
-        runtime_figure = RuntimeFigure()
-        runtime_figure.visual()
+    # 图 4-14 作业完成时间对比
+    def test_makespan(self):
+        makespan_figure = MakespanFigure()
+        makespan_figure.visual(None, None)
 
     def test_gcn_params_figure(self):
         gcn_layer_figure = GCNParamsFigure()
@@ -47,6 +49,7 @@ class FigureTest(unittest.TestCase):
             else:
                 dag_figure.visual(G, job_name)
 
+    # 图 4-1 OpenWhisk对任务的调度方案示例
     def test_gantt(self):
         mappings = {
             0: [ScheduleEvent(task_id=10, start=0, end=14.0, cpu_id=0),
@@ -83,12 +86,8 @@ class FigureTest(unittest.TestCase):
         branch_prediction_figure = BranchPredictionFigure()
         branch_prediction_figure.visual(21, None)
 
-    def test_makespan(self):
-        makespan_figure = MakespanFigure()
-        makespan_figure.visual(None, None)
-
-    def test_merge_images(self):
-        image_list1 = [
+    def test_merge_image1(self):
+        image_list = [
             "E:\\Workshop\\real-time-faas\\results\\dags\\(a) j_11624.png",
             "E:\\Workshop\\real-time-faas\\results\\dags\\(b) j_12288.png",
             "E:\\Workshop\\real-time-faas\\results\\dags\\(c) j_34819.png",
@@ -96,9 +95,11 @@ class FigureTest(unittest.TestCase):
             "E:\\Workshop\\real-time-faas\\results\\dags\\(e) j_77773.png",
             "E:\\Workshop\\real-time-faas\\results\\dags\\(f) j_82634.png"
         ]
-        MergeFigure().visual(image_list1, None)
+        MergeFigure().visual(image_list, None)
 
-        image_list2 = [
+    # 图 4-9 随机初始化的节点连通性矩阵
+    def test_merge_image2(self):
+        image_list = [
             "E:\\Workshop\\real-time-faas\\results\\udgs\\(a) 10 nodes 5 connections.png",
             "E:\\Workshop\\real-time-faas\\results\\udgs\\(b) 10 nodes 2 connections.png",
             "E:\\Workshop\\real-time-faas\\results\\udgs\\(c) 10 nodes 3 connections.png",
@@ -106,24 +107,25 @@ class FigureTest(unittest.TestCase):
             "E:\\Workshop\\real-time-faas\\results\\udgs\\(e) 10 nodes 3 connections.png",
             "E:\\Workshop\\real-time-faas\\results\\udgs\\(f) 10 nodes 5 connections.png",
         ]
-        MergeFigure().visual(image_list2, None)
+        MergeFigure().visual(image_list, None)
 
+    # 图 4-9 随机初始化的节点连通性矩阵
     def test_udg_generation(self):
         udg_figure = UDGFigure()
         udg = UDG()
 
         G, udg_name = udg.generate_udg_from_random(10, 5, 20, 60)
-        udg_figure.visual(G, '(a) '+udg_name)
+        udg_figure.visual(G, '(a) ' + udg_name)
         G, udg_name = udg.generate_udg_from_random(10, 2, 20, 60)
-        udg_figure.visual(G, '(b) '+udg_name)
+        udg_figure.visual(G, '(b) ' + udg_name)
         G, udg_name = udg.generate_udg_from_random(10, 3, 20, 60)
-        udg_figure.visual(G, '(c) '+udg_name)
+        udg_figure.visual(G, '(c) ' + udg_name)
         G, udg_name = udg.generate_udg_from_random(10, 5, 20, 60)
-        udg_figure.visual(G, '(d) '+udg_name)
+        udg_figure.visual(G, '(d) ' + udg_name)
         G, udg_name = udg.generate_udg_from_random(10, 3, 20, 60)
-        udg_figure.visual(G, '(e) '+udg_name)
+        udg_figure.visual(G, '(e) ' + udg_name)
         G, udg_name = udg.generate_udg_from_random(10, 5, 20, 60)
-        udg_figure.visual(G, '(f) '+udg_name)
+        udg_figure.visual(G, '(f) ' + udg_name)
 
 
 if __name__ == '__main__':
