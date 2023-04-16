@@ -15,6 +15,9 @@ from pandas import DataFrame
 from models.utils.dataset import get_one_machine
 from models.utils.params import args
 
+# 设置全局字体为 Times New Roman
+plt.rc('font', family='Times New Roman')
+
 ScheduleEvent = namedtuple('ScheduleEvent', 'task_id start end cpu_id')
 
 linestyles = OrderedDict(
@@ -97,7 +100,7 @@ class TimeSeriesFigure(Figure):
         axs[0, 0].plot(range(split_line_pos, origin_data.shape[0]), compared_data['arima'],  # 用 range 指定起点坐标
                        label=['Predicted CPU', 'Predicted Mem'])
         axs[0, 0].axvline(x=split_line_pos, c='r', linestyle='--')
-        axs[0, 0].set_title('ARIMA')
+        axs[0, 0].set_title('(a) ARIMA', y=-0.22)
         axs[0, 0].set_ylabel("Utilization Rate/%")
         axs[0, 0].set_xlabel("Time/s")
         axs[0, 0].legend(fontsize=8)
@@ -107,7 +110,7 @@ class TimeSeriesFigure(Figure):
         axs[0, 1].plot(range(split_line_pos, origin_data.shape[0]), compared_data['lstm'],
                        label=['Predicted CPU', 'Predicted Mem'])
         axs[0, 1].axvline(x=split_line_pos, c='r', linestyle='--')
-        axs[0, 1].set_title('LSTM')
+        axs[0, 1].set_title('(b) LSTM', y=-0.22)
         axs[0, 1].set_ylabel("Utilization Rate/%")
         axs[0, 1].set_xlabel("Time/s")
         axs[0, 1].legend(fontsize=8)
@@ -117,7 +120,7 @@ class TimeSeriesFigure(Figure):
         axs[1, 0].plot(range(split_line_pos, origin_data.shape[0]), compared_data['bht_arima'],
                        label=['Predicted CPU', 'Predicted Mem'])
         axs[1, 0].axvline(x=split_line_pos, c='r', linestyle='--')
-        axs[1, 0].set_title('BHT-ARIMA')
+        axs[1, 0].set_title('(c) BHT-ARIMA', y=-0.22)
         axs[1, 0].set_ylabel("Utilization Rate/%")
         axs[1, 0].set_xlabel("Time/s")
         axs[1, 0].legend(fontsize=8)
@@ -128,15 +131,13 @@ class TimeSeriesFigure(Figure):
         axs[1, 1].plot(range(start_x_pos, origin_data.shape[0]), compared_data['ours'],
                        label=['Predicted CPU', 'Predicted Mem'])
         axs[1, 1].axvline(x=start_x_pos, c='r', linestyle='--')
-        axs[1, 1].set_title('Ours')
+        axs[1, 1].set_title('(d) OURS', y=-0.22)
         axs[1, 1].set_ylabel("Utilization Rate/%")
         axs[1, 1].set_xlabel("Time/s")
         axs[1, 1].legend(fontsize=8)
 
         # 添加图片的辅助信息
         fig.tight_layout()  # 调整子图布局以避免重叠
-        fig.suptitle('CPU and Mem Usage Prediction')
-        plt.subplots_adjust(top=0.9)  # 调整整图标题的位置，以避免和子图重叠
         plt.savefig('{}/{}_timeseries.png'.format(self.metrics_saving_path, self.timestamp),
                     dpi=600, format='png')
         plt.show()
@@ -184,45 +185,45 @@ class MetrixFigure(Figure):
         rows, cols = 2, 2
         fig, axs = plt.subplots(rows, cols, figsize=(10, 8))
 
-        # 绘制第二个子图
+        # 绘制第 1 个子图
         axs[0, 0].plot(rmse['arima'], label='ARIMA')
         axs[0, 0].plot(rmse['lstm'], label='LSTM')
-        axs[0, 0].plot(rmse['ours'], label='Ours')
+        axs[0, 0].plot(rmse['ours'], label='OURS')
         axs[0, 0].plot(rmse['bht_arima'], label='BHT ARIMA')
-        axs[0, 0].set_title('RMSE', fontsize=11)
+        axs[0, 0].set_title('(a) RMSE', fontsize=11, y=-0.22)
         axs[0, 0].set_ylabel("RMSE")
         axs[0, 0].set_xlabel("Time/s")
         axs[0, 0].set_ylim([0, 100])
         axs[0, 0].legend(fontsize=8)
 
-        # 绘制第三个子图
+        # 绘制第 2 个子图
         axs[0, 1].plot(nrmse['arima'], label='ARIMA')
         axs[0, 1].plot(nrmse['lstm'], label='LSTM')
-        axs[0, 1].plot(nrmse['ours'], label='Ours')
+        axs[0, 1].plot(nrmse['ours'], label='OURS')
         axs[0, 1].plot(nrmse['bht_arima'], label='BHT ARIMA')
-        axs[0, 1].set_title('Normalized RMSE', fontsize=11)
+        axs[0, 1].set_title('(b) Normalized RMSE', fontsize=11, y=-0.22)
         axs[0, 1].set_ylabel("Normalized RMSE")
         axs[0, 1].set_xlabel("Time/s")
         axs[0, 1].set_ylim([0, 2.5])
         axs[0, 1].legend(fontsize=8)
 
-        # 绘制第四个子图
+        # 绘制第 3 个子图
         axs[1, 0].plot(nd['arima'], label='ARIMA')
         axs[1, 0].plot(nd['lstm'], label='LSTM')
-        axs[1, 0].plot(nd['ours'], label='Ours')
+        axs[1, 0].plot(nd['ours'], label='OURS')
         axs[1, 0].plot(nd['bht_arima'], label='BHT ARIMA')
-        axs[1, 0].set_title('Normalized Deviation', fontsize=11)
+        axs[1, 0].set_title('(c) Normalized Deviation', fontsize=11, y=-0.22)
         axs[1, 0].set_ylabel("Normalized Deviation")
         axs[1, 0].set_xlabel("Time/s")
         axs[1, 0].set_ylim([0, 3])
         axs[1, 0].legend(fontsize=8)
 
-        # 绘制第五个子图
+        # 绘制第 4 个子图
         axs[1, 1].plot(smape['arima'], label='ARIMA')
         axs[1, 1].plot(smape['lstm'], label='LSTM')
-        axs[1, 1].plot(smape['ours'], label='Ours')
+        axs[1, 1].plot(smape['ours'], label='OURS')
         axs[1, 1].plot(smape['bht_arima'], label='BHT ARIMA')
-        axs[1, 1].set_title('SMAPE', fontsize=11)
+        axs[1, 1].set_title('(d) SMAPE', fontsize=11, y=-0.22)
         axs[1, 1].set_ylabel("SMAPE")
         axs[1, 1].set_xlabel("Time/s")
         axs[1, 1].set_ylim([0, 2])
@@ -230,8 +231,6 @@ class MetrixFigure(Figure):
 
         # 添加整图标题
         fig.tight_layout()  # 调整子图布局以避免重叠
-        fig.suptitle('Metrics Comparison')
-        plt.subplots_adjust(top=0.9)  # 调整整图标题的位置，以避免和子图重叠
         plt.savefig('{}/{}_loss.png'.format(self.metrics_saving_path, self.timestamp),
                     dpi=600, format='png')
         plt.show()
@@ -239,9 +238,8 @@ class MetrixFigure(Figure):
         plt.figure()
         plt.plot(acc['arima'], label='ARIMA')
         plt.plot(acc['lstm'], label='LSTM')
-        plt.plot(acc['ours'], label='Ours')
+        plt.plot(acc['ours'], label='OURS')
         plt.plot(acc['bht_arima'], label='BHT ARIMA')
-        plt.title('Accuracy', fontsize=11)
         plt.ylabel("Percent %")
         plt.xlabel("Time/s")
         plt.ylim([0, 1])
@@ -254,7 +252,7 @@ class MetrixFigure(Figure):
 class DAGFigure(Figure):
     def visual(self, G: DiGraph, job_name=None):
         # G: networkx 中的 DiGraph 格式
-        plt.title(job_name)  # 配置属性必须在 nx.draw 函数调用之前
+        plt.title(job_name, y=-0.1)  # 配置属性必须在 nx.draw 函数调用之前
 
         pos = nx.nx_agraph.graphviz_layout(G, prog='dot')
         nx.draw(G, pos, font_color='whitesmoke', with_labels=True)
@@ -296,7 +294,7 @@ class BranchPredictionFigure(Figure):
         x = np.linspace(min(bins), max(bins), n_tasks)
         pdf = (np.exp(-(np.log(x) - mu) ** 2 / (2 * sigma ** 2)) / (x * sigma * np.sqrt(2 * np.pi)))
         axs[0].plot(x, pdf, linewidth=2)
-        axs[0].set_title('Function Invoke Distribution')
+        axs[0].set_title('(a) Function Invoke Distribution', y=-0.25)
         axs[0].set_xlabel('Invoke times')
         axs[0].set_ylabel('Probability')
         axs[0].grid(linestyle='--', color='grey', alpha=0.3)
@@ -305,7 +303,7 @@ class BranchPredictionFigure(Figure):
         y_hat = s + (np.random.random(s.shape) - 0.5) * 5
         axs[1].scatter(x, y, marker='s', s=y * 1.5, label='True Invoke Times')
         axs[1].scatter(x, y_hat, marker='o', s=y_hat * 1.5, label='Pred. Invoke Times')
-        axs[1].set_title('Function Invoke Frequencies')
+        axs[1].set_title('(b) Function Invoke Frequencies', y=-0.25)
         axs[1].set_xlabel('Function Number')
         axs[1].set_ylabel('Invoke Times')
         axs[1].grid(linestyle='--', color='grey', alpha=0.3)
@@ -415,7 +413,7 @@ class RuntimeFigure(Figure):
 
         plt.plot(x, y1, label='HEFT')
         plt.plot(x, y2, label='DPE')
-        plt.plot(x, y3, label='Ours')
+        plt.plot(x, y3, label='OURS')
         plt.ylim([0, 200])
         plt.xlabel('n_nodes')
         plt.ylabel('runtime')
@@ -457,7 +455,8 @@ class WorkloadFigure(Figure):
             # axs[row, col].plot(mem_usage, linestyle=linestyles['densely dashdotted'], label='Mem Usage', color='black')
             axs[row, col].plot(cpu_usage, label='CPU Usage')
             axs[row, col].plot(mem_usage, label='Mem Usage')
-            axs[row, col].set_title(machine_name, fontsize=11)
+            letter = chr(ord('a') + row * 3 + col)
+            axs[row, col].set_title('(' + letter + ') ' + machine_name, fontsize=11, y=-0.5)
             axs[row, col].set_ylabel("Usage/%")
             axs[row, col].set_xlabel("Time/s")
             axs[row, col].set_xticks([0, 30, 60, 90, 120, 150])
@@ -474,7 +473,6 @@ class WorkloadFigure(Figure):
 
         # 添加整图标题
         fig.tight_layout()  # 调整子图布局以避免重叠
-        fig.suptitle('Resource Usage')
         plt.subplots_adjust(top=0.92)  # 调整整图标题的位置，以避免和子图重叠
         plt.savefig('{}/{}_workload.png'.format(self.workload_saving_path, self.timestamp),
                     dpi=600, format='png')
@@ -675,7 +673,7 @@ class ProblemSizeFigure(Figure):
 
         axs[0].plot(problem_size, makespan[:, 0], '^--', label='DPE', color='black')
         axs[0].plot(problem_size, makespan[:, 1], '*--', label='HEFT', color='black')
-        axs[0].plot(problem_size, makespan[:, 2], 's--', label='Ours', color='black')
+        axs[0].plot(problem_size, makespan[:, 2], 's--', label='OURS', color='black')
         axs[0].set_xticklabels(problem_size, rotation=45)
         axs[0].set_title('The Effect of Problem Size on Makespan')
         axs[0].set_xlabel('Problem Size')
@@ -684,7 +682,7 @@ class ProblemSizeFigure(Figure):
 
         axs[1].plot(problem_size, runtime[:, 0], '^--', label='DPE', color='black')
         axs[1].plot(problem_size, runtime[:, 1], '*--', label='HEFT', color='black')
-        axs[1].plot(problem_size, runtime[:, 2], 's--', label='Ours', color='black')
+        axs[1].plot(problem_size, runtime[:, 2], 's--', label='OURS', color='black')
         axs[1].set_xticklabels(problem_size, rotation=45)
         axs[1].set_title('The Effect of Problem Size on Runtime')
         axs[1].set_ylim([0, 20])

@@ -34,12 +34,18 @@ class FigureTest(unittest.TestCase):
     def test_rebuild_DAG(self):
         # 重建 DAG
         df = pd.read_csv(args.selected_batch_task_path)
-        idx = 0
+        idx, selected_dag_id = 0, 0
+        selected_dag_name = ['j_11624', 'j_12288', 'j_34819', 'j_54530', 'j_77773', 'j_82634']
         while idx < df.shape[0]:
             job, idx = get_one_job(df, idx)
             G, job_name = DAG.generate_dag_from_alibaba_trace_data(job)
             dag_figure = DAGFigure()
-            dag_figure.visual(G, job_name)
+            if selected_dag_id < len(selected_dag_name) and job_name == selected_dag_name[selected_dag_id]:
+                letter = chr(ord('a') + selected_dag_id)
+                selected_dag_id += 1
+                dag_figure.visual(G, '(' + letter + ') ' + job_name)
+            else:
+                dag_figure.visual(G, job_name)
 
     def test_gantt(self):
         mappings = {
@@ -83,12 +89,12 @@ class FigureTest(unittest.TestCase):
 
     def test_merge_images(self):
         image_list1 = [
-            "E:\\Workshop\\real-time-faas\\results\\dags\\j_11624.png",
-            "E:\\Workshop\\real-time-faas\\results\\dags\\j_12288.png",
-            "E:\\Workshop\\real-time-faas\\results\\dags\\j_34819.png",
-            "E:\\Workshop\\real-time-faas\\results\\dags\\j_54530.png",
-            "E:\\Workshop\\real-time-faas\\results\\dags\\j_77773.png",
-            "E:\\Workshop\\real-time-faas\\results\\dags\\j_82634.png"
+            "E:\\Workshop\\real-time-faas\\results\\dags\\(a) j_11624.png",
+            "E:\\Workshop\\real-time-faas\\results\\dags\\(b) j_12288.png",
+            "E:\\Workshop\\real-time-faas\\results\\dags\\(c) j_34819.png",
+            "E:\\Workshop\\real-time-faas\\results\\dags\\(d) j_54530.png",
+            "E:\\Workshop\\real-time-faas\\results\\dags\\(e) j_77773.png",
+            "E:\\Workshop\\real-time-faas\\results\\dags\\(f) j_82634.png"
         ]
         MergeFigure().visual(image_list1, None)
 
