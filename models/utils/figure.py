@@ -344,21 +344,21 @@ class GanttFigure(Figure):
                 ax.barh((idx * 0.5) + 0.5, event.end - event.start, left=event.start, height=0.2,
                         align='center', edgecolor='black', color='white', alpha=0.8)
                 ax.text(0.5 * (event.start + event.end - len(str(event.task_id))), 0.5 * idx + 0.47, event.task_id,
-                        color='blue', fontweight='normal', fontsize=12, alpha=0.8)
+                        color='blue', fontweight='bold', fontsize=12, alpha=0.8)
 
         # 设置图像属性
         pos = np.arange(0.5, num_cpus * 0.5 + 0.5, 0.5)
         print(pos)
-        plt.ylabel('CPU Number', fontsize=12)
-        plt.xlabel('Execute Time/s', fontsize=12)
+        plt.ylabel('CPU Number')
+        plt.xlabel('Execute Time/s')
         locs, labels = plt.yticks(pos, cpus)  # 重新设置 y 轴步长（locs）和每个步长对应的名称（labels）
         plt.setp(labels, fontsize=12)  # 设置 y 轴坐标
         ax.set_ylim(ymin=-0.1, ymax=num_cpus * 0.5 + 0.5)
         ax.set_xlim(xmin=-5)
         ax.grid(color='g', linestyle=':', alpha=0.75)
 
-        font_manager.FontProperties(size='small')
-        plt.savefig('{}/{}.png'.format(self.invoke_pred_saving_path, self.timestamp),
+        # font_manager.FontProperties(size='large')
+        plt.savefig('{}/{}.png'.format(self.gantt_saving_path, self.timestamp),
                     format='png')
         plt.show()
 
