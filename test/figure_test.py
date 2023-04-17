@@ -77,15 +77,18 @@ class FigureTest(unittest.TestCase):
         gantt_figure = GanttFigure()
         gantt_figure.visual(mappings, None)
 
+    # 图 3-11 不同函数运行期间使用的资源变化情况
     def test_workload(self):
         df = pd.read_csv(args.selected_container_usage_path)
         workload_figure = WorkloadFigure()
         workload_figure.visual(df, None)
 
+    # 图 3-16 分支预测器的拟合效率
     def test_branch_prediction(self):
         branch_prediction_figure = BranchPredictionFigure()
         branch_prediction_figure.visual(21, None)
 
+    # 图 3-12 DAG重构结果展示
     def test_merge_image1(self):
         image_list = [
             "E:\\Workshop\\real-time-faas\\results\\dags\\(a) j_11624.png",

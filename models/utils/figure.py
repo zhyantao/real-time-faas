@@ -335,7 +335,7 @@ class GanttFigure(Figure):
         cpus = list(schedule_events.keys())
         num_cpus = len(cpus)
 
-        fig = plt.figure(figsize=(8, 4))
+        fig = plt.figure(figsize=(10, 4))
         ax = fig.add_subplot(111)
         # 绘制水平柱状图
         for idx, cpu in enumerate(cpus):
@@ -356,7 +356,7 @@ class GanttFigure(Figure):
         ax.set_xlim(xmin=-5)
         ax.grid(color='g', linestyle=':', alpha=0.75)
 
-        plt.subplots_adjust(top=0.96)
+        plt.subplots_adjust(top=0.96, bottom=0.15, left=0.06, right=0.98)
         plt.savefig('{}/{}.png'.format(self.gantt_saving_path, self.timestamp),
                     format='png')
         plt.show()
@@ -455,7 +455,7 @@ class WorkloadFigure(Figure):
 
         # 添加整图标题
         fig.tight_layout()  # 调整子图布局以避免重叠
-        plt.subplots_adjust(top=0.92)  # 调整整图标题的位置，以避免和子图重叠
+        plt.subplots_adjust(top=0.98, bottom=0.11)  # 调整整图标题的位置，以避免和子图重叠
         plt.savefig('{}/{}_workload.png'.format(self.workload_saving_path, self.timestamp),
                     dpi=600, format='png')
         plt.show()
