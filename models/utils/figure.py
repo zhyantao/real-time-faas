@@ -300,8 +300,8 @@ class BranchPredictionFigure(Figure):
 
         y = s
         y_hat = s + (np.random.random(s.shape) - 0.5) * 5
-        axs[1].scatter(x, y, marker='s', s=y * 1.5, label='True Invoke Times')
-        axs[1].scatter(x, y_hat, marker='o', s=y_hat * 1.5, label='Pred. Invoke Times')
+        axs[1].scatter(x, y, marker='s', label='True Invoke Times')
+        axs[1].scatter(x, y_hat, marker='o', label='Pred. Invoke Times')
         axs[1].set_title('(b) Function Invoke Frequencies', y=-0.25)
         axs[1].set_xlabel('Function Number')
         axs[1].set_ylabel('Invoke Times')
