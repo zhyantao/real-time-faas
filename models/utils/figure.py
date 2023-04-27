@@ -8,14 +8,23 @@ import matplotlib.pyplot as plt
 import networkx as nx
 import numpy as np
 from PIL import Image
+from matplotlib import font_manager
 from networkx import DiGraph, Graph
 from pandas import DataFrame
 
 from models.utils.dataset import get_one_machine
 from models.utils.params import args
 
-# 设置全局字体为 Times New Roman
-plt.rc('font', family='Times New Roman')
+# 设置图片中的中文字体、英文字体、公式字体
+CURRENT_DIR = os.path.abspath('.')
+font_path = CURRENT_DIR + "../../setup/tnw+simsun.ttf"
+font_manager.fontManager.addfont(font_path)
+prop = font_manager.FontProperties(fname=font_path)
+plt.rcParams['font.family'] = 'sans-serif'  # 使用字体中的无衬线体
+plt.rcParams['font.sans-serif'] = prop.get_name()  # 根据名称设置字体
+plt.rcParams['font.size'] = 10  # 设置字体大小 (五号字体)
+plt.rcParams['axes.unicode_minus'] = False  # 使坐标轴刻度标签正常显示正负号
+plt.rcParams['mathtext.fontset'] = 'cm'  # 设置公式字体
 
 ScheduleEvent = namedtuple('ScheduleEvent', 'task_id start end cpu_id')
 
@@ -343,7 +352,7 @@ class GanttFigure(Figure):
                 ax.barh((idx * 0.5) + 0.5, event.end - event.start, left=event.start, height=0.2,
                         align='center', edgecolor='black', color='white', alpha=0.8)
                 ax.text(0.5 * (event.start + event.end - len(str(event.task_id))), 0.5 * idx + 0.47, event.task_id,
-                        color='blue', fontweight='bold', fontsize=12, alpha=0.8)
+                        color='blue', fontweight='normal', fontsize=12, alpha=0.8)
 
         # 设置图像属性
         pos = np.arange(0.5, num_cpus * 0.5 + 0.5, 0.5)
@@ -676,4 +685,16 @@ class ProblemSizeFigure(Figure):
         plt.subplots_adjust(bottom=0.29)
         plt.savefig('{}/{}_problem_size.png'.format(self.schedule_results_saving_path, self.timestamp),
                     dpi=600, format='png')
+        plt.show()
+
+
+class ChineseTextFigure(Figure):
+    def visual(self, origin_data=None, compared_data=None):
+        x = [1, 2, 3, 4, 5]
+        y = [0.2, 0.4, 0.6, 0.2, 0.5]
+        plt.plot(x, y, label='折线')
+        plt.xlabel('横坐标')
+        plt.ylabel('纵坐标')
+        plt.title('宋体 —— Times New Roman —— $E=mc^2$')
+        plt.legend()
         plt.show()

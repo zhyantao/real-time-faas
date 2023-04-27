@@ -130,6 +130,10 @@ class FigureTest(unittest.TestCase):
         G, udg_name = udg.generate_udg_from_random(10, 5, 20, 60)
         udg_figure.visual(G, '(f) ' + udg_name)
 
+    def test_chinese_display(self):
+        chinese_text_figure = ChineseTextFigure()
+        chinese_text_figure.visual()
+
 
 if __name__ == '__main__':
     unittest.main()
