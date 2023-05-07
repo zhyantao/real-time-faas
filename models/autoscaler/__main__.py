@@ -212,6 +212,9 @@ if __name__ == '__main__':
     while idx < rows:
         # (1) 每次从文件中读取一个 task 的资源需求变化
         machine, next_idx = get_one_machine(df, idx)
+        print(machine)
+        machine_name = machine['machine_id'].loc[machine.index[0]]
+        print(machine_name)
 
         # training_data_cpu = machine.iloc[:, 3:4].values  # CPU
         # training_data_mem = machine.iloc[:, 4:5].values  # memory
@@ -278,10 +281,8 @@ if __name__ == '__main__':
         ts_figure = TimeSeriesFigure()
         ts_figure.visual(training_data, predictions)
         loss_figure = MetrixFigure()
-        loss_figure.visual(None, losses)
+        loss_figure.visual(machine_name, losses)
 
         print('-------------- sample {} end ----------------'.format(count))
         idx = next_idx
         count += 1
-
-        break

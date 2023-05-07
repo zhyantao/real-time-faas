@@ -134,6 +134,11 @@ class FigureTest(unittest.TestCase):
         chinese_text_figure = ChineseTextFigure()
         chinese_text_figure.visual()
 
+    def test_list_sum(self):
+        arr = [1, 2, 3, 4]
+        res = np.mean(arr)
+        print(res)
+
 
 if __name__ == '__main__':
     unittest.main()

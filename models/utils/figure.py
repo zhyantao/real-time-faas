@@ -16,8 +16,9 @@ from models.utils.dataset import get_one_machine
 from models.utils.params import args
 
 # 设置图片中的中文字体、英文字体、公式字体
-CURRENT_DIR = os.path.abspath('.')
-font_path = CURRENT_DIR + "../../setup/tnw+simsun.ttf"
+FILE_PATH = os.path.abspath(__file__)  # 获取当前文件所在路径
+CURRENT_DIR = os.path.dirname(FILE_PATH)  # 获取当前文件所在目录
+font_path = CURRENT_DIR + "/../../setup/tnw+simsun.ttf"
 font_manager.fontManager.addfont(font_path)
 prop = font_manager.FontProperties(fname=font_path)
 plt.rcParams['font.family'] = 'sans-serif'  # 使用字体中的无衬线体
@@ -152,7 +153,7 @@ class TimeSeriesFigure(Figure):
 
 
 class MetrixFigure(Figure):
-    def visual(self, timecost, compared_data):
+    def visual(self, machine_name, compared_data):
         """可视化各种损失函数"""
 
         acc = {'arima': [], 'bht_arima': [], 'lstm': [], 'ours': []}
@@ -188,6 +189,32 @@ class MetrixFigure(Figure):
             nrmse['bht_arima'].append(item['nrmse'])
             nd['bht_arima'].append(item['nd'])
             smape['bht_arima'].append(item['smape'])
+
+        rmse_mean = {
+            'arima': np.mean(rmse['arima']),
+            'bht_arima': np.mean(rmse['bht_arima']),
+            'lstm': np.mean(rmse['lstm']),
+            'ours': np.mean(rmse['ours'])
+        }
+        nrmse_mean = {
+            'arima': np.mean(nrmse['arima']),
+            'bht_arima': np.mean(nrmse['bht_arima']),
+            'lstm': np.mean(nrmse['lstm']),
+            'ours': np.mean(nrmse['ours'])
+        }
+        nd_mean = {
+            'arima': np.mean(nd['arima']),
+            'bht_arima': np.mean(nd['bht_arima']),
+            'lstm': np.mean(nd['lstm']),
+            'ours': np.mean(nd['ours'])
+        }
+        smape_mean = {
+            'arima': np.mean(smape['arima']),
+            'bht_arima': np.mean(smape['bht_arima']),
+            'lstm': np.mean(smape['lstm']),
+            'ours': np.mean(smape['ours'])
+        }
+        print(machine_name, '---> RMSE: ', rmse_mean, 'NRMSE: ', nrmse_mean, 'ND: ', nd_mean, 'SMAPE: ', smape_mean)
 
         # 创建一个 2 * 2 子图布局
         rows, cols = 2, 2
