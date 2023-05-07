@@ -1,5 +1,4 @@
 import math
-import random
 import time
 import warnings
 
@@ -14,13 +13,15 @@ from torch import nn
 from torch.utils.data import DataLoader, Dataset
 from tqdm import tqdm
 
+from models.utils.dataset import get_one_machine
+
 warnings.filterwarnings("ignore")
 
 device = torch.device('cpu')
 
 
 class Parameters:
-    def __init__(self):
+    def __init__(self, column_name):
         self.description = 'DLinear model for time-series forecasting'
 
         # =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
@@ -36,11 +37,10 @@ class Parameters:
         self.kernel_size = 25
 
         # Training parameters
-        #
         # Number of epochs
-        self.epochs = 10
+        self.epochs = 5000
         # Batch size
-        self.batch_size = 256
+        self.batch_size = 32
         # Number of workers in DataLoader
         self.num_workers = 0
         # Define verbose
@@ -51,150 +51,16 @@ class Parameters:
         self.model_path = 'models/DLinear.pth'
 
         # Data handling
-        #
         # Filename
-        self.filename = '../../dataset/electricity.csv'
+        self.filename = '../../dataset/selected_container_usage.csv'
         # Target series name
-        self.targetSeries = 'OT'
+        self.targetSeries = column_name
         # Training-set percentage
-        self.TrainingSetPercentage = 0.2
+        self.TrainingSetPercentage = 0.37
         # Data Log-transformation
         self.Transformation = True
         # Scaling {'Standard', 'MinMax', 'Robust'}
         self.Scaling = 'Standard'
-
-
-args = Parameters()
-
-start = time.time()
-# Load data
-df = pd.read_csv(args.filename)
-print('[INFO] Data imported')
-print('[INFO] Time: %.2f seconds' % (time.time() - start))
-df.head(3)
-
-# Convert Date to 'datetime64'
-df['Date'] = df['Date'].astype('datetime64')
-# Set index
-df.set_index('Date', inplace=True)
-# Keep only selected time-series
-df = pd.DataFrame(df[[args.targetSeries]])
-df.head(3)
-
-# Split Training / Testing
-idx = int(df.shape[0] * args.TrainingSetPercentage)
-df_train = df[:idx].dropna()
-df_test = df[idx:].dropna()
-
-# Visualization
-fig, ax = plt.subplots(nrows=1, ncols=1, figsize=(20, 3))
-
-df_train[args.targetSeries].plot(ax=ax, color='tab:blue')
-df_test[args.targetSeries].plot(ax=ax, color='tab:orange')
-
-plt.legend(['Training', 'Testing'], frameon=False, fontsize=14)
-plt.ylabel(args.targetSeries, size=14)
-plt.xlabel('Date', size=14)
-plt.xticks(size=12)
-plt.yticks(size=12)
-plt.show()
-
-# Fixing lag
-df_test = pd.concat([df_train.iloc[-args.Lag:], df_test])
-
-# Data Transformation
-if args.Transformation == True:
-
-    print('[INFO] Data transformation applied')
-
-    VALUE = np.ceil(max(abs(-df.min().min()), 1.0))
-
-    df_train = np.log(df_train + VALUE)
-    df_test = np.log(df_test + VALUE)
-
-else:
-    print('[INFO] No data transformation applied.')
-
-if args.Scaling == 'MinMax':
-    print('[INFO] Scaling: MinMax')
-
-    for feature in df.columns:
-        if feature == args.targetSeries:
-            continue
-        print('Feature: ', feature)
-        # Set scaler
-        #
-        scaler = MinMaxScaler()
-
-        df_train[feature] = scaler.fit_transform(df_train[feature].to_numpy().reshape(-1, 1))
-        df_test[feature] = scaler.transform(df_test[feature].to_numpy().reshape(-1, 1))
-
-    # Scaling of Target Series
-    #
-    scaler = MinMaxScaler()
-    df_train[args.targetSeries] = scaler.fit_transform(df_train[args.targetSeries].to_numpy().reshape(-1, 1))
-    df_test[args.targetSeries] = scaler.transform(df_test[args.targetSeries].to_numpy().reshape(-1, 1))
-
-elif args.Scaling == 'Robust':
-    print('[INFO] Scaling: Robust')
-
-    for feature in df.columns:
-        if feature == args.targetSeries:
-            continue
-        print('Feature: ', feature)
-        # Set scaler
-        #
-        scaler = RobustScaler()
-
-        df_train[feature] = scaler.fit_transform(df_train[feature].to_numpy().reshape(-1, 1))
-        df_test[feature] = scaler.transform(df_test[feature].to_numpy().reshape(-1, 1))
-
-    # Scaling of Target Series
-    #
-    scaler = RobustScaler()
-    df_train[args.targetSeries] = scaler.fit_transform(df_train[args.targetSeries].to_numpy().reshape(-1, 1))
-    df_test[args.targetSeries] = scaler.transform(df_test[args.targetSeries].to_numpy().reshape(-1, 1))
-
-elif args.Scaling == 'Standard':
-    print('[INFO] Scaling: Standard')
-
-    for feature in df.columns:
-        if feature == args.targetSeries:
-            continue
-        print('Feature: ', feature)
-        # Set scaler
-        #
-        scaler = StandardScaler()
-
-        df_train[feature] = scaler.fit_transform(df_train[feature].to_numpy().reshape(-1, 1))
-        df_test[feature] = scaler.transform(df_test[feature].to_numpy().reshape(-1, 1))
-
-    # Scaling of Target Series
-    #
-    scaler = StandardScaler()
-
-    df_train[args.targetSeries] = scaler.fit_transform(df_train[args.targetSeries].to_numpy().reshape(-1, 1))
-    df_test[args.targetSeries] = scaler.transform(df_test[args.targetSeries].to_numpy().reshape(-1, 1))
-else:
-    print('[WARNING] Unknown data scaling. Standar scaling was selected')
-
-    for feature in df.columns:
-        if feature == args.targetSeries:
-            continue
-        print('Feature: ', feature)
-        # Set scaler
-        #
-        scaler = StandardScaler()
-
-        df_train[feature] = scaler.fit_transform(df_train[feature].to_numpy().reshape(-1, 1))
-        df_test[feature] = scaler.transform(df_test[feature].to_numpy().reshape(-1, 1))
-
-    # Scaling of Target Series
-    #
-    scaler = StandardScaler()
-
-    df_train[args.targetSeries] = scaler.fit_transform(df_train[args.targetSeries].to_numpy().reshape(-1, 1))
-    df_test[args.targetSeries] = scaler.transform(df_test[args.targetSeries].to_numpy().reshape(-1, 1))
 
 
 def create_dataset(df=None, Lag=1, Horizon=1, targetSeries=None, overlap=1):
@@ -211,32 +77,6 @@ def create_dataset(df=None, Lag=1, Horizon=1, targetSeries=None, overlap=1):
     return np.array(dataX), np.array(dataY), np.array(dataDate)
 
 
-trainX, trainY, _ = create_dataset(df=df_train,
-                                   Lag=args.Lag,
-                                   Horizon=args.Horizon,
-                                   targetSeries=args.targetSeries,
-                                   overlap=1, )
-
-testX, testY, testDate = create_dataset(df=df_test,
-                                        Lag=args.Lag,
-                                        Horizon=args.Horizon,
-                                        targetSeries=args.targetSeries,
-                                        overlap=1, )
-
-# Last 10% of the training data will be used for validation
-idx = int(0.9 * trainX.shape[0])
-validX, validY = trainX[idx:], trainY[idx:]
-trainX, trainY = trainX[:idx], trainY[:idx]
-print('Training data shape:   ', trainX.shape, trainY.shape)
-print('Validation data shape: ', validX.shape, validY.shape)
-print('Testing data shape:    ', testX.shape, testY.shape)
-
-# Reshaping
-trainY = np.expand_dims(trainY, axis=-1)
-validY = np.expand_dims(validY, axis=-1)
-testY = np.expand_dims(testY, axis=-1)
-
-
 class Data(Dataset):
     def __init__(self, X, Y):
         self.X = X
@@ -247,21 +87,6 @@ class Data(Dataset):
 
     def __getitem__(self, idx):
         return self.X[idx], self.Y[idx]
-
-
-# Create training and test dataloaders
-#
-train_ds = Data(trainX, trainY)
-valid_ds = Data(validX, validY)
-test_ds = Data(testX, testY)
-
-# Prepare Data-Loaders
-#
-train_dl = DataLoader(train_ds, batch_size=args.batch_size, num_workers=args.num_workers)
-valid_dl = DataLoader(valid_ds, batch_size=args.batch_size, num_workers=args.num_workers)
-test_dl = DataLoader(test_ds, batch_size=args.batch_size, num_workers=args.num_workers)
-#
-print('[INFO] Data loaders were created')
 
 
 # Model: DLinear
@@ -353,21 +178,6 @@ class Model(nn.Module):
         return x.permute(0, 2, 1)  # to [Batch, Output length, Channel]
 
 
-# Initialize Neural Network
-model = Model(args)
-model.to(device)
-print(model)
-
-# Specify loss function
-#
-criterion = nn.MSELoss()
-
-# Specify loss function
-#
-optimizer = torch.optim.Adam(params=model.parameters(),
-                             lr=args.learning_rate)
-
-
 class EarlyStopping():
     """
     Early stopping to stop the training when the loss does not improve after
@@ -440,206 +250,18 @@ class LRScheduler:
         self.lr_scheduler.step(val_loss)
 
 
-# Early stopping
-early_stopping = EarlyStopping(patience=100, min_delta=1e-5)
-
-# LR scheduler
-scheduler = LRScheduler(optimizer=optimizer,
-                        patience=50,
-                        min_lr=1e-10,
-                        factor=0.5,
-                        verbose=args.verbose)
-
-# Store training and validation loss
-Loss = {'Train': [],
-        'Valid': []
-        }
-
-# Set number at how many iteration the training process (results) will be provided
-#
-batch_show = (train_dl.dataset.__len__() // args.batch_size // 5)
-
-# Main loop - Training process
-#
-for epoch in range(1, args.epochs + 1):
-
-    # Start timer
-    start = time.time()
-
-    # Monitor training loss
-    #
-    train_loss = 0.0
-    valid_loss = 0.0
-
-    ###################
-    # Train the model #
-    ###################
-    batch_idx = 0
-    for data, target in train_dl:
-
-        # Clear the gradients of all optimized variables
-        #
-        optimizer.zero_grad()
-
-        # Forward pass: compute predicted outputs by passing inputs to the model
-        #
-        if (device.type == 'cpu'):
-            data = torch.tensor(data, dtype=torch.float32)
-            target = torch.tensor(target, dtype=torch.float32)
-        else:
-            data = torch.tensor(data, dtype=torch.float32).cuda()
-            target = torch.tensor(target, dtype=torch.float32).cuda()
-
-        outputs = model(data)
-
-        # Calculate the loss
-        #
-        loss = criterion(outputs, target)
-
-        # Backward pass: compute gradient of the loss with respect to model parameters
-        #
-        loss.backward()
-
-        # Perform a single optimization step (parameter update)
-        #
-        optimizer.step()
-
-        # Update running training loss
-        #
-        train_loss += loss.item() * data.size(0)
-
-        # Increase batch_idx
-        #
-        batch_idx += 1
-
-        # Info
-        #
-        if (args.verbose == True and batch_idx % batch_show == 0):
-            print('> Epoch: {} [{:5.0f}/{} ({:.0f}%)]'.format(epoch, batch_idx * len(data), len(train_dl.dataset),
-                                                              100. * batch_idx / len(train_dl)))
-
-    # Print avg training statistics
-    train_loss = train_loss / train_dl.dataset.X.shape[0]
-
-    with torch.no_grad():
-        for data, target in valid_dl:
-
-            # Forward pass: compute predicted outputs by passing inputs to the model
-            #
-            if (device.type == 'cpu'):
-                data = torch.tensor(data, dtype=torch.float32)
-                target = torch.tensor(target, dtype=torch.float32)
-            else:
-                data = torch.tensor(data, dtype=torch.float32).cuda()
-                target = torch.tensor(target, dtype=torch.float32).cuda()
-
-            outputs = model(data)
-
-            # Calculate the loss
-            #
-            loss = criterion(outputs, target)
-
-            # update running training loss
-            valid_loss += loss.item() * data.size(0)
-
-    # Print avg training statistics
-    #
-    valid_loss = valid_loss / test_dl.dataset.X.shape[0]
-
-    # Stop timer
-    #
-    stop = time.time()
-
-    # Show training results
-    #
-    print('\n[INFO] Train Loss: {:.6f}\tValid Loss: {:.6f} \tTime: {:.2f}secs'.format(train_loss, valid_loss,
-                                                                                      stop - start), end=' ')
-
-    # Update best model
-    #
-    if epoch == 1:
-        Best_score = valid_loss
-
-        torch.save(model.state_dict(), args.model_path)
-        print('(Model saved)\n')
-    else:
-        if Best_score > valid_loss:
-            Best_score = valid_loss
-
-            torch.save(model.state_dict(), args.model_path)
-            print('(Model saved)\n')
-        else:
-            print('\n')
-
-    # Store train/val loss
-    #
-    Loss['Train'] += [train_loss]
-    Loss['Valid'] += [valid_loss]
-
-    # =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
-    # Learning rate scheduler
-    #
-    scheduler(valid_loss)
-
-    # =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
-    # Early Stopping
-    #
-    if early_stopping(valid_loss):
-        break
-
-# Load best model
-#
-model.load_state_dict(torch.load(args.model_path))
-model.eval()
-
-print('[INFO] Model loaded')
-
-pred = None
-with torch.no_grad():
-    for data, target in tqdm(test_dl):
-
-        data = torch.tensor(data, dtype=torch.float32)
-        target = torch.tensor(target, dtype=torch.float32)
-
-        if (pred is None):
-            pred = model(data).numpy()
-        else:
-            pred = np.concatenate([pred, model(data).numpy()])
-
-# Reshaping...
-#
-testY = testY.squeeze(-1)
-pred = pred.squeeze(-1)
-
-# Apply inverse scaling
-#
-for i in range(args.Horizon):
-    testY[:, i] = scaler.inverse_transform(testY[:, i].reshape(-1, 1)).squeeze(-1)
-    pred[:, i] = scaler.inverse_transform(pred[:, i].reshape(-1, 1)).squeeze(-1)
-
-# Apply inverse transformation
-#
-if (args.Transformation == True):
-    testY = np.exp(testY) - VALUE
-    pred = np.exp(pred) - VALUE
-
-print('[INFO] Feature: ', args.targetSeries)
-print('------------------------------------------------')
-Performance_Foresting_Model = {'RMSE': [], 'MAE': [], 'SMAPE': [], 'R2': []}
-
-
 def smape(A, F):
     try:
         return (100 / len(A) * np.sum(2 * np.abs(F - A) / (np.abs(A) + np.abs(F))))
     except:
-        return (np.NaN)
+        return np.NaN
 
 
 def rmse(A, F):
     try:
         return math.sqrt(metrics.mean_squared_error(A, F))
     except:
-        return (np.NaN)
+        return np.NaN
 
 
 def RegressionEvaluation(Prices):
@@ -678,69 +300,458 @@ def RegressionEvaluation(Prices):
     SMAPE = smape(Y, Pred)
     R2 = metrics.r2_score(Y, Pred)
 
-    return (MAE, RMSE, MAPE, SMAPE, R2)
+    return MAE, RMSE, MAPE, SMAPE, R2
 
 
-for i in range(args.Horizon):
-    Prices = pd.DataFrame([])
+def call_dlinear(column_name):
+    args = Parameters(column_name)
 
-    Prices[args.targetSeries] = testY[:, i]
-    Prices['Prediction'] = pred[:, i]
+    start = time.time()
+    # Load data
+    df = pd.read_csv(args.filename)
+    print('[INFO] Data imported')
+    print('[INFO] Time: %.2f seconds' % (time.time() - start))
 
-    # Evaluation
-    #
-    MAE, RMSE, MAPE, SMAPE, R2 = RegressionEvaluation(Prices)
+    rows = df.shape[0]
+    idx, count = 0, 0
+    while idx < rows:
+        # (1) 每次从文件中读取一个 task 的资源需求变化
+        machine, next_idx = get_one_machine(df, idx)
+        print(machine)
+        machine_name = machine['machine_id'].loc[machine.index[0]]
+        print(machine_name)
 
-    # Store results
-    #
-    Performance_Foresting_Model['RMSE'] += [RMSE]
-    Performance_Foresting_Model['MAE'] += [MAE]
-    Performance_Foresting_Model['SMAPE'] += [SMAPE]
-    Performance_Foresting_Model['R2'] += [R2]
+        # # Convert Date to 'datetime64'
+        # df['Date'] = df['Date'].astype('datetime64')
+        # # Set index
+        # df.set_index('Date', inplace=True)
+        # Keep only selected time-series
+        df = pd.DataFrame(machine[[args.targetSeries]])
 
-    # Present results
-    #
-    print('Horizon: %2i MAE %5.2f RMSE %5.2f SMAPE: %5.2f R2: %.2f' % (i + 1, MAE, RMSE, SMAPE, R2))
+        # Split Training / Testing
+        idx = int(df.shape[0] * args.TrainingSetPercentage)
+        df_train = df[:idx].dropna()
+        df_test = df[idx:].dropna()
 
-for i in range(args.Horizon):
-    # Get actual values and predicted
-    #
-    Prices = pd.DataFrame([])
+        # Visualization
+        fig, ax = plt.subplots(nrows=1, ncols=1, figsize=(20, 3))
 
-    Prices[args.targetSeries] = testY[:, i]
-    Prices['Prediction'] = pred[:, i]
+        df_train[args.targetSeries].plot(ax=ax, color='tab:blue')
+        df_test[args.targetSeries].plot(ax=ax, color='tab:orange')
 
-    # Calculate the residuals
-    #
-    res = (Prices[args.targetSeries] - Prices['Prediction']).to_numpy()
+        plt.legend(['Training', 'Testing'], frameon=False, fontsize=14)
+        plt.ylabel(args.targetSeries, size=14)
+        plt.xlabel('Date', size=14)
+        plt.xticks(size=12)
+        plt.yticks(size=12)
+        plt.show()
 
-    # === Visualization ===
-    #
-    fig, ax = plt.subplots(nrows=1, ncols=2, figsize=(15, 2))
+        # Fixing lag
+        df_test = pd.concat([df_train.iloc[-args.Lag:], df_test])
 
-    # Plot residual histogram
-    #
-    ax[0].hist(res, bins=50)
+        # Data Transformation
+        if args.Transformation == True:
 
-    # Plot AutoCorrelation plot
-    #
-    plot_acf(res, ax=ax[1])
-    ax[1].set_ylim([-1.05, 1.05])
+            print('[INFO] Data transformation applied')
 
-subplots = [331, 332, 333, 334, 335, 336, 337, 338, 339]
-plt.figure(figsize=(20, 15))
+            VALUE = np.ceil(max(abs(-df.min().min()), 1.0))
 
-# Select random cases
-RandomInstances = [random.randint(1, testY.shape[0]) for i in range(0, 9)]
+            df_train = np.log(df_train + VALUE)
+            df_test = np.log(df_test + VALUE)
 
-for plot_id, i in enumerate(RandomInstances):
-    plt.subplot(subplots[plot_id])
-    plt.grid()
-    #     plot_scatter(range(0, Lag), testX[i,:,0], color='b')
-    plt.plot(testDate[i], testY[i], color='g', marker='o', linewidth=2)
-    plt.plot(testDate[i], pred[i], color='r', marker='o', linewidth=2)
+        else:
+            print('[INFO] No data transformation applied.')
 
-    plt.legend(['Actual values', 'Prediction'], frameon=False, fontsize=12)
-    plt.ylim([np.min(testY[i]) - 10, np.max(testY[i]) + 10])
-    plt.xticks(rotation=45)
-plt.show()
+        if args.Scaling == 'MinMax':
+            print('[INFO] Scaling: MinMax')
+
+            for feature in df.columns:
+                if feature == args.targetSeries:
+                    continue
+                print('Feature: ', feature)
+                # Set scaler
+                #
+                scaler = MinMaxScaler()
+
+                df_train[feature] = scaler.fit_transform(df_train[feature].to_numpy().reshape(-1, 1))
+                df_test[feature] = scaler.transform(df_test[feature].to_numpy().reshape(-1, 1))
+
+            # Scaling of Target Series
+            #
+            scaler = MinMaxScaler()
+            df_train[args.targetSeries] = scaler.fit_transform(df_train[args.targetSeries].to_numpy().reshape(-1, 1))
+            df_test[args.targetSeries] = scaler.transform(df_test[args.targetSeries].to_numpy().reshape(-1, 1))
+
+        elif args.Scaling == 'Robust':
+            print('[INFO] Scaling: Robust')
+
+            for feature in df.columns:
+                if feature == args.targetSeries:
+                    continue
+                print('Feature: ', feature)
+                # Set scaler
+                #
+                scaler = RobustScaler()
+
+                df_train[feature] = scaler.fit_transform(df_train[feature].to_numpy().reshape(-1, 1))
+                df_test[feature] = scaler.transform(df_test[feature].to_numpy().reshape(-1, 1))
+
+            # Scaling of Target Series
+            #
+            scaler = RobustScaler()
+            df_train[args.targetSeries] = scaler.fit_transform(df_train[args.targetSeries].to_numpy().reshape(-1, 1))
+            df_test[args.targetSeries] = scaler.transform(df_test[args.targetSeries].to_numpy().reshape(-1, 1))
+
+        elif args.Scaling == 'Standard':
+            print('[INFO] Scaling: Standard')
+
+            for feature in df.columns:
+                if feature == args.targetSeries:
+                    continue
+                print('Feature: ', feature)
+                # Set scaler
+                #
+                scaler = StandardScaler()
+
+                df_train[feature] = scaler.fit_transform(df_train[feature].to_numpy().reshape(-1, 1))
+                df_test[feature] = scaler.transform(df_test[feature].to_numpy().reshape(-1, 1))
+
+            # Scaling of Target Series
+            #
+            scaler = StandardScaler()
+
+            df_train[args.targetSeries] = scaler.fit_transform(df_train[args.targetSeries].to_numpy().reshape(-1, 1))
+            df_test[args.targetSeries] = scaler.transform(df_test[args.targetSeries].to_numpy().reshape(-1, 1))
+        else:
+            print('[WARNING] Unknown data scaling. Standar scaling was selected')
+
+            for feature in df.columns:
+                if feature == args.targetSeries:
+                    continue
+                print('Feature: ', feature)
+                # Set scaler
+                #
+                scaler = StandardScaler()
+
+                df_train[feature] = scaler.fit_transform(df_train[feature].to_numpy().reshape(-1, 1))
+                df_test[feature] = scaler.transform(df_test[feature].to_numpy().reshape(-1, 1))
+
+            # Scaling of Target Series
+            #
+            scaler = StandardScaler()
+
+            df_train[args.targetSeries] = scaler.fit_transform(df_train[args.targetSeries].to_numpy().reshape(-1, 1))
+            df_test[args.targetSeries] = scaler.transform(df_test[args.targetSeries].to_numpy().reshape(-1, 1))
+
+        trainX, trainY, _ = create_dataset(df=df_train,
+                                           Lag=args.Lag,
+                                           Horizon=args.Horizon,
+                                           targetSeries=args.targetSeries,
+                                           overlap=1, )
+
+        testX, testY, testDate = create_dataset(df=df_test,
+                                                Lag=args.Lag,
+                                                Horizon=args.Horizon,
+                                                targetSeries=args.targetSeries,
+                                                overlap=1, )
+
+        # Last 10% of the training data will be used for validation
+        idx = int(0.9 * trainX.shape[0])
+        validX, validY = trainX[idx:], trainY[idx:]
+        trainX, trainY = trainX[:idx], trainY[:idx]
+        print('Training data shape:   ', trainX.shape, trainY.shape)
+        print('Validation data shape: ', validX.shape, validY.shape)
+        print('Testing data shape:    ', testX.shape, testY.shape)
+
+        # Reshaping
+        trainY = np.expand_dims(trainY, axis=-1)
+        validY = np.expand_dims(validY, axis=-1)
+        testY = np.expand_dims(testY, axis=-1)
+
+        # Create training and test dataloaders
+        #
+        train_ds = Data(trainX, trainY)
+        valid_ds = Data(validX, validY)
+        test_ds = Data(testX, testY)
+
+        # Prepare Data-Loaders
+        #
+        train_dl = DataLoader(train_ds, batch_size=args.batch_size, num_workers=args.num_workers)
+        valid_dl = DataLoader(valid_ds, batch_size=args.batch_size, num_workers=args.num_workers)
+        test_dl = DataLoader(test_ds, batch_size=args.batch_size, num_workers=args.num_workers)
+        #
+        print('[INFO] Data loaders were created')
+
+        # Initialize Neural Network
+        model = Model(args)
+        model.to(device)
+        print(model)
+
+        # Specify loss function
+        #
+        criterion = nn.MSELoss()
+
+        # Specify loss function
+        #
+        optimizer = torch.optim.Adam(params=model.parameters(),
+                                     lr=args.learning_rate)
+
+        # Early stopping
+        early_stopping = EarlyStopping(patience=100, min_delta=1e-5)
+
+        # LR scheduler
+        scheduler = LRScheduler(optimizer=optimizer,
+                                patience=50,
+                                min_lr=1e-10,
+                                factor=0.5,
+                                verbose=args.verbose)
+
+        # Store training and validation loss
+        Loss = {'Train': [],
+                'Valid': []
+                }
+
+        # Set number at how many iteration the training process (results) will be provided
+        #
+        batch_show = (train_dl.dataset.__len__() // args.batch_size)
+
+        # Main loop - Training process
+        #
+        for epoch in range(1, args.epochs + 1):
+
+            # Start timer
+            start = time.time()
+
+            # Monitor training loss
+            #
+            train_loss = 0.0
+            valid_loss = 0.0
+
+            ###################
+            # Train the model #
+            ###################
+            batch_idx = 0
+            for data, target in train_dl:
+
+                # Clear the gradients of all optimized variables
+                #
+                optimizer.zero_grad()
+
+                # Forward pass: compute predicted outputs by passing inputs to the model
+                #
+                if device.type == 'cpu':
+                    data = torch.tensor(data, dtype=torch.float32)
+                    target = torch.tensor(target, dtype=torch.float32)
+                else:
+                    data = torch.tensor(data, dtype=torch.float32).cuda()
+                    target = torch.tensor(target, dtype=torch.float32).cuda()
+
+                outputs = model(data)
+
+                # Calculate the loss
+                #
+                loss = criterion(outputs, target)
+
+                # Backward pass: compute gradient of the loss with respect to model parameters
+                #
+                loss.backward()
+
+                # Perform a single optimization step (parameter update)
+                #
+                optimizer.step()
+
+                # Update running training loss
+                #
+                train_loss += loss.item() * data.size(0)
+
+                # Increase batch_idx
+                #
+                batch_idx += 1
+
+                # # Info
+                # #
+                # if args.verbose == True and batch_idx % batch_show == 0:
+                #     print('> Epoch: {} [{:5.0f}/{} ({:.0f}%)]'.format(epoch, batch_idx * len(data), len(train_dl.dataset),
+                #                                                       100. * batch_idx / len(train_dl)))
+
+            # Print avg training statistics
+            train_loss = train_loss / train_dl.dataset.X.shape[0]
+
+            with torch.no_grad():
+                for data, target in valid_dl:
+
+                    # Forward pass: compute predicted outputs by passing inputs to the model
+                    #
+                    if device.type == 'cpu':
+                        data = torch.tensor(data, dtype=torch.float32)
+                        target = torch.tensor(target, dtype=torch.float32)
+                    else:
+                        data = torch.tensor(data, dtype=torch.float32).cuda()
+                        target = torch.tensor(target, dtype=torch.float32).cuda()
+
+                    outputs = model(data)
+
+                    # Calculate the loss
+                    #
+                    loss = criterion(outputs, target)
+
+                    # update running training loss
+                    valid_loss += loss.item() * data.size(0)
+
+            # Print avg training statistics
+            #
+            valid_loss = valid_loss / test_dl.dataset.X.shape[0]
+
+            # Stop timer
+            #
+            stop = time.time()
+
+            # Show training results
+            #
+            print('\n[INFO] Train Loss: {:.6f}\tValid Loss: {:.6f} \tTime: {:.2f}secs'.format(train_loss, valid_loss,
+                                                                                              stop - start), end=' ')
+
+            # Update best model
+            #
+            if epoch == 1:
+                Best_score = valid_loss
+
+                torch.save(model.state_dict(), args.model_path)
+                print('(Model saved)\n')
+            else:
+                if Best_score > valid_loss:
+                    Best_score = valid_loss
+
+                    torch.save(model.state_dict(), args.model_path)
+                    print('(Model saved)\n')
+                else:
+                    print('\n')
+
+            # Store train/val loss
+            #
+            Loss['Train'] += [train_loss]
+            Loss['Valid'] += [valid_loss]
+
+            # =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
+            # Learning rate scheduler
+            #
+            scheduler(valid_loss)
+
+            # =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
+            # Early Stopping
+            #
+            if early_stopping(valid_loss):
+                break
+
+        # Load best model
+        model.load_state_dict(torch.load(args.model_path))
+        model.eval()
+
+        print('[INFO] Model loaded')
+
+        pred = None
+        with torch.no_grad():
+            for data, target in tqdm(test_dl):
+
+                data = torch.tensor(data, dtype=torch.float32)
+                target = torch.tensor(target, dtype=torch.float32)
+
+                if pred is None:
+                    pred = model(data).numpy()
+                else:
+                    pred = np.concatenate([pred, model(data).numpy()])
+
+        # Reshaping...
+        #
+        testY = testY.squeeze(-1)
+        pred = pred.squeeze(-1)
+
+        # Apply inverse scaling
+        #
+        for i in range(args.Horizon):
+            testY[:, i] = scaler.inverse_transform(testY[:, i].reshape(-1, 1)).squeeze(-1)
+            pred[:, i] = scaler.inverse_transform(pred[:, i].reshape(-1, 1)).squeeze(-1)
+
+        # Apply inverse transformation
+        #
+        if args.Transformation == True:
+            testY = np.exp(testY) - VALUE
+            pred = np.exp(pred) - VALUE
+
+        print('[INFO] Feature: ', args.targetSeries)
+        print('------------------------------------------------')
+        Performance_Foresting_Model = {'RMSE': [], 'MAE': [], 'SMAPE': [], 'R2': []}
+
+        for i in range(args.Horizon):
+            Prices = pd.DataFrame([])
+
+            Prices[args.targetSeries] = testY[:, i]
+            Prices['Prediction'] = pred[:, i]
+
+            # Evaluation
+            #
+            MAE, RMSE, MAPE, SMAPE, R2 = RegressionEvaluation(Prices)
+
+            # Store results
+            #
+            Performance_Foresting_Model['RMSE'] += [RMSE]
+            Performance_Foresting_Model['MAE'] += [MAE]
+            Performance_Foresting_Model['SMAPE'] += [SMAPE]
+            Performance_Foresting_Model['R2'] += [R2]
+
+            # Present results
+            #
+            print('Horizon: %2i MAE %5.2f RMSE %5.2f SMAPE: %5.2f R2: %.2f' % (i + 1, MAE, RMSE, SMAPE, R2))
+
+        for i in range(args.Horizon):
+            # Get actual values and predicted
+            #
+            Prices = pd.DataFrame([])
+
+            Prices[args.targetSeries] = testY[:, i]
+            Prices['Prediction'] = pred[:, i]
+
+            # Calculate the residuals
+            #
+            res = (Prices[args.targetSeries] - Prices['Prediction']).to_numpy()
+
+            # === Visualization ===
+            #
+            fig, ax = plt.subplots(nrows=1, ncols=2, figsize=(15, 2))
+
+            # Plot residual histogram
+            #
+            ax[0].hist(res, bins=50)
+
+            # Plot AutoCorrelation plot
+            #
+            plot_acf(res, ax=ax[1])
+            ax[1].set_ylim([-1.05, 1.05])
+
+        plt.figure()
+        plt.plot(pred[:, 3], label='Pred.')
+        plt.plot(testY[:, 3], label='True')
+        plt.legend()
+        plt.show()
+
+        return pred[:, 3], testY[:, 3]
+
+        idx = next_idx  # 重复定义的变量
+        break
+
+
+def merge_predicted_columns():
+    cpu_y_hat, cpu_y_test = call_dlinear('cpu_util_percent')
+    mem_y_hat, mem_y_test = call_dlinear('mem_util_percent')
+    y_hat = []
+    y_test = []
+    for i in range(0, len(cpu_y_hat)):
+        y_hat.append([cpu_y_hat[i], mem_y_hat[i]])
+        y_test.append([cpu_y_test[i], mem_y_test[i]])
+    return np.array(y_hat), np.array(y_test)
+
+
+if __name__ == '__main__':
+    y_hat, y_test = merge_predicted_columns()
+    print(y_hat)
+    print(y_test)

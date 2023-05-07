@@ -7,6 +7,7 @@ from sklearn.preprocessing import StandardScaler
 from models.autoscaler.analysis import metrics
 from models.autoscaler.arima import MyARIMA
 from models.autoscaler.bht_arima import BHTARIMA
+from models.autoscaler.dlinear import merge_predicted_columns
 from models.autoscaler.lstm import LSTM
 from models.autoscaler.lstm_v2 import LstmParam, LstmNetwork, ToyLossLayer
 from models.utils.dataset import get_one_machine
@@ -220,10 +221,17 @@ if __name__ == '__main__':
         # training_data_mem = machine.iloc[:, 4:5].values  # memory
         training_data = machine.iloc[:, 3:5].values  # CPU 和 memory
 
-        predictions = {'arima': [], 'bht_arima': [], 'lstm': [], 'ours': []}  # 统计预测值
-        losses = {'arima': [], 'bht_arima': [], 'lstm': [], 'ours': []}  # 统计损失
+        predictions = {'arima': [], 'bht_arima': [], 'lstm': [], 'dlinear': [], 'ours': []}  # 统计预测值
+        losses = {'arima': [], 'bht_arima': [], 'lstm': [], 'dlinear': [], 'ours': []}  # 统计损失
 
         train_size = 50  # 用过去的 50 个数据预测前面的数据
+
+        # 调用 DLinear 模型
+        y_hat_dlinear, y_test_dlinear = merge_predicted_columns()
+        for i in range(y_hat_dlinear.shape[0]):
+            predictions['dlinear'].append(y_hat_dlinear[i])
+            y = training_data[train_size + i].reshape(-1, 1)
+            losses['dlinear'].append(metrics(y_hat_dlinear[i], y))
 
         # 调用 ARIMA 预测模型
         p, d, q = 2, 1, 2
@@ -286,3 +294,5 @@ if __name__ == '__main__':
         print('-------------- sample {} end ----------------'.format(count))
         idx = next_idx
         count += 1
+
+        break

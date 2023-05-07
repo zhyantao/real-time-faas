@@ -139,6 +139,53 @@ class FigureTest(unittest.TestCase):
         res = np.mean(arr)
         print(res)
 
+    def test_5_figures(self):
+        y = [i for i in range(85)]
+        plt.figure(figsize=(12, 8))
+        gs = gridspec.GridSpec(2, 6)
+        # gs.update(wspace=5)
+        ax1 = plt.subplot(gs[0, :2])
+        ax1.plot(y, label='Predicted CPU')
+        ax1.set_title('(a) ARIMA', y=-0.25)
+        ax1.set_ylabel("Utilization Rate/%")
+        ax1.set_xlabel("Time/s")
+        ax1.legend(fontsize=8)
+
+        ax2 = plt.subplot(gs[0, 2:4])
+        ax2.plot(y, label='Predicted CPU')
+        ax2.set_title('(a) ARIMA', y=-0.25)
+        ax2.set_ylabel("Utilization Rate/%")
+        ax2.set_xlabel("Time/s")
+        ax2.legend(fontsize=8)
+
+        ax3 = plt.subplot(gs[0, 4:6])
+        ax3.plot(y, label='Predicted CPU')
+        ax3.set_title('(a) ARIMA', y=-0.25)
+        ax3.set_ylabel("Utilization Rate/%")
+        ax3.set_xlabel("Time/s")
+        ax3.legend(fontsize=8)
+
+        ax4 = plt.subplot(gs[1, 1:3])
+        ax4.plot(y, label='Predicted CPU')
+        ax4.set_title('(a) ARIMA', y=-0.25)
+        ax4.set_ylabel("Utilization Rate/%")
+        ax4.set_xlabel("Time/s")
+        ax4.legend(fontsize=8)
+
+        ax5 = plt.subplot(gs[1, 3:5])
+        ax5.plot(y, label='Predicted CPU')
+        ax5.axvline(x=25, c='r', linestyle='--')
+        ax5.set_title('(e) OURS', y=-0.25)
+        ax5.set_ylabel("Utilization Rate/%")
+        ax5.set_xlabel("Time/s")
+        ax5.legend(fontsize=8)
+
+        # 调整子图之间的间距，以使其余子图自动居中
+        plt.tight_layout()
+        plt.subplots_adjust(left=0.05, bottom=0.1, right=0.98, top=0.95, hspace=0.3, wspace=0.5)
+        plt.savefig("E:\\Workshop\\real-time-faas\\results\\metrics\\test.png", dpi=600, format='png')
+        plt.show()
+
 
 if __name__ == '__main__':
     unittest.main()
