@@ -321,12 +321,12 @@ class MetrixFigure(Figure):
 class DAGFigure(Figure):
     def visual(self, G: DiGraph, job_name=None):
         # G: networkx 中的 DiGraph 格式
-        plt.title(job_name, y=-0.1)  # 配置属性必须在 nx.draw 函数调用之前
+        plt.title(job_name, y=-0.1, fontsize=20)  # 配置属性必须在 nx.draw 函数调用之前
 
         pos = nx.nx_agraph.graphviz_layout(G, prog='dot')
         nx.draw(G, pos, font_color='whitesmoke', with_labels=True)
         edge_labels = nx.get_edge_attributes(G, "weight")
-        nx.draw_networkx_edge_labels(G, pos, edge_labels=edge_labels, font_size=8)
+        nx.draw_networkx_edge_labels(G, pos, edge_labels=edge_labels)
 
         plt.axis("off")
         plt.savefig('{}/{}.png'.format(self.dag_saving_path, job_name),
@@ -336,12 +336,12 @@ class DAGFigure(Figure):
 
 class UDGFigure(Figure):
     def visual(self, G: Graph, udg_name=None):
-        plt.title(udg_name, y=-0.1)
+        plt.title(udg_name, y=-0.1, fontsize=20)
 
         pos = nx.nx_agraph.graphviz_layout(G, prog='dot')
         nx.draw(G, pos, font_color='whitesmoke', with_labels=True)
         edge_labels = nx.get_edge_attributes(G, 'weight')
-        nx.draw_networkx_edge_labels(G, pos, edge_labels=edge_labels, font_size=8)
+        nx.draw_networkx_edge_labels(G, pos, edge_labels=edge_labels)
 
         plt.axis("off")
         plt.savefig('{}/{}.png'.format(self.udg_saving_path, udg_name),
