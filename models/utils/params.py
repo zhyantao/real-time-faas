@@ -28,6 +28,10 @@ parser.add_argument('--batch_instance_topological_order_path', type=str,
                     default=DATASET_PATH + 'batch_instance_topological_order.csv',
                     help='selected_batch_instance.csv 拓扑排序后的数据')
 parser.add_argument('--result_saving_path', type=str, default=RESULTS_PATH, help='保存实验结果的路径')
+parser.add_argument('--task_depend_prefix', type=str, default=DATASET_PATH + 'task_depend_',
+                    help='任务调度需要的任务间依赖信息以及任务间的转移概率信息')
+parser.add_argument('--node_connect_prefix', type=str, default=DATASET_PATH + 'node_connect_',
+                    help='任务调度需要的节点间的连通性信息和节点间的带宽大小')
 
 # job settings
 parser.add_argument('--max_value', type=int, default=9e+4, help='最大值')

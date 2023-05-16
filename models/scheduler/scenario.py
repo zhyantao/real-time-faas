@@ -1,6 +1,4 @@
 """
-Generate the edge computing scenario and set functions. We simply set sigma_{ij} as zero.
-
 生成边缘计算场景和函数集合。这里仅仅简单地把 sigma_{ij} 设置为 0。
 """
 import pprint
@@ -205,7 +203,7 @@ def set_funcs():
     """
     # set the processing power required
     pp_required = np.random.randint(args.pp_required_lower, args.pp_required_upper,
-                                    (args.max_task_nums))
+                                    args.max_task_nums)
     data_stream = np.random.randint(args.data_stream_size_lower, args.data_stream_size_upper,
-                                    (args.max_task_nums))
+                                    args.max_task_nums)
     return pp_required, data_stream

@@ -75,7 +75,7 @@ class FigureTest(unittest.TestCase):
         branch_prediction_figure = BranchPredictionFigure()
         branch_prediction_figure.visual(21, None)
 
-    # 图 3-12 DAG重构结果展示
+    # 图 3-12 DAG 重构结果展示
     def test_rebuild_DAG(self):
         # 重建 DAG
         df = pd.read_csv(args.selected_batch_task_path)

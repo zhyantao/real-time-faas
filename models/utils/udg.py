@@ -4,13 +4,16 @@ import random
 import networkx as nx
 import numpy as np
 
+from models.utils.params import args
+
 
 class UDG:
     def __init__(self):
         pass
 
     def generate_udg_from_random(self, n_nodes, n_max_connections, bandwidth_lower, bandwidth_upper):
-        """根据指定的 n_nodes 和 n_max_connections 生成节点拓扑结构。
+        """
+        根据指定的 n_nodes 和 n_max_connections 生成节点拓扑结构。
         注：最大连接数为 1 时，会形成多个连通子图。最大连接数为 0 表示每个节点都是单独的。
         """
 
@@ -45,9 +48,9 @@ class UDG:
         for i in range(n_nodes):
             for j in connection_set[i]:
                 G.add_edge(i, j, weight=random.randint(bandwidth_lower, bandwidth_upper))
-
+        adj = np.asarray(nx.to_numpy_matrix(G))
         udg_name = str(n_nodes) + ' nodes ' + str(n_max_connections) + ' connections'
-
+        np.save(args.node_connect_prefix + udg_name, adj)
         return G, udg_name
 
 

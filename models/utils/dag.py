@@ -4,6 +4,7 @@ import numpy as np
 import pandas as pd
 from pandas import DataFrame
 
+from models.utils.params import args
 from models.utils.tools import generate_random_numbers
 
 
@@ -55,6 +56,7 @@ class DAG:
         if job_name is None:
             job_name = job['job_name'].loc[job.index[0]]
 
+        np.save(args.task_depend_prefix + job_name, adj)
         return G, job_name
 
     @staticmethod
