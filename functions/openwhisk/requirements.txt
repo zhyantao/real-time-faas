@@ -1,0 +1,8 @@
+pandas
+scikit-learn
+Keras
+matplotlib
+boto3==1.21.1
+uuid
+chameleon
+# opencv-python==3.4.0.14
