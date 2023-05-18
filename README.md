@@ -7,6 +7,8 @@
 ```bash
 git clone git@gitee.com:zhyantao/real-time-faas.git
 cd real-time-faas
+git submodule add git@gitee.com:zhyantao/openwhisk-deploy-kube.git third_party/openwhisk-deploy-kube
+git submodule add git@gitee.com:zhyantao/faas-netes.git third_party/faas-netes
 git submodule update --init --recursive
 ```
 
