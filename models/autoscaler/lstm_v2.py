@@ -1,15 +1,11 @@
-"""
-时序差分 LSTM 实现
-
-Adapt based on: https://github.com/nicodjimenez/lstm
-"""
+"""Adapted according to https://github.com/nicodjimenez/lstm"""
 import os
 
 import numpy as np
 import pandas as pd
 
-from models.utils.dataset import get_one_machine
-from models.utils.params import args
+from models.utils.parameters import args
+from models.utils.tools import get_one_machine
 
 
 def sigmoid(x):

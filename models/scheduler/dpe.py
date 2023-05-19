@@ -2,19 +2,18 @@
 DPE 算法实现：
 局限性：该算法的改进在于使用了倒数来分配流量，但是时间复杂度是极高的，只适合在简单功能下使用。
 """
-import datetime
-
-from models.scheduler.scenario import *
 from models.utils.dataset import *
+from models.utils.text import SchedulingResult
+from models.utils.tools import *
+
+MAX_VALUE = 9e+4
 
 
 class DPE:
-    def __init__(self, cpus, bw, pp, simple_paths, reciprocal_list, proportion_list, pp_required, data_stream):
+    def __init__(self, cpus, bw, pp, simple_paths, reciprocal_list, proportion_list):
         # get the generated edge computing scenario
         self.cpus, self.bw, self.pp = cpus, bw, pp
         self.simple_paths, self.reciprocal_list, self.proportion_list = simple_paths, reciprocal_list, proportion_list
-        # get the generated functions' requirements
-        self.pp_required, self.data_stream = pp_required, data_stream
 
     def get_response_time(self, sorted_job_path=args.batch_task_topological_order_path):
         """
@@ -60,14 +59,14 @@ class DPE:
                 job_name = job.loc[idx, 'job_name']
                 print(job_name)
 
-                job_pp_required = self.pp_required[:task_nums]  # 要求的处理能力 processor power
-                job_data_stream = self.data_stream[:task_nums]  # 要求传输的数据量
+                job_pp_required = np.load(args.task_depend_prefix + job_name + '_required_cpu.npy')
+                job_data_stream = np.load(args.task_depend_prefix + job_name + '_data_size.npy')
 
-                cpu_earliest_finish_time = np.zeros((task_nums, args.cpu_nums))
+                cpu_earliest_finish_time = np.zeros((task_nums, args.n_nodes))
                 task_start_time = np.zeros(task_nums)  # 记录每个 task 的开始时间
                 task_deployment = -1 * np.ones(task_nums)  # 记录每个 task 是否已被分配
                 cpu_task_mapping_list = []  # 记录每个 cpu 上的 task 处理序列
-                cpu_finish_time = np.zeros(args.cpu_nums)  # 记录每个 cpu 上 `最近的 task 的完成时间`
+                cpu_finish_time = np.zeros(args.n_nodes)  # 记录每个 cpu 上 `最近的 task 的完成时间`
 
                 makespan = 0
                 for j in range(task_nums + 1):  # +1 是因为人为创建了一个 dummy tail task
@@ -90,7 +89,7 @@ class DPE:
                     if task_name_list_len == 1:  # 长度 == 1，说明这是个入口 task
                         pass
                     else:  # 根据 task 之间的依赖关系处理分配
-                        for cpu_current in range(args.cpu_nums):
+                        for cpu_current in range(args.n_nodes):
                             # get t(p(f_j)) where p(f_j) is cpu_current
                             comp_cost = job_pp_required[task_name - 1] / self.pp[cpu_current]
                             all_min_phi = []  # 记录当前 cpu 上的 task 所依赖的所有其他 task 最早完成时间
@@ -139,9 +138,9 @@ class DPE:
                                         # 虽然 dependent_task_name 的 cpu_earliest_finish_time 已经被设置了，
                                         # cpu_finish_time 仍有可能被更新
                                         else:
-                                            cpu_begin_time = np.zeros(args.cpu_nums)
+                                            cpu_begin_time = np.zeros(args.n_nodes)
 
-                                            for cpu_k in range(args.cpu_nums):
+                                            for cpu_k in range(args.n_nodes):
                                                 min_cpu_begin_time = 0
 
                                                 # dependent_task_name 被部署到 cpu_k 上
@@ -184,11 +183,11 @@ class DPE:
                                         break
 
                                 # 确定 dependent_task_name 的最佳部署 cpu
-                                min_phi = args.max_value
+                                min_phi = MAX_VALUE
                                 cpu_selected = -1
 
                                 # 以遍历的方式确定最佳部署 cpu（有待优化）
-                                for cpu_m in range(args.cpu_nums):
+                                for cpu_m in range(args.n_nodes):
                                     if cpu_current == cpu_m:
                                         comm_cost = 0
                                     else:
@@ -232,52 +231,16 @@ class DPE:
             idx += task_nums
 
         # 打印调度结果
-        # for i in range(count):
-        #     scheduling_result = SchedulingResult(cpu_earliest_finish_time_all,
-        #                                          task_deployment_all,
-        #                                          cpu_task_mapping_list_all,
-        #                                          task_start_time_all,
-        #                                          i)
-        #     scheduling_result.print()
+        for i in range(count):
+            scheduling_result = SchedulingResult(cpu_earliest_finish_time_all,
+                                                 task_deployment_all,
+                                                 cpu_task_mapping_list_all,
+                                                 task_start_time_all,
+                                                 i)
+            scheduling_result.print()
 
         print('The overall makespan achieved by DPE: %f seconds' % makespan_all)
         print('The average makespan: %f seconds' % (makespan_all / total_job_nums))
         makespan_avg = makespan_all / total_job_nums * 1.0
 
         return cpu_earliest_finish_time_all, task_deployment_all, cpu_task_mapping_list_all, task_start_time_all, makespan_avg
-
-
-if __name__ == '__main__':
-    # 生成数据集
-    sample_machines()
-    sample_jobs()
-    get_topological_order()
-
-    # 根据数据集生成 FaaS 场景
-    G, bw, pp = generate_scenario()  # 根据配置文件指定的 CPU 数量生成场景
-    print_scenario(G, bw, pp)
-
-    # 打印简单路径
-    simple_paths = get_simple_paths(G)  # 简单路径不用变
-    print_simple_paths(simple_paths)
-
-    reciprocals_list, proportions_list = get_ratio(simple_paths, bw)  # 倒数关系不用变
-    pp_required, data_stream = set_funcs()  # 资源需求不用变
-
-    # 根据上面的机器之间的连通性、带宽限制、流量分配要求初始化 DPE 需要使用的遍历
-    dpe = DPE(G, bw, pp, simple_paths, reciprocals_list, proportions_list, pp_required, data_stream)
-
-    start = datetime.datetime.now()
-
-    # 调用算法
-    cpu_earliest_finish_time_all_dpe, \
-        task_deployment_all_dpe, \
-        cpu_task_mapping_list_all_dpe, \
-        task_start_time_all_dpe, \
-        makespan_avg_dpe = dpe.get_response_time(sorted_job_path=args.batch_task_topological_order_path)
-
-    # print(task_deployment_all_dpe)
-
-    # 结束计时
-    end = datetime.datetime.now()
-    print('Computer\'s running time:', (end - start).microseconds, 'microseconds')

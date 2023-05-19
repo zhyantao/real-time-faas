@@ -3,7 +3,7 @@ import pprint
 import sys
 from collections import namedtuple
 
-from models.utils.params import args
+from models.utils.parameters import args
 
 
 class SchedulingResult:
@@ -27,7 +27,7 @@ class SchedulingResult:
         cpu_task_mapping_list = self.cpu_task_mapping_list_all[self.job_num]
         task_start_time = self.task_start_time_all[self.job_num]
 
-        schedules = [[] for _ in range(args.cpu_nums)]
+        schedules = [[] for _ in range(args.n_nodes)]
         for task_num in cpu_task_mapping_list:
             cpu_selected = int(task_deployment[task_num - 1])
             pair = {
@@ -36,7 +36,7 @@ class SchedulingResult:
             }
             schedules[cpu_selected].append(pair)
         schedules_dict = {}
-        for n in range(args.cpu_nums):
+        for n in range(args.n_nodes):
             schedules_dict['cpu ' + str(n + 1)] = schedules[n]
         print('\nThe finish time of each task on the selected cpu for job #%d:' % self.job_num)
         pprint.pprint(schedules_dict)

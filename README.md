@@ -1,12 +1,14 @@
-# 实时 FaaS 的资源分配与任务调度方法研究
+# 实时 FaaS 的资源分配和任务调度方法研究
 
 ## 使用方法
 
 ### 克隆仓库到本地
 
 ```bash
-git clone git@gitee.com:zhyantao/real-time-faas.git
+git clone https://github.com/zhyantao/real-time-faas.git
 cd real-time-faas
+# git submodule add https://github.com/zhyantao/openwhisk-deploy-kube.git third_party/openwhisk-deploy-kube
+# git submodule add https://github.com/zhyantao/faas-netes.git third_party/faas-netes
 git submodule update --init --recursive
 ```
 
@@ -14,9 +16,15 @@ git submodule update --init --recursive
 
 #### Windows
 
-- 下载并安装 [Python 3.7.0](https://www.python.org/downloads/release/python-370/)
+- 下载并安装 [Python 3.10](https://www.python.org/downloads/release/python-3100/)
 - 下载并安装 [Graphviz 7.0.6](https://graphviz.org/download/)（注意添加至系统环境变量）
-- 安装 PyGraphviz 1.7：`cd setup && pip install pygraphviz-1.7-cp37-cp37m-win_amd64.whl`
+- 安装 PyGraphviz：（假设 Graphviz 安装在 `D:\Program Files\Graphviz` 下）
+  ```
+  pip install --global-option=build_ext `
+    --global-option="-ID:\Program Files\Graphviz\include" `
+    --global-option="-LD:\Program Files\Graphviz\lib" `
+    pygraphviz
+  ```
 - 安装依赖 `pip install -r requirements.txt`
 - 用 PyCharm 打开项目，添加解释器，选择系统解释器
 - 将 `real-time-faas` 添加至环境变量 `PYTHONPATH`

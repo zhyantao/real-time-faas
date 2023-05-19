@@ -15,24 +15,21 @@ comm_cost - function :: job, job, agent, agent -> time to transfer results
 
 (function ---> job, edge server ---> agent)
 """
-import datetime
 from collections import namedtuple
 from functools import partial
 from itertools import chain
 
-from models.scheduler.scenario import *
 from models.utils.dataset import *
+from models.utils.tools import *
 
 
 def get_agents():
     """
-    Agents start from zero.
-
-    作者设置的默认参数，共 4 台 server。
+    默认设置了 4 台 server，编号从 0 开始。
     作者代码中的 server 和 agent 是同一个东西，都是能够运行代码的处理单元。
     function 和 task 是同一个东西，都代表 FaaS 中的一个函数实例。
     """
-    servers = [str(n) for n in range(args.cpu_nums)]
+    servers = [str(n) for n in range(args.n_nodes)]
     return ''.join(servers)
 
 
@@ -41,12 +38,10 @@ Event = namedtuple('Event', 'job start end')
 
 
 class HEFT:
-    def __init__(self, jobs, bw, pp, simple_paths, reciprocal_list, proportion_list, pp_required, data_stream):
+    def __init__(self, jobs, bw, pp, simple_paths, reciprocal_list, proportion_list):
         # get the generated edge computing scenario
         self.jobs, self.bw, self.pp = jobs, bw, pp
         self.simple_paths, self.reciprocal_list, self.proportion_list = simple_paths, reciprocal_list, proportion_list
-        # get the generated functions' requirements
-        self.pp_required, self.data_stream = pp_required, data_stream
 
     def get_response_time(self, sorted_job_path=args.batch_task_topological_order_path):
         """
@@ -85,8 +80,8 @@ class HEFT:
                 task_nums = next_idx - idx
 
                 # 设置 CPU 需求 和 数据大小
-                job_pp_required = self.pp_required[:task_nums]  # 将 pp_required 复制到 job_pp_required
-                job_data_stream = self.data_stream[:task_nums]
+                job_pp_required = np.load(args.task_depend_prefix + job_name + '_required_cpu.npy')
+                job_data_stream = np.load(args.task_depend_prefix + job_name + '_data_size.npy')
 
                 # 获取 job 信息
                 task_name_list = HEFT.get_task_name_list(job, idx, task_nums)
@@ -196,11 +191,9 @@ class HEFT:
 
     def get_comp_cost(self, funcs_num, DAG_pp_required):
         """
-        Get computation cost of each function on each server for a given DAG.
-
         获取编号为 funcs_num 在每个 server 上的计算成本
         """
-        comp_cost_array = np.zeros((len(funcs_num) + 1, args.cpu_nums))
+        comp_cost_array = np.zeros((len(funcs_num) + 1, args.n_nodes))
         for i in range(len(funcs_num)):
             func_num = funcs_num[i]
             comp_cost_array[func_num] = DAG_pp_required[func_num - 1] / self.pp
@@ -226,9 +219,9 @@ class HEFT:
         Get the data transmission cost between any two servers for a given DAG.
         """
         # fix the path chosen between any two node
-        fix_path_reciprocals = np.zeros((args.cpu_nums, args.cpu_nums))
-        for n1 in range(args.cpu_nums):
-            for n2 in range(args.cpu_nums):
+        fix_path_reciprocals = np.zeros((args.n_nodes, args.n_nodes))
+        for n1 in range(args.n_nodes):
+            for n2 in range(args.n_nodes):
                 if n1 != n2:
                     paths_num = len(self.reciprocal_list[n1][n2])
                     chosen_path = random.randint(0, paths_num - 1)
@@ -240,9 +233,9 @@ class HEFT:
                 pass
             else:
                 trans_size = DAG_data_stream[dependent_func_num - 1]
-                trans_cost = np.zeros((args.cpu_nums, args.cpu_nums))  # n * n 的矩阵
-                for n1 in range(args.cpu_nums):
-                    for n2 in range(args.cpu_nums):
+                trans_cost = np.zeros((args.n_nodes, args.n_nodes))  # n * n 的矩阵
+                for n1 in range(args.n_nodes):
+                    for n2 in range(args.n_nodes):
                         if n1 != n2:
                             trans_cost[n1][n2] = trans_size * fix_path_reciprocals[n1][n2]
                 comm_cost_array.append([dependent_func_num, funcs_num, trans_cost])
@@ -252,8 +245,6 @@ class HEFT:
     @staticmethod
     def comm_cost(ni, nj, A, B, comm_cost_array):
         """
-        Get the data transmission cost from ni to nj when ni is placed on A and nj is placed on B.
-
         计算 agent_A 上的 job_ni 和 agent_B 上的 job_nj 之间的通信成本。
         """
         a1 = int(A)
@@ -274,17 +265,14 @@ class HEFT:
         n = len(agents)
         if n == 1:
             return 0
-        n_pairs = args.n_pairs
-        return 1. * sum(comm_cost(ni, nj, a1, a2, comm_cost_array) for a1 in agents for a2 in agents
-                        if a1 != a2) / n_pairs
+        n_pairs = args.n_nodes * (args.n_nodes - 1)
+        return 1. * sum(
+            comm_cost(ni, nj, a1, a2, comm_cost_array) for a1 in agents for a2 in agents if a1 != a2
+        ) / n_pairs
 
     @staticmethod
     def ranku(ni, agents, succ, comp_cost, comm_cost, comp_cost_array, comm_cost_array):
         """
-        Rank of job.
-        This code is designed to mirror the wikipedia entry.
-        Please see https://en.wikipedia.org/wiki/Heterogeneous_Earliest_Finish_Time for details.
-
         对 task_ni 计算优先级，公式参考 https://en.wikipedia.org/wiki/Heterogeneous_Earliest_Finish_Time
         """
         # 使用偏函数固定某些参数，使调用更方便
@@ -302,8 +290,6 @@ class HEFT:
     @staticmethod
     def end_time(job, events):
         """
-        End time of job in list of events.
-
         在 events 列表中搜索 job 的结束时间。
         """
         for e in events:
@@ -313,9 +299,6 @@ class HEFT:
     @staticmethod
     def find_first_gap(agent_orders, desired_start_time, duration):
         """
-        Find the first gap in an agent's list of jobs. The gap must be after `desired_start_time`
-        and of length at least `duration`.
-
         将 job 插入到最先匹配的时间间隙中（该间隙的开始时间 <= desired_start_time，且间隙的长度 >= duration）
         返回最早的可插入时间
         """
@@ -323,9 +306,6 @@ class HEFT:
         if (agent_orders is None) or (len(agent_orders)) == 0:
             return desired_start_time
 
-        # Try to fit it in between each pair of Events, but first prepend a
-        # dummy Event which ends at time 0 to check for gaps before any real
-        # Event starts.
         # 在每两个相邻的 event 中尝试插入当前任务
         # 在 agent_orders 之前插入一个 dummy event，方便在任何真实 event 开始之前检查间隙
         a = chain([Event(None, None, 0)], agent_orders[:-1])  # chain('ABC', 'DEF') --> A B C D E F
@@ -340,8 +320,6 @@ class HEFT:
     @staticmethod
     def start_time(agent, job, orders, jobson, prev, comm_cost, comm_cost_array, comp_cost, comp_cost_array):
         """
-        Earliest time that job can be executed on agent.
-
         计算 job 能够在 agent 上执行的最早时间
         """
         duration = comp_cost(job, agent, comp_cost_array)  # 获取 job 在 agent 上的计算成本
@@ -360,8 +338,6 @@ class HEFT:
     @staticmethod
     def allocate(job, orders, jobson, prev, comm_cost, comm_cost_array, comp_cost, comp_cost_array):
         """
-        Allocate job to the machine with the earliest finish time. Operates in place.
-
         将 job 分配到能 最早完成 该 job 的 agent 上。
         空间复杂度为 O(1)
         """
@@ -418,33 +394,7 @@ class HEFT:
         for job in reversed(jobs):
             HEFT.allocate(job, orders, jobson, prev, comm_cost, comm_cost_array, comp_cost, comp_cost_array)
 
-        for n in range(args.cpu_nums):
+        for n in range(args.n_nodes):
             orders['server ' + str(n + 1)] = orders.pop(str(n))
 
         return orders, jobson, HEFT.makespan(orders)
-
-
-if __name__ == '__main__':
-    # 生成数据集
-    sample_machines()
-    sample_jobs()
-    get_topological_order()
-
-    # 根据数据集生成 FaaS 场景
-    G, bw, pp = generate_scenario()  # 根据配置文件指定的 CPU 数量生成场景
-    print_scenario(G, bw, pp)
-
-    # 打印简单路径
-    simple_paths = get_simple_paths(G)  # 简单路径不用变
-    print_simple_paths(simple_paths)
-
-    reciprocals_list, proportions_list = get_ratio(simple_paths, bw)  # 倒数关系不用变
-    pp_required, data_stream = set_funcs()  # 资源需求不用变
-
-    # 进行算法对比 HEFT
-    heft = HEFT(G, bw, pp, simple_paths, reciprocals_list, proportions_list, pp_required, data_stream)
-    start = datetime.datetime.now()
-    cpu_task_mapping_list_all, task_deployment_all, makespan_avg_heft \
-        = heft.get_response_time(sorted_job_path=args.batch_task_topological_order_path)
-    end = datetime.datetime.now()
-    print('Computer\'s running time:', (end - start).microseconds, 'microseconds')

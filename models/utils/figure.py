@@ -12,8 +12,8 @@ from matplotlib import font_manager, gridspec
 from networkx import DiGraph, Graph
 from pandas import DataFrame
 
-from models.utils.dataset import get_one_machine
-from models.utils.params import args
+from models.utils.tools import get_one_machine
+from models.utils.parameters import args
 
 # 设置图片中的中文字体、英文字体、公式字体
 FILE_PATH = os.path.abspath(__file__)  # 获取当前文件所在路径
@@ -64,7 +64,10 @@ class Figure:
         self.udg_saving_path = self.result_saving_path + '/udgs'
         self.params_saving_path = self.result_saving_path + '/params'
 
-        self.timestamp = time.time()  # 用于区分不同时刻产生的结果文件
+        now = time.time()
+        timeArray = time.localtime(now)
+        otherStyleTime = time.strftime('%Y-%m-%d_%H-%M-%S', timeArray)
+        self.timestamp = otherStyleTime  # 用于区分不同时刻产生的结果文件
 
         # 检查是否存在保存实验结果的路径
         if not os.path.exists(self.result_saving_path):

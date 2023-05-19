@@ -1,6 +1,7 @@
 # 数据集介绍
 
-数据来源于 [Alibaba Cluster Trace Program v2018](https://github.com/alibaba/clusterdata/tree/master/cluster-trace-v2018)，该数据集包含 4000 个机器上 8 天的运行数据，组织在 6 个文件中。
+数据来源于 [Alibaba Cluster Trace Program v2018](https://github.com/alibaba/clusterdata/tree/master/cluster-trace-v2018)
+，该数据集包含 4000 个机器上 8 天的运行数据，组织在 6 个文件中。
 
 | Filename                                                                                                 | Size    | Comment                        |
 |----------------------------------------------------------------------------------------------------------|---------|--------------------------------|
@@ -13,14 +14,15 @@
 
 在任务调度的相关研究中，只用到了 batch_task.tar.gz 部分。
 
-> 注：阿里巴巴将数据分成了 online services（需要长时间运行的应用程序）和 batch workloads（批处理作业工作负载）两类，它们的主要区别在于服务时长。 
+> 注：阿里巴巴将数据分成了 online services（需要长时间运行的应用程序）和 batch workloads（批处理作业工作负载）两类，它们的主要区别在于服务时长。
 > 针对这两类数据，阿里巴巴提供了 Sigma（用于调度在线服务），Fuxi（用于调度批处理作业）两种调度器。
 
 ## 数据集中的字段解释
 
 该小节主要解释每个文件中表头的含义。值得注意的是，有一些共性的字段，单独介绍一下：
 
-`time_stamp`, `start_time` 和 `end_time`：这三个字段的单位都是 “秒”，其值代表 实际时间 和 开始采样时间 的差值。开始时间是 0。
+`time_stamp`, `start_time` 和 `end_time`：这三个字段的单位都是 “秒”，其值代表 实际时间 和 开始采样时间 的差值。开始时间是
+0。
 
 出于保密原因，文件对内存大小和磁盘大小等信息进行了缩放，使其值介于 0 到 100 之间，在该范围之外是无效值，如 -1 或 101。
 

@@ -15,5 +15,4 @@ COPY tensorflow-0.12.0-py3-none-any.whl .
 RUN pip install tensorflow-0.12.0-py3-none-any.whl
 
 COPY requirements.txt .
-RUN python -m pip install --upgrade pip setuptools wheel \
-    && pip install -r requirements.txt
+RUN python -m pip install --upgrade pip setuptools wheel && pip install -r requirements.txt

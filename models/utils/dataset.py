@@ -13,8 +13,12 @@ import re
 import numpy as np
 import pandas as pd
 
+from models.utils.dag import DAG
+from models.utils.figure import DAGFigure, UDGFigure
+from models.utils.parameters import args
 from models.utils.text import ProgressBar
-from models.utils.params import args
+from models.utils.tools import get_one_job
+from models.utils.udg import UDG
 
 
 def sample_jobs(batch_task_path=args.batch_task_path,
@@ -243,37 +247,6 @@ def get_topological_order(selected_batch_task_path=args.selected_batch_task_path
     df.to_csv(batch_task_topological_order_path, index=False)
 
 
-def get_one_job(jobs, start_idx=0):
-    """
-    从当前 start_idx 开始，获取一个 job，并返回下一个 job 的 idx.
-
-    :param jobs: jobs 列表，DataFrame 格式
-    :param start_idx: 指明需要从哪里开始获取，没有指定默认是 0
-    :return: 返回从 start_idx 开始的第一个 job，以及下一个 job 的起始 idx
-    """
-    job_name = jobs.loc[start_idx, 'job_name']
-    rows = jobs.shape[0]
-    task_nums = 0
-    while (start_idx + task_nums < rows) and (jobs.loc[start_idx + task_nums, 'job_name'] == job_name):
-        task_nums = task_nums + 1
-    job = jobs.loc[start_idx: start_idx + task_nums - 1].copy()
-    next_idx = start_idx + task_nums
-    return job, next_idx
-
-
-def reverse_dict(d):
-    """ Reverses direction of dependence dict.
-    e.g.:
-    d = {'a': (1, 2), 'b': (2, 3), 'c':()}
-    reverse_dict(d) = {1: ('a',), 2: ('a', 'b'), 3: ('b',)}
-    """
-    result = {}
-    for key in d:
-        for val in d[key]:
-            result[val] = result.get(val, tuple()) + (key,)
-    return result
-
-
 def sample_machines(container_usage_path=args.container_usage_path,
                     selected_container_usage_path=args.selected_container_usage_path):
     """
@@ -323,17 +296,86 @@ def sample_machines(container_usage_path=args.container_usage_path,
                     return
 
 
-def get_one_machine(machines, start_idx=0):
+def gen_task_depend_input():
     """
-    从当前 start_idx 开始，获取一个 machine，并返回下一个 machine 的 idx
-    :return: 返回从 start_idx 开始的第一个 machine，以及下一个 machine 的起始 idx
+    根据 alibaba 数据集重新生成任务间的依赖关系，同时包含了任务间的转移概率
+    :return:
     """
-    machine_id = machines.loc[start_idx, 'machine_id']
-    rows = machines.shape[0]
-    machine_nums = 0
-    while (start_idx + machine_nums < rows) and (machines.loc[start_idx + machine_nums, 'machine_id'] == machine_id):
-        machine_nums += 1
+    df = pd.read_csv(args.selected_batch_task_path)
+    idx = 0
+    while idx < df.shape[0]:
+        job, idx = get_one_job(df, idx)
+        G, job_name = DAG.generate_dag_from_alibaba_trace_data(job)
+        dag_figure = DAGFigure()
+        dag_figure.visual(G, job_name)
 
-    machine = machines.loc[start_idx: start_idx + machine_nums - 1].copy()
-    next_idx = start_idx + machine_nums
-    return machine, next_idx
+
+def gen_heft_and_dpe_input():
+    """
+    根据节点间的连通性信息，生成 HEFT 算法所需要的环境输入。
+    :return:
+    """
+    # 获取节点间的拓扑结构信息
+    udg_name = str(args.n_nodes) + '_nodes_' + str(args.n_max_connections) + '_connections'
+    npy_file_name_prefix = args.node_connect_prefix + udg_name
+    adj_matrix = np.load(npy_file_name_prefix + '_adj_matrix.npy')
+    G = np.where(adj_matrix != 0, 1, 0)  # 把非零元素替换为 1
+    bw = adj_matrix
+    pp = np.load(npy_file_name_prefix + '_processing_power.npy')
+    return G, bw, pp
+
+
+def gen_node_connect_input():
+    """
+    指定节点个数、最大连接数、带宽下限、带宽上限，以随机的方式生成节点间连通性的拓扑结构。
+    另外还需包含每个计算节点处理数据的能力大小。
+    :return:
+    """
+    n_nodes = args.n_nodes
+    n_max_connections = args.n_max_connections
+    bandwidth_lower = args.bandwidth_lower
+    bandwidth_upper = args.bandwidth_upper
+    processing_power_lower = args.processing_power_lower
+    processing_power_upper = args.processing_power_upper
+
+    # 随机生成节点之间的连通性信息以及节点间的带宽大小，并进行可视化
+    udg_figure = UDGFigure()
+    udg = UDG()
+    G, udg_name = udg.generate_udg_from_random(n_nodes, n_max_connections, bandwidth_lower, bandwidth_upper)
+    udg_figure.visual(G, udg_name)
+
+    # 随机生成每个节点的处理能力
+    nodes_processing_power = np.random.randint(processing_power_lower, processing_power_upper, n_nodes)
+    npy_file_name = udg_name.replace(' ', '_') + '_processing_power'
+    np.save(args.node_connect_prefix + npy_file_name, nodes_processing_power)
+
+
+def gen_gcn_dqn_input():
+    """
+    根据 task_depend_* 和 node_connect_* 加载 GCN-DQN 算法的输入。
+    需要准备的数据包括：（参考 https://github.com/tkipf/gcn/blob/master/gcn/utils.py#L24）
+    - 一个 N * N 的邻接矩阵（N 是 tasks 的数量）
+    - 一个 N * D 的特征矩阵（D 是每个 task 的特征数量）
+    - 一个 N * E 的独热编码矩阵（E 是 nodes 数量）
+    :return:
+    """
+    job_name = 'j_82634'
+    task_adj_matrix = np.load(args.task_depend_prefix + job_name + '_adj_matrix.npy')
+    task_data_size = np.load(args.task_depend_prefix + job_name + '_data_size.npy')
+    task_duration = np.load(args.task_depend_prefix + job_name + '_duration.npy')
+    task_required_cpu = np.load(args.task_depend_prefix + job_name + '_required_cpu.npy')
+    task_required_mem = np.load(args.task_depend_prefix + job_name + '_required_mem.npy')
+
+    udg_name = str(args.n_nodes) + '_nodes_' + str(args.n_max_connections) + '_connections'
+    npy_file_name_prefix = args.node_connect_prefix + udg_name
+    node_adj_matrix = np.load(npy_file_name_prefix + '_adj_matrix.npy')
+    node_processing_power = np.load(npy_file_name_prefix + '_processing_power.npy')
+
+    task_features = np.array([task_data_size, task_duration, task_required_cpu, task_required_mem]).T
+    node_features = np.array([node_processing_power]).T
+
+    return task_adj_matrix, task_features, node_adj_matrix, node_features
+
+
+if __name__ == '__main__':
+    gen_gcn_dqn_input()

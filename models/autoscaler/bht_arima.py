@@ -1,4 +1,4 @@
-"""Take from BHT-ARIMA: https://github.com/huawei-noah/BHT-ARIMA"""
+"""Adapted according to https://github.com/huawei-noah/BHT-ARIMA"""
 import copy
 import warnings
 
@@ -17,7 +17,7 @@ def unfold(tensor, n):
     J = int(int(np.prod(size)) / int(I))
     pmt = np.array(range(n, n + 1))
     pmt = np.append(pmt, range(0, n))
-    pmt = np.append(pmt, range(n + 1, N)).astype(np.int)
+    pmt = np.append(pmt, range(n + 1, N)).astype(np.int32)
     return np.reshape(np.transpose(tensor, pmt), [I, J])
 
 
@@ -26,7 +26,7 @@ def fold(matrix, n, size_t_ori):
     size_t_pmt = np.concatenate([size_t_ori[n:(n + 1)], size_t_ori[0:n], size_t_ori[(n + 1):N]], axis=0)
     pmt = np.array(range(1, n + 1))
     pmt = np.append(pmt, range(0, 1))
-    pmt = np.append(pmt, range(n + 1, N)).astype(np.int)
+    pmt = np.append(pmt, range(n + 1, N)).astype(np.int32)
     return np.transpose(np.reshape(matrix, size_t_pmt), pmt)
 
 

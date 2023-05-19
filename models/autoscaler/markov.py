@@ -7,7 +7,7 @@ from pandas import DataFrame
 
 from models.utils.dag import DAG
 from models.utils.dataset import get_one_job
-from models.utils.params import args
+from models.utils.parameters import args
 
 
 class MostLikelyPath:

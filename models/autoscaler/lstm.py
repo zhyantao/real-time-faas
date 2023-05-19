@@ -1,4 +1,4 @@
-"""LSTM: PyTorch Implementation"""
+"""Using PyTorch implementation"""
 import torch
 from pandas import DataFrame
 from sklearn.preprocessing import MinMaxScaler

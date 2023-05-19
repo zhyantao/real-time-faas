@@ -1,6 +1,119 @@
+# 忽略编译生成的中间文件
+**/node_modules/
+certifier
+.editorconfig
+/contrib/staging/
+**/*.sha256
+.vagrant
+
+# OpenFaaS 生成的文件
 template
 build
+
+# Whisk
+nginx.conf
+whisk.properties
+whisk.conf
+default.props
+/tests/src/test/resources/application.conf
+
+.ant-targets-build.xml
+/results/
+/logs/
+/config/custom-config.xml
+results
+*.retry
+
+# Environments
+/ansible/environments/*
+!/ansible/environments/distributed
+!/ansible/environments/docker-machine
+!/ansible/environments/local
+!/ansible/environments/mac
+
+# Eclipse
+bin/
+**/.project
+.settings/
+.classpath
+.cache-main
+.cache-tests
+
+# Linux
+*~
+*.swp
+
+# Mac
+**/*.DS_Store
+
+# Gradle
+.gradle
+build/
+!/tools/build/
+
+# Python
+.ipynb_checkpoints/
+*.pyc
+
+# NodeJS
+node_modules
+
+# IntelliJ
+.idea
 *.class
+*.iml
+out/
+
+# Ansible
+ansible/environments/docker-machine/hosts
+ansible/environments/local/hosts
+ansible/db_local.ini*
+ansible/tmp/*
+ansible/roles/nginx/files/openwhisk-client*
+ansible/roles/nginx/files/*.csr
+ansible/roles/nginx/files/*.p12
+ansible/roles/nginx/files/*cert.pem
+ansible/roles/nginx/files/*p12
+ansible/roles/kafka/files/*
+ansible/roles/controller/files/*
+ansible/roles/invoker/files/*
+
+# .zip files must be explicited whitelisted
+*.zip
+tests/dat/actions/sleep.jar
+tests/dat/actions/blackbox.zip
+tests/dat/actions/python.zip
+tests/dat/actions/zippedaction.zip
+tests/dat/actions/zippedaction/node_modules
+tests/dat/actions/python2_virtualenv.zip
+tests/dat/actions/python_virtualenv/virtualenv
+tests/dat/actions/.built
+tests/dat/actions/unicode.tests/java-8.bin
+tests/performance/gatling_tests/src/gatling/resources/data/javaAction.jar
+tests/performance/gatling_tests/.built
+
+# dev
+intellij-run-config.groovy
+
+# VSCode
+.vscode/
+
+# route management
+core/routemgmt/createApi/apigw-utils.js
+core/routemgmt/createApi/package-lock.json
+core/routemgmt/createApi/utils.js
+core/routemgmt/deleteApi/apigw-utils.js
+core/routemgmt/deleteApi/package-lock.json
+core/routemgmt/deleteApi/utils.js
+core/routemgmt/getApi/apigw-utils.js
+core/routemgmt/getApi/package-lock.json
+core/routemgmt/getApi/utils.js
+
+# vscode metals
+.bloop/
+.metals/
+
+#
 *.log
 *.ctxt
 .mtj.tmp/
@@ -8,12 +121,10 @@ build
 *.war
 *.nar
 *.ear
-*.zip
 *.tar.gz
 *.rar
 hs_err_pid*
 replay_pid*
-.gradle
 **/build/
 !src/**/build/
 gradle-app.setting
@@ -21,13 +132,11 @@ gradle-app.setting
 !gradle-wrapper.properties
 .gradletasknamecache
 .project
-.classpath
 __pycache__/
 *.py[cod]
 *$py.class
 *.so
 .Python
-build/
 develop-eggs/
 dist/
 downloads/
@@ -109,15 +218,21 @@ tmp/
 hosts
 perf_data/
 perf.data
-dataset/
 runs/
 __cache__/
 *.gv
 *.pdf
 *.pkl
 results/
+result/
 tpch/
 *.png
+*.jpg
 *.pth
 *.doc
 *.docx
+*.whl
+*.mp4
+*.ttf
+*.npy
+*.csv

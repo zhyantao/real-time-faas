@@ -4,7 +4,7 @@ import random
 import networkx as nx
 import numpy as np
 
-from models.utils.params import args
+from models.utils.parameters import args
 
 
 class UDG:
@@ -48,12 +48,8 @@ class UDG:
         for i in range(n_nodes):
             for j in connection_set[i]:
                 G.add_edge(i, j, weight=random.randint(bandwidth_lower, bandwidth_upper))
-        adj = np.asarray(nx.to_numpy_matrix(G))
+        adj = np.asarray(nx.to_numpy_array(G))
         udg_name = str(n_nodes) + ' nodes ' + str(n_max_connections) + ' connections'
-        np.save(args.node_connect_prefix + udg_name, adj)
+        npy_file_name = udg_name.replace(' ', '_') + '_adj_matrix'
+        np.save(args.node_connect_prefix + npy_file_name, adj)
         return G, udg_name
-
-
-if __name__ == '__main__':
-    udg = UDG()
-    udg.generate_udg_from_random(10, 9, 20, 60)
