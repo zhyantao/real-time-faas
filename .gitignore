@@ -218,13 +218,13 @@ tmp/
 hosts
 perf_data/
 perf.data
-dataset/
 runs/
 __cache__/
 *.gv
 *.pdf
 *.pkl
 results/
+result/
 tpch/
 *.png
 *.jpg
@@ -234,3 +234,5 @@ tpch/
 *.whl
 *.mp4
 *.ttf
+*.npy
+*.csv
