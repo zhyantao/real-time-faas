@@ -92,8 +92,6 @@ class FigureTest(unittest.TestCase):
             else:
                 dag_figure.visual(G, job_name)
 
-    # 图 3-12 DAG重构结果展示
-    def test_merge_image1(self):
         image_list = [
             "E:/Workshop/real-time-faas/results/dags/(a) j_11624.png",
             "E:/Workshop/real-time-faas/results/dags/(b) j_12288.png",
@@ -122,8 +120,6 @@ class FigureTest(unittest.TestCase):
         G, udg_name = udg.generate_udg_from_random(10, 5, 20, 60)
         udg_figure.visual(G, '(f) ' + udg_name)
 
-    # 图 4-9 随机初始化的节点连通性矩阵
-    def test_merge_image2(self):
         image_list = [
             "E:/Workshop/real-time-faas/results/udgs/(a) 10 nodes 5 connections.png",
             "E:/Workshop/real-time-faas/results/udgs/(b) 10 nodes 2 connections.png",

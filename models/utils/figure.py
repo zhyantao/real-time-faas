@@ -18,7 +18,7 @@ from models.utils.parameters import args
 # 设置图片中的中文字体、英文字体、公式字体
 FILE_PATH = os.path.abspath(__file__)  # 获取当前文件所在路径
 CURRENT_DIR = os.path.dirname(FILE_PATH)  # 获取当前文件所在目录
-font_path = CURRENT_DIR + "/../../setup/tnw+simsun.ttf"
+font_path = CURRENT_DIR + "/../../setup/downloads/tnw+simsun.ttf"
 font_manager.fontManager.addfont(font_path)
 prop = font_manager.FontProperties(fname=font_path)
 plt.rcParams['font.family'] = 'sans-serif'  # 使用字体中的无衬线体
