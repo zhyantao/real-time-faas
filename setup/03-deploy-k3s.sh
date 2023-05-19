@@ -20,7 +20,7 @@ scp install.sh root@k8s-worker1:~/tmp
 scp install.sh root@k8s-worker2:~/tmp
 INSTALL_K3S_SKIP_DOWNLOAD=true ./install.sh # 离线安装
 kubectl get node                            # 安装完成后，查看节点状态
-cat /var/lib/rancher/k3s/server/node-token  # 查看token
+cat /var/lib/rancher/k3s/server/node-token  # 查看 token（每个人都不同）
 #K10c4b79481685b50e4bca2513078f4e83b62d1d0b5f133a8a668b65c8f9249c53e::server:bf7b63be7f3471838cbafa12c1a1964d
 
 # 在 k8s-worker1 和 k8s-worker2 上运行
