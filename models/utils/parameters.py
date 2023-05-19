@@ -1,9 +1,9 @@
 import argparse
 
-ROOT_PATH = 'E:/Workshop/real-time-faas-v2/'
+ROOT_PATH = 'E:/Workshop/real-time-faas/'
 RAW_DATASET_PATH = 'E:/alibaba_trace_data_2018/'
 SELECTED_DATASET_PATH = ROOT_PATH + 'dataset/'
-RESULT_PATH = ROOT_PATH + 'result/'
+RESULT_PATH = ROOT_PATH + 'results/'
 
 parser = argparse.ArgumentParser(description='real-time-faas')
 

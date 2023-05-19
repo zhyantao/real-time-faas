@@ -40,7 +40,7 @@ def test_autoscaler():
         train_size = 50  # 用过去的 50 个数据预测前面的数据
 
         # 调用 DLinear 模型
-        y_hat_dlinear, y_test_dlinear = run_dlinear()
+        y_hat_dlinear, y_test_dlinear = run_dlinear(idx)
         for i in range(y_hat_dlinear.shape[0]):
             predictions['dlinear'].append(y_hat_dlinear[i])
             y = training_data[train_size + i].reshape(-1, 1)

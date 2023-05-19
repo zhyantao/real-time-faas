@@ -1,3 +1,4 @@
+import os
 import time
 
 import numpy as np
@@ -398,6 +399,9 @@ def call_dlinear(column_name, machine_idx):
                                                                                           stop - start), end=' ')
 
         # Update best model
+        if not os.path.exists(os.path.dirname(args.model_path)):
+            os.makedirs(os.path.dirname(args.model_path))
+
         if epoch == 1:
             Best_score = valid_loss
             torch.save(model.state_dict(), args.model_path)
