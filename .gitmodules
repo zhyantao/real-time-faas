@@ -1,0 +1,6 @@
+[submodule "third_party/faas-netes"]
+	path = third_party/faas-netes
+	url = https://github.com/openfaas/faas-netes.git
+[submodule "third_party/openwhisk-deploy-kube"]
+	path = third_party/openwhisk-deploy-kube
+	url = https://github.com/apache/openwhisk-deploy-kube.git
