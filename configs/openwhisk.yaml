@@ -1,0 +1,18 @@
+controller:
+  replicaCount: 3
+whisk:
+  ingress:
+    type: NodePort
+    apiHostName: 192.168.163.146
+    apiHostPort: 31001
+k8s:
+  persistence:
+    enabled: true
+nginx:
+  httpsNodePort: 31001
+invoker:
+  containerFactory:
+    impl: "kubernetes"
+metrics:
+  prometheusEnabled: false
+  userMetricsEnabled: true
