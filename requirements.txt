@@ -16,7 +16,7 @@ graphviz==0.20.3
 pandas==2.1.4
 six==1.16.0
 requests==2.32.3
-keras==3.4.1
+keras==3.9.0
 pmdarima==2.0.4
 tensorly==0.8.1
 pytest==8.2.2
