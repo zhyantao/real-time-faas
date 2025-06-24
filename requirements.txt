@@ -1,4 +1,4 @@
-torch==2.7.0
+torch==2.7.1
 torchvision==0.19.1
 torchaudio==2.4.1
 tensorflow==2.16.2
